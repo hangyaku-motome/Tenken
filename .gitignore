@@ -1,0 +1,6 @@
+words/
+test/
+build/
+.cache/
+third_party/imgui/examples
+compile_commands.json
