@@ -1,0 +1,13 @@
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <GL/gl.h>
+#include <GLFW/glfw3.h>
+#include <cstdlib>
+#include <stdio.h>
+
+GLFWwindow *initalise_main();
+void exit_main(GLFWwindow *window);
+void start_frame();
+void end_frame(int display_w, int display_h, ImVec4 clear_color,
+               GLFWwindow *window);

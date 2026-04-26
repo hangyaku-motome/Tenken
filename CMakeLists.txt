@@ -27,7 +27,10 @@ target_include_directories(imgui PUBLIC
 
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
-add_executable(main source/main.cpp)
+add_executable(main 
+    source/main.cpp
+    source/start_end.cpp
+)
 set_target_properties(main PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
 target_link_libraries(main PRIVATE imgui)
