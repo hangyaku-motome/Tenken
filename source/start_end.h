@@ -3,8 +3,7 @@
 #include "imgui_impl_opengl3.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-#include <cstdlib>
-#include <stdio.h>
+#include <iostream>
 
 GLFWwindow *initalise_main();
 void exit_main(GLFWwindow *window);

@@ -30,6 +30,7 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 add_executable(main 
     source/main.cpp
     source/start_end.cpp
+    source/ScanProc.cpp
 )
 set_target_properties(main PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 

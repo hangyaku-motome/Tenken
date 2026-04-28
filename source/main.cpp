@@ -1,11 +1,20 @@
+#include "ScanProc.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "imgui_internal.h"
 #include "start_end.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <sstream>
 #include <stdio.h>
+#include <string>
+
+struct LogInfo {
+  int pidCount = 0;
+  bool TargetChosen = 0;
+};
 
 int main() {
 
@@ -16,11 +25,15 @@ int main() {
                                ImGuiWindowFlags_NoResize |
                                ImGuiWindowFlags_NoCollapse;
 
-  bool SEARCH_TARGET = 0;
+  bool IsTargetMenuClicked = false;
+
+  std::vector<ProcessInfo> Processes;
+  LogInfo LogParams;
+  std::string LogText;
+  ProcessInfo ChosenTarget;
 
   // Main loop.
   while (!glfwWindowShouldClose(window)) {
-
     if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
       ImGui_ImplGlfw_Sleep(10);
       continue;
@@ -38,7 +51,7 @@ int main() {
     if (ImGui::BeginMainMenuBar()) {
       if (ImGui::BeginMenu("File")) {
         if (ImGui::MenuItem("New Target")) {
-          SEARCH_TARGET = 1;
+          IsTargetMenuClicked = true;
         }
         ImGui::EndMenu();
       }
@@ -48,6 +61,52 @@ int main() {
 
     float menu_height = ImGui::GetFrameHeight();
 
+    if (IsTargetMenuClicked) {
+      ImGui::OpenPopup("Target List");
+      Processes = ProcessScanner();
+      LogParams.pidCount = Processes.size();
+      IsTargetMenuClicked = false;
+    }
+
+    // Target List.
+    if (ImGui::BeginPopupModal("Target List", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_AlwaysVerticalScrollbar |
+                                   ImGuiWindowFlags_HorizontalScrollbar)) {
+      ImGui::Text("List targets here:");
+
+      if (ImGui::Button("Refresh")) {
+        Processes = ProcessScanner();
+        LogParams.pidCount = Processes.size();
+      }
+
+      if (ImGui::BeginTable("Targets", 4)) {
+        for (const auto &Target : Processes) {
+          ImGui::TableNextRow();
+          ImGui::TableNextColumn();
+          ImGui::Text("%s", std::to_string(Target.pid).c_str());
+          ImGui::TableNextColumn();
+          ImGui::Text("%s", Target.FieldComm.c_str());
+          ImGui::TableNextColumn();
+          ImGui::Text("%s", Target.FieldCmdline.c_str());
+          ImGui::TableNextColumn();
+
+          if (ImGui::Selectable(
+                  std::to_string(ImGui::TableGetRowIndex()).c_str(), false,
+                  ImGuiSelectableFlags_SpanAllColumns)) {
+            ChosenTarget = Target;
+            LogParams.TargetChosen = true;
+          }
+        }
+        ImGui::EndTable();
+      }
+
+      if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::EndPopup();
+    }
+
     // Hits.
     {
       ImGui::SetNextWindowPos(ImVec2(0, menu_height));
@@ -56,6 +115,7 @@ int main() {
       ImGui::Begin("Hits", nullptr, flagsHits);
 
       if (ImGui::BeginTable("table2", 3)) {
+        // Use ImGuiClipper at some point.
         for (int row = 0; row < 40000; row++) {
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
@@ -83,10 +143,26 @@ int main() {
 
     // Log.
     {
+      if (LogParams.pidCount) {
+        std::stringstream tempss;
+        tempss << "...Found PID count: " << LogParams.pidCount << "\n";
+        LogParams.pidCount = 0;
+        LogText += tempss.str();
+      }
+      if (LogParams.TargetChosen) {
+        std::stringstream tempss;
+        LogParams.TargetChosen = false;
+        tempss << "...Chosen PID: " << ChosenTarget.pid
+               << "   Target Comm:" << ChosenTarget.FieldComm
+               << "   Target CmdLine:" << ChosenTarget.FieldCmdline << "\n";
+        LogText += tempss.str();
+        std::cout << LogText;
+      }
       ImGui::SetNextWindowPos(ImVec2(0, menu_height + HitWindowHeight));
       ImGui::SetNextWindowSize(
           ImVec2(display_w, display_h - menu_height - HitWindowHeight));
       ImGui::Begin("Log", nullptr, flagsHits);
+      ImGui::TextUnformatted(LogText.c_str(), LogText.end().base());
 
       ImGui::End();
     }
