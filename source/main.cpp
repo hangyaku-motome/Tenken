@@ -39,22 +39,13 @@ int main() {
       continue;
     }
 
-    start_frame();
-
-    if (ImGui::BeginMainMenuBar()) {
-      if (ImGui::BeginMenu("File")) {
-        if (ImGui::MenuItem("New Target")) {
-          TargetPUp.IsClicked = true;
-        }
-        ImGui::EndMenu();
-      }
-
-      ImGui::EndMainMenuBar();
-    }
-
     LogEvents LogEvents;
 
+    start_frame();
+
     SetDisplayInfo(window, DisplayInfo);
+
+    MainMenuBarCycle(TargetPUp);
 
     // target popup.
     TargetPUp.CyclePUp(LogEvents, ActiveInfo);

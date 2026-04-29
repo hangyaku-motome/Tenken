@@ -1,4 +1,5 @@
 #include "display.h"
+#include "TargetPopUp.hpp"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <cstdio>
@@ -102,4 +103,17 @@ void SetDisplayInfo(GLFWwindow *window, DisplayInfo &DisplayInfo) {
   DisplayInfo.Search.H = DisplayInfo.Hit.H;
   DisplayInfo.Search.XPos = DisplayInfo.Hit.W;
   DisplayInfo.Search.YPos = DisplayInfo.TopMenuHeight;
+}
+
+void MainMenuBarCycle(TargetPopUp &TargetPUp) {
+  if (ImGui::BeginMainMenuBar()) {
+    if (ImGui::BeginMenu("File")) {
+      if (ImGui::MenuItem("New Target")) {
+        TargetPUp.IsClicked = true;
+      }
+      ImGui::EndMenu();
+    }
+
+    ImGui::EndMainMenuBar();
+  }
 }

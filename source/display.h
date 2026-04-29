@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TargetPopUp.hpp"
 #include "imgui.h"
 #include "types.h"
 #include <GL/gl.h>
@@ -11,3 +12,4 @@ void start_frame();
 void end_frame(int display_w, int display_h, ImVec4 clear_color,
                GLFWwindow *window);
 void SetDisplayInfo(GLFWwindow *window, DisplayInfo &DisplayInfo);
+void MainMenuBarCycle(TargetPopUp &TargetPUp);
