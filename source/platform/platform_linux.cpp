@@ -1,19 +1,10 @@
-// We need to go through all pid.
 
-// no cmdline means none of our business.
-
-// if comm is empty at calling, it means the process finished. We will skip it.
-
-// TODO:A way to highlight user processes.
-// TODO: Clarify comm and cmdline behaviour.
-
-#include "ScanProc.h"
+#include "platform_linux.h"
+#include <GL/gl.h>
+#include <GLFW/glfw3.h>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
-#include <sstream>
 #include <string>
-#include <unistd.h>
 
 std::vector<int> ListPid() {
   std::vector<int> pidList;
@@ -36,16 +27,12 @@ std::string ReadFileString(std::string path) {
   std::ifstream PathStream(path);
   if (!PathStream)
     return "";
-
   std::stringstream readString;
-
   readString << PathStream.rdbuf();
-
   return readString.str();
 }
 
-std::vector<ProcessInfo> ProcessScanner() {
-
+std::vector<ProcessInfo> GetTargets() {
   std::vector<ProcessInfo> Processes;
 
   for (int pid : ListPid()) {
@@ -59,10 +46,10 @@ std::vector<ProcessInfo> ProcessScanner() {
     cmdline = ReadFileString(path + "cmdline");
     if (cmdline.empty()) {
       continue;
-      // It seems some have the cmdline as "systemd-userwork: waiting...". Most
-      // likely also irrelevant. Will filter them later. I'll need to clarify
-      // what the state of cmdline means. Right now I will assume empty means ->
-      // Irrelevant.
+      // It seems some have the cmdline as "systemd-userwork: waiting...".
+      // Most likely also irrelevant. Will filter them later. I'll need to
+      // clarify what the state of cmdline means. Right now I will assume
+      // empty means -> Irrelevant.
     }
 
     ProcessInfo PushProcess;
@@ -75,4 +62,4 @@ std::vector<ProcessInfo> ProcessScanner() {
     Processes.push_back(PushProcess);
   }
   return Processes;
-}
+};

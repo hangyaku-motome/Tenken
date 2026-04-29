@@ -1,4 +1,8 @@
-#include "start_end.h"
+#include "display.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <cstdio>
+#include <cstdlib>
 
 static void glfw_error_callback(int error, const char *description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -69,4 +73,33 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color,
   glClear(GL_COLOR_BUFFER_BIT);
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   glfwSwapBuffers(window);
+}
+
+void SetDisplayInfo(GLFWwindow *window, DisplayInfo &DisplayInfo) {
+  int tempdisplay_w, tempdisplay_h;
+
+  glfwGetFramebufferSize(window, &tempdisplay_w, &tempdisplay_h);
+  if (DisplayInfo.display_h == tempdisplay_h &&
+      DisplayInfo.display_w == tempdisplay_w)
+    return;
+  DisplayInfo.TopMenuHeight = ImGui::GetFrameHeight();
+
+  DisplayInfo.display_h = tempdisplay_h;
+  DisplayInfo.display_w = tempdisplay_w;
+
+  DisplayInfo.Hit.W = DisplayInfo.display_w / 2.0 * 1.3;
+  DisplayInfo.Hit.H = DisplayInfo.display_h / 2.0 * 1.1;
+  DisplayInfo.Hit.XPos = 0;
+  DisplayInfo.Hit.YPos = DisplayInfo.TopMenuHeight;
+
+  DisplayInfo.Log.W = DisplayInfo.display_w;
+  DisplayInfo.Log.H =
+      DisplayInfo.display_h - DisplayInfo.Hit.H - DisplayInfo.TopMenuHeight;
+  DisplayInfo.Log.XPos = 0;
+  DisplayInfo.Log.YPos = DisplayInfo.Hit.H + DisplayInfo.TopMenuHeight;
+
+  DisplayInfo.Search.W = DisplayInfo.display_w - DisplayInfo.Hit.W;
+  DisplayInfo.Search.H = DisplayInfo.Hit.H;
+  DisplayInfo.Search.XPos = DisplayInfo.Hit.W;
+  DisplayInfo.Search.YPos = DisplayInfo.TopMenuHeight;
 }

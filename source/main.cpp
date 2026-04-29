@@ -1,36 +1,36 @@
-#include "ScanProc.h"
+#include "HitsW.h"
+#include "LogW.h"
+#include "SearchW.h"
+#include "TargetPopUp.hpp"
+#include "display.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include "imgui_internal.h"
-#include "start_end.h"
+#include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
-#include <sstream>
-#include <stdio.h>
-#include <string>
 
-struct LogInfo {
-  int pidCount = 0;
-  bool TargetChosen = 0;
-};
+// some variables and types have the same name. fix that. It's confusing.
+// Also I just noticed there is an input delay...That compounds to a lot. I
+// think we'll need to implement multithreading..soon.
+
+void SetDisplayInfo(GLFWwindow *window, DisplayInfo &DisplayInfo);
 
 int main() {
 
   GLFWwindow *window = initalise_main();
 
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-  ImGuiWindowFlags flagsHits = ImGuiWindowFlags_NoMove |
-                               ImGuiWindowFlags_NoResize |
-                               ImGuiWindowFlags_NoCollapse;
+  ImGuiWindowFlags flagsWindowDefault = ImGuiWindowFlags_NoMove |
+                                        ImGuiWindowFlags_NoResize |
+                                        ImGuiWindowFlags_NoCollapse;
 
-  bool IsTargetMenuClicked = false;
+  ActiveInfo ActiveInfo;
+  DisplayInfo DisplayInfo;
 
-  std::vector<ProcessInfo> Processes;
-  LogInfo LogParams;
-  std::string LogText;
-  ProcessInfo ChosenTarget;
+  LogW LogObj;
+  SearchW SearchObj;
+  HitsW HitObj;
+  TargetPopUp TargetPUp;
 
   // Main loop.
   while (!glfwWindowShouldClose(window)) {
@@ -39,19 +39,12 @@ int main() {
       continue;
     }
 
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    float half_display_w = display_w * 0.5f;
-    float half_display_h = display_h * 0.5f;
-    float HitWindowWidth = half_display_w * 1.3;
-    float HitWindowHeight = half_display_h * 1.1;
-
     start_frame();
 
     if (ImGui::BeginMainMenuBar()) {
       if (ImGui::BeginMenu("File")) {
         if (ImGui::MenuItem("New Target")) {
-          IsTargetMenuClicked = true;
+          TargetPUp.IsClicked = true;
         }
         ImGui::EndMenu();
       }
@@ -59,115 +52,24 @@ int main() {
       ImGui::EndMainMenuBar();
     }
 
-    float menu_height = ImGui::GetFrameHeight();
+    LogEvents LogEvents;
 
-    if (IsTargetMenuClicked) {
-      ImGui::OpenPopup("Target List");
-      Processes = ProcessScanner();
-      LogParams.pidCount = Processes.size();
-      IsTargetMenuClicked = false;
-    }
+    SetDisplayInfo(window, DisplayInfo);
 
-    // Target List.
-    if (ImGui::BeginPopupModal("Target List", nullptr,
-                               ImGuiWindowFlags_AlwaysAutoResize |
-                                   ImGuiWindowFlags_AlwaysVerticalScrollbar |
-                                   ImGuiWindowFlags_HorizontalScrollbar)) {
-      ImGui::Text("List targets here:");
-
-      if (ImGui::Button("Refresh")) {
-        Processes = ProcessScanner();
-        LogParams.pidCount = Processes.size();
-      }
-
-      if (ImGui::BeginTable("Targets", 4)) {
-        for (const auto &Target : Processes) {
-          ImGui::TableNextRow();
-          ImGui::TableNextColumn();
-          ImGui::Text("%s", std::to_string(Target.pid).c_str());
-          ImGui::TableNextColumn();
-          ImGui::Text("%s", Target.FieldComm.c_str());
-          ImGui::TableNextColumn();
-          ImGui::Text("%s", Target.FieldCmdline.c_str());
-          ImGui::TableNextColumn();
-
-          if (ImGui::Selectable(
-                  std::to_string(ImGui::TableGetRowIndex()).c_str(), false,
-                  ImGuiSelectableFlags_SpanAllColumns)) {
-            ChosenTarget = Target;
-            LogParams.TargetChosen = true;
-          }
-        }
-        ImGui::EndTable();
-      }
-
-      if (ImGui::Button("Cancel")) {
-        ImGui::CloseCurrentPopup();
-      }
-      ImGui::EndPopup();
-    }
+    // target popup.
+    TargetPUp.CyclePUp(LogEvents, ActiveInfo);
 
     // Hits.
-    {
-      ImGui::SetNextWindowPos(ImVec2(0, menu_height));
-      ImGui::SetNextWindowSize(ImVec2(HitWindowWidth, HitWindowHeight));
-
-      ImGui::Begin("Hits", nullptr, flagsHits);
-
-      if (ImGui::BeginTable("table2", 3)) {
-        // Use ImGuiClipper at some point.
-        for (int row = 0; row < 40000; row++) {
-          ImGui::TableNextRow();
-          ImGui::TableNextColumn();
-          ImGui::Text("%d", row);
-          ImGui::TableNextColumn();
-          ImGui::Text("0x%d", 0x100 + row * 1000);
-          ImGui::TableNextColumn();
-          ImGui::Text("%d", 500 + row * 5);
-        }
-        ImGui::EndTable();
-      }
-
-      ImGui::End();
-    }
+    HitObj.CycleW(DisplayInfo.Hit, flagsWindowDefault);
 
     // Search.
-    {
-      ImGui::SetNextWindowPos(ImVec2(0 + HitWindowWidth, menu_height));
-      ImGui::SetNextWindowSize(
-          ImVec2(display_w - HitWindowWidth, HitWindowHeight));
-      ImGui::Begin("Search", nullptr, flagsHits);
-
-      ImGui::End();
-    }
+    SearchObj.CycleW(DisplayInfo.Search, flagsWindowDefault);
 
     // Log.
-    {
-      if (LogParams.pidCount) {
-        std::stringstream tempss;
-        tempss << "...Found PID count: " << LogParams.pidCount << "\n";
-        LogParams.pidCount = 0;
-        LogText += tempss.str();
-      }
-      if (LogParams.TargetChosen) {
-        std::stringstream tempss;
-        LogParams.TargetChosen = false;
-        tempss << "...Chosen PID: " << ChosenTarget.pid
-               << "   Target Comm:" << ChosenTarget.FieldComm
-               << "   Target CmdLine:" << ChosenTarget.FieldCmdline << "\n";
-        LogText += tempss.str();
-        std::cout << LogText;
-      }
-      ImGui::SetNextWindowPos(ImVec2(0, menu_height + HitWindowHeight));
-      ImGui::SetNextWindowSize(
-          ImVec2(display_w, display_h - menu_height - HitWindowHeight));
-      ImGui::Begin("Log", nullptr, flagsHits);
-      ImGui::TextUnformatted(LogText.c_str(), LogText.end().base());
+    LogObj.CycleW(DisplayInfo.Log, flagsWindowDefault, LogEvents);
 
-      ImGui::End();
-    }
-
-    end_frame(display_w, display_h, clear_color, window);
+    end_frame(DisplayInfo.display_w, DisplayInfo.display_h, clear_color,
+              window);
   }
 
   // Clean up.

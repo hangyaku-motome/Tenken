@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(LearningCMake CXX)
+project(My_MemScanner CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -29,8 +29,12 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 add_executable(main 
     source/main.cpp
-    source/start_end.cpp
-    source/ScanProc.cpp
+    source/display.cpp
+    source/LogW.cpp
+    source/TargetPopUp.cpp
+    source/HitsW.cpp
+    source/SearchW.cpp
+    source/platform/platform_linux.cpp
 )
 set_target_properties(main PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
