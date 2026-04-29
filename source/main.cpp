@@ -9,10 +9,6 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
-// some variables and types have the same name. fix that. It's confusing.
-// Also I just noticed there is an input delay...That compounds to a lot. I
-// think we'll need to implement multithreading..soon.
-
 void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo);
 
 int main() {
