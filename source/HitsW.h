@@ -7,9 +7,9 @@
 
 class HitsW {
 private:
-  void InitW(WindowInfo HitsWindow, ImGuiWindowFlags Flags);
+  void InitW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags);
   void EndW();
 
 public:
-  void CycleW(WindowInfo HitsWindow, ImGuiWindowFlags Flags);
+  void CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags);
 };

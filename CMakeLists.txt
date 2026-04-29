@@ -22,7 +22,6 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC 
     third_party/imgui
     third_party/imgui/backends
-
 )
 
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
@@ -36,6 +35,16 @@ add_executable(main
     source/SearchW.cpp
     source/platform/platform_linux.cpp
 )
-set_target_properties(main PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
+
+target_include_directories(main PRIVATE source)
+
+if(WIN32)
+    target_sources(main PRIVATE source/platform/platform_windows.cpp)
+elseif(UNIX)
+    target_sources(main PRIVATE source/platform/platform_linux.cpp)
+endif()
 
 target_link_libraries(main PRIVATE imgui)
+
+set_target_properties(main PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
+

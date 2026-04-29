@@ -8,11 +8,11 @@ class LogW {
 
 private:
   std::string LogText;
-  void InitW(WindowInfo LogsWindow, ImGuiWindowFlags flagsWindowDefault);
+  void InitW(WindowInfoT LogsWindow, ImGuiWindowFlags flagsWindowDefault);
   void EndW();
-  void UpdateLog(LogEvents Events);
+  void UpdateLog(LogEventsT Events);
 
 public:
-  void CycleW(WindowInfo LogsWindow, ImGuiWindowFlags flagsWindowDefault,
-              LogEvents Events);
+  void CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags flagsWindowDefault,
+              LogEventsT Events);
 };

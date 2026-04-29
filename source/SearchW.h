@@ -7,9 +7,9 @@
 
 class SearchW {
 private:
-  void InitW(WindowInfo SearchWindow, ImGuiWindowFlags Flags);
+  void InitW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags);
   void EndW();
 
 public:
-  void CycleW(WindowInfo SearchWindow, ImGuiWindowFlags Flags);
+  void CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags);
 };

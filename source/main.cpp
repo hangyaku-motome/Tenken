@@ -13,7 +13,7 @@
 // Also I just noticed there is an input delay...That compounds to a lot. I
 // think we'll need to implement multithreading..soon.
 
-void SetDisplayInfo(GLFWwindow *window, DisplayInfo &DisplayInfo);
+void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo);
 
 int main() {
 
@@ -24,8 +24,8 @@ int main() {
                                         ImGuiWindowFlags_NoResize |
                                         ImGuiWindowFlags_NoCollapse;
 
-  ActiveInfo ActiveInfo;
-  DisplayInfo DisplayInfo;
+  ActiveInfoT ActiveInfo;
+  DisplayInfoT DisplayInfo;
 
   LogW LogObj;
   SearchW SearchObj;
@@ -39,7 +39,7 @@ int main() {
       continue;
     }
 
-    LogEvents LogEvents;
+    LogEventsT LogEvents;
 
     start_frame();
 

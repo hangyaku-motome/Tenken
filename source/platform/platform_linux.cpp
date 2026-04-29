@@ -1,5 +1,5 @@
 
-#include "platform_linux.h"
+#include "ActOS.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <filesystem>
@@ -32,8 +32,8 @@ std::string ReadFileString(std::string path) {
   return readString.str();
 }
 
-std::vector<ProcessInfo> GetTargets() {
-  std::vector<ProcessInfo> Processes;
+std::vector<ProcessInfoT> ActOS::GetTargets() {
+  std::vector<ProcessInfoT> Processes;
 
   for (int pid : ListPid()) {
     std::string comm, cmdline, uid;
@@ -52,7 +52,7 @@ std::vector<ProcessInfo> GetTargets() {
       // empty means -> Irrelevant.
     }
 
-    ProcessInfo PushProcess;
+    ProcessInfoT PushProcess;
 
     PushProcess.pid = pid;
     PushProcess.uid = 0; // later.

@@ -9,7 +9,7 @@
 
 std::string LogText;
 
-void LogW::InitW(WindowInfo LogsWindow, ImGuiWindowFlags Flags) {
+void LogW::InitW(WindowInfoT LogsWindow, ImGuiWindowFlags Flags) {
   ImGui::SetNextWindowPos(ImVec2(LogsWindow.XPos, LogsWindow.YPos));
   ImGui::SetNextWindowSize(ImVec2(LogsWindow.W, LogsWindow.H));
   ImGui::Begin("Log", nullptr, Flags);
@@ -17,7 +17,7 @@ void LogW::InitW(WindowInfo LogsWindow, ImGuiWindowFlags Flags) {
 
 void LogW::EndW() { ImGui::End(); }
 
-void LogW::UpdateLog(LogEvents Events) {
+void LogW::UpdateLog(LogEventsT Events) {
   if (Events.ChosenProc.pid) {
     std::stringstream tempss;
     tempss << "...Chosen PID: " << Events.ChosenProc.pid
@@ -33,8 +33,8 @@ void LogW::UpdateLog(LogEvents Events) {
   }
 }
 
-void LogW::CycleW(WindowInfo LogsWindow, ImGuiWindowFlags Flags,
-                  LogEvents Events) {
+void LogW::CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags Flags,
+                  LogEventsT Events) {
   InitW(LogsWindow, Flags);
   UpdateLog(Events);
   ImGui::TextUnformatted(LogText.c_str(), LogText.end().base());

@@ -4,7 +4,7 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
-void HitsW::InitW(WindowInfo HitsWindow, ImGuiWindowFlags Flags) {
+void HitsW::InitW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags) {
   ImGui::SetNextWindowPos(ImVec2(HitsWindow.XPos, HitsWindow.YPos));
   ImGui::SetNextWindowSize(ImVec2(HitsWindow.W, HitsWindow.H));
 
@@ -26,7 +26,7 @@ void HitsW::InitW(WindowInfo HitsWindow, ImGuiWindowFlags Flags) {
 }
 void HitsW::EndW() { ImGui::End(); }
 
-void HitsW::CycleW(WindowInfo HitsWindow, ImGuiWindowFlags Flags) {
+void HitsW::CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags) {
   InitW(HitsWindow, Flags);
   EndW();
 }

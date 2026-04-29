@@ -3,39 +3,39 @@
 #include <cstdint>
 #include <string>
 
-struct WindowInfo {
+struct WindowInfoT {
   float H = 0;
   float W = 0;
   int XPos = 0;
   int YPos = 0;
 };
 
-struct DisplayInfo {
+struct DisplayInfoT {
   int display_w = 0;
   int display_h = 0;
 
   float TopMenuHeight = 0;
 
-  WindowInfo Hit;
-  WindowInfo Log;
-  WindowInfo Search;
+  WindowInfoT Hit;
+  WindowInfoT Log;
+  WindowInfoT Search;
 };
 
-struct ProcessInfo {
+struct ProcessInfoT {
   int pid = 0;
   std::string FieldComm = "";
   std::string FieldCmdline = "";
   int uid = 0;
 };
 
-struct LogEvents {
+struct LogEventsT {
   uint64_t ProcCount = 0;
-  ProcessInfo ChosenProc;
+  ProcessInfoT ChosenProc;
   uint64_t HitCount = 0;
 };
 
 // Should hold persistent information like chosen target...And IDK what else for
 // now.
-struct ActiveInfo {
-  ProcessInfo Target;
+struct ActiveInfoT {
+  ProcessInfoT Target;
 };

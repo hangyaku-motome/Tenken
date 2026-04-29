@@ -5,11 +5,11 @@
 
 class TargetPopUp {
 private:
-  std::vector<ProcessInfo> Processes;
-  void Clicked(LogEvents &LogEvents);
+  std::vector<ProcessInfoT> Processes;
+  void Clicked(LogEventsT &LogEvents);
 
 public:
   bool IsClicked = 0;
 
-  void CyclePUp(LogEvents &LogEvents, ActiveInfo &ActiveInfo);
+  void CyclePUp(LogEventsT &LogEvents, ActiveInfoT &ActiveInfo);
 };

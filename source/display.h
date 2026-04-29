@@ -11,5 +11,5 @@ void exit_main(GLFWwindow *window);
 void start_frame();
 void end_frame(int display_w, int display_h, ImVec4 clear_color,
                GLFWwindow *window);
-void SetDisplayInfo(GLFWwindow *window, DisplayInfo &DisplayInfo);
+void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo);
 void MainMenuBarCycle(TargetPopUp &TargetPUp);

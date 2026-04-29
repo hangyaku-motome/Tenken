@@ -1,17 +1,16 @@
 #include "TargetPopUp.hpp"
 #include "imgui.h"
-#include "platform/platform_linux.h"
+#include "platform/ActOS.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-
-void TargetPopUp::Clicked(LogEvents &LogEvents) {
-  Processes = GetTargets();
+void TargetPopUp::Clicked(LogEventsT &LogEvents) {
+  Processes = ActOS::GetTargets();
   LogEvents.ProcCount = Processes.size();
   ImGui::OpenPopup("Target List");
   IsClicked = false;
 }
 
-void TargetPopUp::CyclePUp(LogEvents &LogEvents, ActiveInfo &ActiveInfo) {
+void TargetPopUp::CyclePUp(LogEventsT &LogEvents, ActiveInfoT &ActiveInfo) {
   if (IsClicked)
     Clicked(LogEvents);
 
@@ -22,7 +21,7 @@ void TargetPopUp::CyclePUp(LogEvents &LogEvents, ActiveInfo &ActiveInfo) {
     ImGui::Text("List targets here:");
 
     if (ImGui::Button("Refresh")) {
-      Processes = GetTargets();
+      Processes = ActOS::GetTargets();
       LogEvents.ProcCount = Processes.size();
     }
 
