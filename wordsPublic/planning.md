@@ -21,6 +21,11 @@
     basics.
 
 ## Next to do:
+
+*SearchW has been built extensively upon.
+*However I realised that I'll probably need some sort of Scanner struct that holds certain values, and actually deal with the data of maps mem and so on.
+*I'll need to think about how to implement that. Because when I put the button for "Start Scan" in SearchW I CANNOT have that just call some "start_search" function. This is a GUI object. this shouldn't be dealing with such data.
+
 Build up SearchW. Confirm each choice is reflected in log; as should final
 scan params be. After the GUI, comes the linux implementation...which
 requires: Reading maps,and then mem using that as the guide. For something as

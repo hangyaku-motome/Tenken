@@ -7,9 +7,16 @@
 
 class SearchW {
 private:
+  bool InitValueGiven = false;
   void InitW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags);
   void EndW();
+  void GetTargetType(TargetTypeT &TargetType);
+  void GetIsUnsigned(bool &IsUnsigned, bool IsInt);
+  void GetTargetValue(TargetInfoT &TargetInfo);
+
+  bool IsOnFirstScanWindow = 1;
 
 public:
-  void CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags);
+  void CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
+              ChosenParams &ActiveInfo);
 };

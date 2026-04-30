@@ -13,14 +13,14 @@ void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo);
 
 int main() {
 
+  // Start up Dear ImGui.
   GLFWwindow *window = initalise_main();
-
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
   ImGuiWindowFlags flagsWindowDefault = ImGuiWindowFlags_NoMove |
                                         ImGuiWindowFlags_NoResize |
                                         ImGuiWindowFlags_NoCollapse;
 
-  ActiveInfoT ActiveInfo;
+  ChosenParams ActiveInfo;
   DisplayInfoT DisplayInfo;
 
   LogW LogObj;
@@ -35,8 +35,6 @@ int main() {
       continue;
     }
 
-    LogEventsT LogEvents;
-
     start_frame();
 
     SetDisplayInfo(window, DisplayInfo);
@@ -44,16 +42,16 @@ int main() {
     MainMenuBarCycle(TargetPUp);
 
     // target popup.
-    TargetPUp.CyclePUp(LogEvents, ActiveInfo);
+    TargetPUp.CyclePUp(ActiveInfo);
 
     // Hits.
     HitObj.CycleW(DisplayInfo.Hit, flagsWindowDefault);
 
     // Search.
-    SearchObj.CycleW(DisplayInfo.Search, flagsWindowDefault);
+    SearchObj.CycleW(DisplayInfo.Search, flagsWindowDefault, ActiveInfo);
 
     // Log.
-    LogObj.CycleW(DisplayInfo.Log, flagsWindowDefault, LogEvents);
+    LogObj.CycleW(DisplayInfo.Log, flagsWindowDefault);
 
     end_frame(DisplayInfo.display_w, DisplayInfo.display_h, clear_color,
               window);

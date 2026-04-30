@@ -1,18 +1,21 @@
 #include "TargetPopUp.hpp"
+#include "LogW.h"
 #include "imgui.h"
 #include "platform/ActOS.h"
+#include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-void TargetPopUp::Clicked(LogEventsT &LogEvents) {
+#include <string>
+void TargetPopUp::Clicked() {
   Processes = ActOS::GetTargets();
-  LogEvents.ProcCount = Processes.size();
+  Log::Info("Found PID count: " + std::to_string(Processes.size()) + "\n");
   ImGui::OpenPopup("Target List");
   IsClicked = false;
 }
 
-void TargetPopUp::CyclePUp(LogEventsT &LogEvents, ActiveInfoT &ActiveInfo) {
+void TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
   if (IsClicked)
-    Clicked(LogEvents);
+    Clicked();
 
   if (ImGui::BeginPopupModal("Target List", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize |
@@ -22,7 +25,8 @@ void TargetPopUp::CyclePUp(LogEventsT &LogEvents, ActiveInfoT &ActiveInfo) {
 
     if (ImGui::Button("Refresh")) {
       Processes = ActOS::GetTargets();
-      LogEvents.ProcCount = Processes.size();
+
+      Log::Info("Found PID count: " + std::to_string(Processes.size()) + "\n");
     }
 
     if (ImGui::BeginTable("Targets", 4)) {
@@ -38,8 +42,11 @@ void TargetPopUp::CyclePUp(LogEventsT &LogEvents, ActiveInfoT &ActiveInfo) {
 
         if (ImGui::Selectable(std::to_string(ImGui::TableGetRowIndex()).c_str(),
                               false, ImGuiSelectableFlags_SpanAllColumns)) {
-          ActiveInfo.Target = Target;
-          LogEvents.ChosenProc = ActiveInfo.Target;
+          ChosenParams.TargetProc = Target;
+
+          Log::Info("...Chosen PID: " + std::to_string(Target.pid) +
+                    "   Target Comm:" + Target.FieldComm +
+                    "   Target CmdLine:" + Target.FieldCmdline + "\n");
         }
       }
       ImGui::EndTable();

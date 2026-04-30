@@ -7,12 +7,15 @@
 class LogW {
 
 private:
-  std::string LogText;
   void InitW(WindowInfoT LogsWindow, ImGuiWindowFlags flagsWindowDefault);
   void EndW();
-  void UpdateLog(LogEventsT Events);
 
 public:
-  void CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags flagsWindowDefault,
-              LogEventsT Events);
+  void CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags flagsWindowDefault);
 };
+
+namespace Log {
+const std::vector<std::string> &GetLogsText();
+
+void Info(std::string WrittenString);
+} // namespace Log

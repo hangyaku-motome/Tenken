@@ -3,9 +3,8 @@
 #include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
-#include <sstream>
 #include <string>
+#include <vector>
 
 std::string LogText;
 
@@ -17,26 +16,22 @@ void LogW::InitW(WindowInfoT LogsWindow, ImGuiWindowFlags Flags) {
 
 void LogW::EndW() { ImGui::End(); }
 
-void LogW::UpdateLog(LogEventsT Events) {
-  if (Events.ChosenProc.pid) {
-    std::stringstream tempss;
-    tempss << "...Chosen PID: " << Events.ChosenProc.pid
-           << "   Target Comm:" << Events.ChosenProc.FieldComm
-           << "   Target CmdLine:" << Events.ChosenProc.FieldCmdline << "\n";
-    LogText += tempss.str();
-    std::cout << LogText;
-  }
-  if (Events.ProcCount) {
-    std::stringstream tempss;
-    tempss << "...Found PID count: " << Events.ProcCount << "\n";
-    LogText += tempss.str();
-  }
-}
-
-void LogW::CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags Flags,
-                  LogEventsT Events) {
+void LogW::CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags Flags) {
   InitW(LogsWindow, Flags);
-  UpdateLog(Events);
-  ImGui::TextUnformatted(LogText.c_str(), LogText.end().base());
+  for (const auto &Text : Log::GetLogsText()) {
+    ImGui::Text("%s", Text.c_str());
+  }
   EndW();
 }
+
+namespace Log {
+namespace {
+std::vector<std::string> Logs;
+}
+
+const std::vector<std::string> &GetLogsText() { return Logs; }
+
+void Info(std::string WrittenString) { Logs.push_back(WrittenString); }
+// also implement different ones for error and idk other stuff. Oh and make the
+// type some sort of LogInfo instead of string (for Logs) for better formatting.
+} // namespace Log

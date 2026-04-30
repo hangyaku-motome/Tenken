@@ -76,7 +76,7 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color,
   glfwSwapBuffers(window);
 }
 
-void SetDisplayInfo(GLFWwindow *window, DisplayInfo &DisplayInfo) {
+void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo) {
   int tempdisplay_w, tempdisplay_h;
 
   glfwGetFramebufferSize(window, &tempdisplay_w, &tempdisplay_h);
