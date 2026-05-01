@@ -7,15 +7,17 @@
 #include <GLFW/glfw3.h>
 #include <string>
 void TargetPopUp::Clicked() {
-  Processes = ActOS::GetTargets();
+  Processes = ActOS::GetProcTargets();
   Log::Info("Found PID count: " + std::to_string(Processes.size()) + "\n");
   ImGui::OpenPopup("Target List");
   IsClicked = false;
 }
 
-void TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
+int TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
   if (IsClicked)
     Clicked();
+
+  int return_val = 0;
 
   if (ImGui::BeginPopupModal("Target List", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize |
@@ -24,7 +26,7 @@ void TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
     ImGui::Text("List targets here:");
 
     if (ImGui::Button("Refresh")) {
-      Processes = ActOS::GetTargets();
+      Processes = ActOS::GetProcTargets();
 
       Log::Info("Found PID count: " + std::to_string(Processes.size()) + "\n");
     }
@@ -43,7 +45,7 @@ void TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
         if (ImGui::Selectable(std::to_string(ImGui::TableGetRowIndex()).c_str(),
                               false, ImGuiSelectableFlags_SpanAllColumns)) {
           ChosenParams.TargetProc = Target;
-
+          return_val = 1;
           Log::Info("...Chosen PID: " + std::to_string(Target.pid) +
                     "   Target Comm:" + Target.FieldComm +
                     "   Target CmdLine:" + Target.FieldCmdline + "\n");
@@ -57,4 +59,5 @@ void TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
     }
     ImGui::EndPopup();
   }
+  return return_val;
 }

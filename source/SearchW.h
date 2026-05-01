@@ -14,9 +14,11 @@ private:
   void GetIsUnsigned(bool &IsUnsigned, bool IsInt);
   void GetTargetValue(TargetInfoT &TargetInfo);
 
-  bool IsOnFirstScanWindow = 1;
+  bool IsOnFirstScanWindow = true;
 
 public:
-  void CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
-              ChosenParams &ActiveInfo);
+  int CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
+             ChosenParams &ActiveInfo);
+
+  void ClearWindow();
 };

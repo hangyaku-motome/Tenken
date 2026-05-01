@@ -15,6 +15,18 @@ enum class TargetTypeT {
   Invalid
 };
 
+struct HitInfoT {
+  std::vector<uint8_t> value;
+  uint64_t location;
+  std::vector<uint8_t> bytes_around;
+};
+
+struct MapInfoT {
+  uint64_t start;
+  uint64_t end;
+  std::string name;
+};
+
 struct WindowInfoT {
   float H = 0;
   float W = 0;
@@ -44,7 +56,7 @@ struct ProcessInfoT {
 struct TargetInfoT {
   std::vector<uint8_t> value;
   TargetTypeT TargetType = TargetTypeT::Invalid;
-  bool IsUnsigned = 0;
+  bool IsUnsigned = false;
 };
 
 struct ChosenParams {

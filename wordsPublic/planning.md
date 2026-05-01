@@ -1,5 +1,6 @@
 ### To add at some point:
 - add an option to choose to scan specific maps regions only.
+- More UX focused things (Loading bar for scans, for example).
 - Add a search bar to TargetPUp.
 - Mark user processes in green in TargetPUp.
 - Add an option to start out with unknown target value (snapshots and whatnot).
@@ -20,32 +21,19 @@
     so I'll only entertain them as real implementations only after finishing the
     basics.
 
-## Next to do:
+## Done:
 
-*SearchW has been built extensively upon.
-*However I realised that I'll probably need some sort of Scanner struct that holds certain values, and actually deal with the data of maps mem and so on.
-*I'll need to think about how to implement that. Because when I put the button for "Start Scan" in SearchW I CANNOT have that just call some "start_search" function. This is a GUI object. this shouldn't be dealing with such data.
-
-Build up SearchW. Confirm each choice is reflected in log; as should final
-scan params be. After the GUI, comes the linux implementation...which
-requires: Reading maps,and then mem using that as the guide. For something as
-big as all of a process' memory...I guess we'll just have a struct of sections of raw bytes. We shouldn't
-encapsulate this data to a single object. (especially considering we might
-wanna do other things with it in the future. Like a potential hex viewer.)
-We probably wanna keep not just mem contents but also maps contents in main
-as well. since both platforms have these, they can be universally worked on. It'd be unnecessary or maybe even nonsense to encapsulate them.
+*Just about every single Window has been worked and improved upon.
+*Scanner logic is progressing.
+*Still struggling with abstractions and managing objects.
 
 
-(Also something I should point out. I use "we" often however it is just me, a
-single person. I sometimes use "we". Just know it's a singular person.)
+Next:
 
+- Implement HitW hit showing, along with refreshing bytes every 200 ms or so.
+- Polish the general codespace more. I still think things are too messy. Also, there are definitely inefficiencies here there. However, we shouldn't get stuck on optimization to much from the get-go. First let's work on actually getting it up and working. I think I heard a quote from somewhere from a certain programmer.
+"Premature optimization kills programs."? Something along those lines. Makes sense.
 
-### The biggest 2 leaps this project has that I never really implemented before is:
-- A GUI, and cross-platform thinking (especially windows. I'll have to learn
-how that side does some things.).
-+ It's fun. It forces you to think about boundaries and roles more clearly.
+- *Definitely* implement multithreading. Scanner should do most things on another thread, otherwise the GUI dies while all of that heavy work is happening.
 
-
-An impractical program is as good as fish in a desert. Not to mention, a hefty weight to bear. I should always try to make something practical, first to me, then to others. Both distinctly as important.
-
-My vision for this program is something lightweight yet powerful. Functional, practical, and easy to expand and work on. I'll see to it that I will realise this to the best degree ***I* can**.
+Oh also I noticed some small debugging leftovers (printf statements and whatnot) but they might as well stay. Not like any of this is anywhere usable code still. These early gits are really there for my own convenience and seeing the journey. Only after do I make something satisfactory would I even start thinking of publishing this out to the public.

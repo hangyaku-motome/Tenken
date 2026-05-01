@@ -33,7 +33,7 @@ add_executable(main
     source/TargetPopUp.cpp
     source/HitsW.cpp
     source/SearchW.cpp
-    source/platform/platform_linux.cpp
+    source/Scanner.cpp
 )
 
 target_include_directories(main PRIVATE source)
@@ -41,7 +41,7 @@ target_include_directories(main PRIVATE source)
 if(WIN32)
     target_sources(main PRIVATE source/platform/platform_windows.cpp)
 elseif(UNIX)
-    target_sources(main PRIVATE source/platform/platform_linux.cpp)
+    target_sources(main PRIVATE source/platform/LinuxImpl.cpp)
 endif()
 
 target_link_libraries(main PRIVATE imgui)

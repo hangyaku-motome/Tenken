@@ -1,5 +1,6 @@
 #include "HitsW.h"
 #include "LogW.h"
+#include "Scanner.h"
 #include "SearchW.h"
 #include "TargetPopUp.hpp"
 #include "display.h"
@@ -8,7 +9,6 @@
 #include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-
 void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo);
 
 int main() {
@@ -27,6 +27,7 @@ int main() {
   SearchW SearchObj;
   HitsW HitObj;
   TargetPopUp TargetPUp;
+  Scanner ScannerObj;
 
   // Main loop.
   while (!glfwWindowShouldClose(window)) {
@@ -42,13 +43,23 @@ int main() {
     MainMenuBarCycle(TargetPUp);
 
     // target popup.
-    TargetPUp.CyclePUp(ActiveInfo);
+    if (TargetPUp.CyclePUp(ActiveInfo)) {
+      SearchObj.ClearWindow();
+      ActiveInfo.TargetValInfo.TargetType = TargetTypeT::Invalid;
+      ActiveInfo.TargetValInfo.IsUnsigned = 0;
+      ActiveInfo.TargetValInfo.value.clear();
+    }
 
     // Hits.
-    HitObj.CycleW(DisplayInfo.Hit, flagsWindowDefault);
+    HitObj.CycleW(DisplayInfo.Hit, flagsWindowDefault, ScannerObj.Hits);
 
     // Search.
-    SearchObj.CycleW(DisplayInfo.Search, flagsWindowDefault, ActiveInfo);
+    if (SearchObj.CycleW(DisplayInfo.Search, flagsWindowDefault, ActiveInfo) ==
+        1) {
+      Log::Info("Starting initial scan...");
+      ScannerObj.Start(ActiveInfo.TargetProc.pid);
+      ScannerObj.StartScan(ActiveInfo.TargetValInfo);
+    }
 
     // Log.
     LogObj.CycleW(DisplayInfo.Log, flagsWindowDefault);
@@ -57,6 +68,5 @@ int main() {
               window);
   }
 
-  // Clean up.
   exit_main(window);
 }

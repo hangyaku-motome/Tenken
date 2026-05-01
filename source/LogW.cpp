@@ -34,4 +34,8 @@ const std::vector<std::string> &GetLogsText() { return Logs; }
 void Info(std::string WrittenString) { Logs.push_back(WrittenString); }
 // also implement different ones for error and idk other stuff. Oh and make the
 // type some sort of LogInfo instead of string (for Logs) for better formatting.
+void Error(std::string WrittenString) {
+  Logs.push_back("ERROR: " + WrittenString);
+}
+
 } // namespace Log

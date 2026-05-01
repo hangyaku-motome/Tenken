@@ -47,6 +47,8 @@ void SearchW::GetIsUnsigned(bool &IsUnsigned, bool IsInt) {
 }
 
 void SearchW::GetTargetValue(TargetInfoT &TargetInfo) {
+  printf("Target val type is %d\n", TargetInfo.TargetType);
+  printf("Unsigned is:%d\n", TargetInfo.IsUnsigned);
   ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue;
   ImGuiDataType DataType;
 
@@ -105,11 +107,10 @@ void SearchW::GetTargetValue(TargetInfoT &TargetInfo) {
                            TargetInfo.value.size())) {
         InitValueGiven = true;
       };
-
+      return;
+    case 7:
       return;
     }
-  case 7:
-    return;
   }
 
   if (ImGui::InputScalar("Value", DataType, TargetInfo.value.data())) {
@@ -117,24 +118,40 @@ void SearchW::GetTargetValue(TargetInfoT &TargetInfo) {
   };
 }
 
-void SearchW::CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
-                     ChosenParams &ActiveInfo) {
+int SearchW::CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
+                    ChosenParams &ActiveInfo) {
   InitW(SearchWindow, Flags);
   if (!ActiveInfo.TargetProc.pid) {
     ImGui::Text("No target chosen yet.");
     ImGui::End();
-    return;
+    return -1;
   }
   if (IsOnFirstScanWindow) {
+
     GetTargetType(ActiveInfo.TargetValInfo.TargetType);
-    {
-      int IsInt = (static_cast<int>(ActiveInfo.TargetValInfo.TargetType) <= 3);
-      GetIsUnsigned(ActiveInfo.TargetValInfo.IsUnsigned, IsInt);
-    }
+
+    bool IsInt = (static_cast<int>(ActiveInfo.TargetValInfo.TargetType) <= 3);
+    GetIsUnsigned(ActiveInfo.TargetValInfo.IsUnsigned, IsInt);
+
+    // We should check if it also empty, not just "Init value given" which
+    // changes on any change. "" is not valid.
     GetTargetValue(ActiveInfo.TargetValInfo);
     ImGui::BeginDisabled(!InitValueGiven);
-    ImGui::Button("Start First Scan!");
+    bool PressedScan = ImGui::Button("Start First Scan!");
+    ImGui::EndDisabled();
+    if (PressedScan) {
+      IsOnFirstScanWindow = false;
+      EndW();
+      return 1;
+    }
+    EndW();
+    return 0;
   }
-
   EndW();
+  return 0;
+}
+
+void SearchW::ClearWindow() {
+  bool InitValueGiven = false;
+  bool IsOnFirstScanWindow = true;
 }

@@ -9,7 +9,9 @@ class HitsW {
 private:
   void InitW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags);
   void EndW();
+  void RenderTable(const std::vector<HitInfoT> &Hits);
 
 public:
-  void CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags);
+  void CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags,
+              const std::vector<HitInfoT> &Hits);
 };

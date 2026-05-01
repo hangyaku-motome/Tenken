@@ -9,24 +9,23 @@ void HitsW::InitW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags) {
   ImGui::SetNextWindowSize(ImVec2(HitsWindow.W, HitsWindow.H));
 
   ImGui::Begin("Hits", nullptr, Flags);
-  if (ImGui::BeginTable("table2", 3)) {
-
-    // Use ImGuiClipper at some point.
-    for (int row = 0; row < 40000; row++) {
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      ImGui::Text("%d", row);
-      ImGui::TableNextColumn();
-      ImGui::Text("0x%d", 0x100 + row * 1000);
-      ImGui::TableNextColumn();
-      ImGui::Text("%d", 500 + row * 5);
-    }
-    ImGui::EndTable();
-  }
 }
+
 void HitsW::EndW() { ImGui::End(); }
 
-void HitsW::CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags) {
+void HitsW::CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags,
+                   const std::vector<HitInfoT> &Hits) {
   InitW(HitsWindow, Flags);
+  RenderTable(Hits);
   EndW();
+}
+
+// Unfinished.
+void HitsW::RenderTable(const std::vector<HitInfoT> &Hits) {
+  if (ImGui::BeginTable("Hit Table", 4)) {
+    for (uint32_t row = 0; row < Hits.size(); ++row) {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+    }
+  }
 }

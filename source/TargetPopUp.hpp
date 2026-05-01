@@ -11,5 +11,5 @@ private:
 public:
   bool IsClicked = 0;
 
-  void CyclePUp(ChosenParams &ActiveInfo);
+  int CyclePUp(ChosenParams &ActiveInfo);
 };
