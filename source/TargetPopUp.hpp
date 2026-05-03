@@ -11,5 +11,5 @@ private:
 public:
   bool IsClicked = 0;
 
-  int CyclePUp(ChosenParams &ActiveInfo);
+  std::string CyclePUp(ChosenParams &ActiveInfo);
 };

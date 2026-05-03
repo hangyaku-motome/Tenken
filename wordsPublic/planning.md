@@ -30,10 +30,32 @@
 
 Next:
 
-- Implement HitW hit showing, along with refreshing bytes every 200 ms or so.
-- Polish the general codespace more. I still think things are too messy. Also, there are definitely inefficiencies here there. However, we shouldn't get stuck on optimization to much from the get-go. First let's work on actually getting it up and working. I think I heard a quote from somewhere from a certain programmer.
-"Premature optimization kills programs."? Something along those lines. Makes sense.
+Copied from HitsW.cpp since it's important.
+
+// I really really don't wanna have this read bytes live,
+// but the chosen one IS the only one that needs their bytes updated. everything
+// else is value. should I really be updating the bytes of every single hit?
+// seems redundant. value on the other hand is a must.
+// But then there would be times where "bytes around" are just really stale and
+// their freshenss depends on being explicitly called by this one object. Is
+// that okay?
+
+// verdict:
+// we should NOT refresh everything every x miliseconds or something by default.
+// Since this is live, data WILL get stale. However it will represent a stable
+// snapshot of what "was". We *should* have a button to refresh values and tag
+// them and display their previous value. we should also be able to have the
+// user be able to choose automatic refresh. Even when opening byte screen, only
+// refresh ON DEMAND OR explicit automatic refresh. We CANNOT just arbitarily
+// refresh them.
+// ***
+
+I've set up hits view. I've set up a...very clunky looking byte view as well.
+(Ohh we can add addresses to the left maybe.)
+
+Either way I shouldn't worry about UI look *too* much for now. We can polish it to our heart's content after we get something working. (Although I must admit I haven't ever worked with front end before, so I never had to think about "coloring" "layout" or such things. Hell, this is the first time I'm ever making a non CLI program. We'll see to it later.).
+
+
+
 
 - *Definitely* implement multithreading. Scanner should do most things on another thread, otherwise the GUI dies while all of that heavy work is happening.
-
-Oh also I noticed some small debugging leftovers (printf statements and whatnot) but they might as well stay. Not like any of this is anywhere usable code still. These early gits are really there for my own convenience and seeing the journey. Only after do I make something satisfactory would I even start thinking of publishing this out to the public.

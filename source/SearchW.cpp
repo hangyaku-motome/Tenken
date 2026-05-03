@@ -47,8 +47,6 @@ void SearchW::GetIsUnsigned(bool &IsUnsigned, bool IsInt) {
 }
 
 void SearchW::GetTargetValue(TargetInfoT &TargetInfo) {
-  printf("Target val type is %d\n", TargetInfo.TargetType);
-  printf("Unsigned is:%d\n", TargetInfo.IsUnsigned);
   ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue;
   ImGuiDataType DataType;
 
@@ -101,6 +99,7 @@ void SearchW::GetTargetValue(TargetInfoT &TargetInfo) {
       break;
     case 6:
       // we will resize to null terminated bytes when scan begins.
+      // ...still didn't do that by the way ^
       TargetInfo.value.resize(256, 0);
       if (ImGui::InputText("Value",
                            reinterpret_cast<char *>(TargetInfo.value.data()),

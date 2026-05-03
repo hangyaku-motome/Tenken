@@ -55,8 +55,8 @@ const std::vector<uint8_t>
 Scanner::FindBytesAround(const uint32_t offset,
                          const std::vector<uint8_t> &data,
                          const uint32_t TargetSize) {
-  uint32_t START = offset < 32 ? 0 : offset - 32;
-  uint32_t END = offset + 32 + TargetSize > data.size()
+  uint64_t START = offset < 32 ? 0 : offset - 32;
+  uint64_t END = offset + 32 + TargetSize > data.size()
                      ? data.size()
                      : offset + 32 + TargetSize;
 

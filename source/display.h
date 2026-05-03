@@ -13,3 +13,6 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color,
                GLFWwindow *window);
 void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo);
 void MainMenuBarCycle(TargetPopUp &TargetPUp);
+std::string HitToStr(const std::vector<uint8_t> &Bytes, TargetInfoT TargetInfo);
+template <typename T> T readAs(const std::vector<uint8_t> &buffer);
+std::string BytesToHex(const std::vector<uint8_t> &Data);

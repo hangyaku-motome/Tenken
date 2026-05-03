@@ -9,9 +9,13 @@ class HitsW {
 private:
   void InitW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags);
   void EndW();
-  void RenderTable(const std::vector<HitInfoT> &Hits);
+  void DrawHitTable(const std::vector<HitInfoT> &Hits,
+                    const TargetInfoT &TargetInfo);
+  void DrawContextMenu(const HitInfoT Hit);
+
+  int64_t selected_row = 0;
 
 public:
   void CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags,
-              const std::vector<HitInfoT> &Hits);
+              const std::vector<HitInfoT> &Hits, const TargetInfoT &TargetInfo);
 };

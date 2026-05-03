@@ -13,7 +13,7 @@ void TargetPopUp::Clicked() {
   IsClicked = false;
 }
 
-int TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
+std::string TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
   if (IsClicked)
     Clicked();
 
@@ -59,5 +59,8 @@ int TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
     }
     ImGui::EndPopup();
   }
-  return return_val;
+  if (return_val == 1)
+    return "new target";
+  else
+    return "";
 }
