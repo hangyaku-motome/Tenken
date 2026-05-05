@@ -17,7 +17,7 @@ std::string TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
   if (IsClicked)
     Clicked();
 
-  int return_val = 0;
+  std::string return_val = "";
 
   if (ImGui::BeginPopupModal("Target List", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize |
@@ -45,7 +45,7 @@ std::string TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
         if (ImGui::Selectable(std::to_string(ImGui::TableGetRowIndex()).c_str(),
                               false, ImGuiSelectableFlags_SpanAllColumns)) {
           ChosenParams.TargetProc = Target;
-          return_val = 1;
+          return_val = "new target";
           Log::Info("...Chosen PID: " + std::to_string(Target.pid) +
                     "   Target Comm:" + Target.FieldComm +
                     "   Target CmdLine:" + Target.FieldCmdline + "\n");
@@ -59,8 +59,5 @@ std::string TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
     }
     ImGui::EndPopup();
   }
-  if (return_val == 1)
-    return "new target";
-  else
-    return "";
+  return return_val;
 }

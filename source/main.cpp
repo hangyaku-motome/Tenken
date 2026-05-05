@@ -9,6 +9,7 @@
 #include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
+#include <cstdint>
 void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo);
 
 // Put window dimensions in objects. And have a single function called at the
@@ -22,7 +23,6 @@ int main() {
   GLFWwindow *window = initalise_main();
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-  // this might as well be a global constexpr, no?
   ImGuiWindowFlags flagsWindowDefault = ImGuiWindowFlags_NoMove |
                                         ImGuiWindowFlags_NoResize |
                                         ImGuiWindowFlags_NoCollapse;
@@ -45,21 +45,13 @@ int main() {
 
     start_frame();
 
-    // yeah seriously we might want to move display information inside windows
-    // themselves AND flags instead of giving them as a flag every time. It is a
-    // required pass that is only relevant to them.
-    SetDisplayInfo(window, DisplayInfo);
+    SetDisplayInfo(window, DisplayInfo, flagsWindowDefault, LogObj, SearchObj,
+                   HitObj);
 
     MainMenuBarCycle(TargetPUp);
 
     // target popup.
-    if (TargetPUp.CyclePUp(ActiveInfo) ==
-        "new target") { // {} should be correct usage here, I'd hope. I'm
-                        // assuming it completely resets state and data. // Now
-                        // that I think about it if we do this after setting
-                        // display info, AND we add the screen sizes into each
-                        // objects then, wouldn't all windows disappear for a
-                        // single frame?
+    if (TargetPUp.CyclePUp(ActiveInfo) == "new target") {
       SearchObj = {};
       HitObj = {};
       ActiveInfo.TargetValInfo = {};
@@ -67,19 +59,24 @@ int main() {
     }
 
     // Hits.
-    HitObj.CycleW(DisplayInfo.Hit, flagsWindowDefault, ScannerObj.Hits,
-                  ActiveInfo.TargetValInfo);
+    auto RefreshType = HitObj.CycleW(ScannerObj.Hits, ActiveInfo.TargetValInfo);
+
+    if (RefreshType == "refresh all") {
+      for (uint64_t i = 0; i < ScannerObj.Hits.size(); ++i)
+        ScannerObj.RescanHit(i);
+    } else if (RefreshType == "refresh context") {
+      ScannerObj.RescanHit(HitObj.selected_row);
+    }
 
     // Search.
-    if (SearchObj.CycleW(DisplayInfo.Search, flagsWindowDefault, ActiveInfo) ==
-        1) {
+    if (SearchObj.CycleW(ActiveInfo) == 1) {
       Log::Info("Starting initial scan...");
       ScannerObj.Start(ActiveInfo.TargetProc.pid);
       ScannerObj.StartScan(ActiveInfo.TargetValInfo);
     }
 
     // Log.
-    LogObj.CycleW(DisplayInfo.Log, flagsWindowDefault);
+    LogObj.CycleW();
 
     end_frame(DisplayInfo.display_w, DisplayInfo.display_h, clear_color,
               window);

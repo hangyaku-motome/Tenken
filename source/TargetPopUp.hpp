@@ -10,6 +10,7 @@ private:
 
 public:
   bool IsClicked = 0;
+  WindowInfoT Window;
 
   std::string CyclePUp(ChosenParams &ActiveInfo);
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "imgui.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -15,10 +16,14 @@ enum class TargetTypeT {
   Invalid
 };
 
+enum class HitRelativeStatus { UNSET, UNCHANGED, INCREASED, DECREASED };
+
 struct HitInfoT {
   std::vector<uint8_t> value;
+  std::vector<uint8_t> previous_value;
   uint64_t location;
   std::vector<uint8_t> bytes_around;
+  HitRelativeStatus Status = HitRelativeStatus::UNSET;
 };
 
 struct MapInfoT {
@@ -32,6 +37,7 @@ struct WindowInfoT {
   float W = 0;
   int XPos = 0;
   int YPos = 0;
+  ImGuiWindowFlags flags;
 };
 
 struct DisplayInfoT {
@@ -39,10 +45,6 @@ struct DisplayInfoT {
   int display_h = 0;
 
   float TopMenuHeight = 0;
-
-  WindowInfoT Hit;
-  WindowInfoT Log;
-  WindowInfoT Search;
 };
 
 // should we really be initalising defaults like this?

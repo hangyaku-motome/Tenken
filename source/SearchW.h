@@ -17,8 +17,9 @@ private:
   bool IsOnFirstScanWindow = true;
 
 public:
-  int CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
-             ChosenParams &ActiveInfo);
+  WindowInfoT Window;
+
+  int CycleW(ChosenParams &ActiveInfo);
 
   void ClearWindow();
 };

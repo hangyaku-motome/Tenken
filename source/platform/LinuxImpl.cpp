@@ -68,6 +68,11 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     if (name.empty())
       name = "UNNAMED_REGION";
 
+    if (MemoryAddresses.find("-") == std::string::npos) {
+      printf("what the fuck?\n");
+      exit(1);
+    }
+
     std::string StartStr = MemoryAddresses.substr(0, MemoryAddresses.find("-"));
     std::string EndStr = MemoryAddresses.substr(MemoryAddresses.find("-") + 1);
 

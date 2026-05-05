@@ -1,8 +1,12 @@
 #include "display.h"
+#include "HitsW.h"
 #include "LogW.h"
+#include "SearchW.h"
 #include "TargetPopUp.hpp"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "types.h"
+#include <GLFW/glfw3.h>
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
@@ -78,7 +82,9 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color,
   glfwSwapBuffers(window);
 }
 
-void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo) {
+void SetDisplayInfo(GLFWwindow *window, DisplayInfoT DisplayInfo,
+                    ImGuiWindowFlags flagsWindowDefault, LogW &LogObj,
+                    SearchW &SearchObj, HitsW &HitObj) {
   int tempdisplay_w, tempdisplay_h;
 
   glfwGetFramebufferSize(window, &tempdisplay_w, &tempdisplay_h);
@@ -90,21 +96,24 @@ void SetDisplayInfo(GLFWwindow *window, DisplayInfoT &DisplayInfo) {
   DisplayInfo.display_h = tempdisplay_h;
   DisplayInfo.display_w = tempdisplay_w;
 
-  DisplayInfo.Hit.W = DisplayInfo.display_w / 2.0 * 1.3;
-  DisplayInfo.Hit.H = DisplayInfo.display_h / 2.0 * 1.1;
-  DisplayInfo.Hit.XPos = 0;
-  DisplayInfo.Hit.YPos = DisplayInfo.TopMenuHeight;
+  HitObj.Window.W = DisplayInfo.display_w / 2.0 * 1.3;
+  HitObj.Window.H = DisplayInfo.display_h / 2.0 * 1.1;
+  HitObj.Window.XPos = 0;
+  HitObj.Window.YPos = DisplayInfo.TopMenuHeight;
+  HitObj.Window.flags = flagsWindowDefault;
 
-  DisplayInfo.Log.W = DisplayInfo.display_w;
-  DisplayInfo.Log.H =
-      DisplayInfo.display_h - DisplayInfo.Hit.H - DisplayInfo.TopMenuHeight;
-  DisplayInfo.Log.XPos = 0;
-  DisplayInfo.Log.YPos = DisplayInfo.Hit.H + DisplayInfo.TopMenuHeight;
+  LogObj.Window.W = DisplayInfo.display_w;
+  LogObj.Window.H =
+      DisplayInfo.display_h - HitObj.Window.H - DisplayInfo.TopMenuHeight;
+  LogObj.Window.XPos = 0;
+  LogObj.Window.YPos = HitObj.Window.H + DisplayInfo.TopMenuHeight;
+  LogObj.Window.flags = flagsWindowDefault;
 
-  DisplayInfo.Search.W = DisplayInfo.display_w - DisplayInfo.Hit.W;
-  DisplayInfo.Search.H = DisplayInfo.Hit.H;
-  DisplayInfo.Search.XPos = DisplayInfo.Hit.W;
-  DisplayInfo.Search.YPos = DisplayInfo.TopMenuHeight;
+  SearchObj.Window.W = DisplayInfo.display_w - HitObj.Window.W;
+  SearchObj.Window.H = HitObj.Window.H;
+  SearchObj.Window.XPos = HitObj.Window.W;
+  SearchObj.Window.YPos = DisplayInfo.TopMenuHeight;
+  SearchObj.Window.flags = flagsWindowDefault;
 }
 
 void MainMenuBarCycle(TargetPopUp &TargetPUp) {

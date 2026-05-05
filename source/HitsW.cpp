@@ -11,37 +11,54 @@
 #include <cstdio>
 #include <string>
 
-void HitsW::InitW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags) {
-  ImGui::SetNextWindowPos(ImVec2(HitsWindow.XPos, HitsWindow.YPos));
-  ImGui::SetNextWindowSize(ImVec2(HitsWindow.W, HitsWindow.H));
+void HitsW::InitW() {
+  ImGui::SetNextWindowPos(ImVec2(Window.XPos, Window.YPos));
+  ImGui::SetNextWindowSize(ImVec2(Window.W, Window.H));
 
-  ImGui::Begin("Hits", nullptr, Flags);
+  ImGui::Begin("Hits", nullptr, Window.flags);
 }
 
 void HitsW::EndW() { ImGui::End(); }
 
-void HitsW::CycleW(WindowInfoT HitsWindow, ImGuiWindowFlags Flags,
-                   const std::vector<HitInfoT> &Hits,
-                   const TargetInfoT &TargetInfo) {
-  InitW(HitsWindow, Flags);
-  DrawHitTable(Hits, TargetInfo);
-  if (selected_row > 0 && selected_row <= Hits.size()) {
-    DrawContextMenu(Hits[selected_row]);
+std::string HitsW::CycleW(const std::vector<HitInfoT> &Hits,
+                          const TargetInfoT &TargetInfo) {
+  InitW();
+  if (Hits.empty()) {
+    EndW();
+    return "";
   }
+  std::string return_val = "";
+
+  DrawHitTable(Hits, TargetInfo);
+
+  bool disable_context_refresh = true;
+  if (selected_row >= 0 && selected_row <= Hits.size()) {
+    DrawContextMenu(Hits[selected_row]);
+    disable_context_refresh = false;
+  }
+  AlignButtons();
+  if (disable_context_refresh)
+    ImGui::BeginDisabled();
+  std::string return_1 = DrawRefreshContextButton();
+  if (disable_context_refresh)
+    ImGui::EndDisabled();
+  ImGui::SameLine();
+  std::string return_2 = DrawRefreshAllButton();
+
+  return_val = return_1.empty() ? return_2 : return_1;
+
   EndW();
+
+  return return_val;
 }
 
-// add refresh button.
-// Returns chosen row.
 void HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
                          const TargetInfoT &TargetInfo) {
   float avail = ImGui::GetContentRegionAvail().y;
-  float context_height = std::clamp(avail * 0.3f, 150.0f, 350.0f);
+  float context_height = std::clamp(avail * 0.1f, 100.0f, 250.0f);
   if (ImGui::BeginChild("hitstable", {0, avail - context_height},
                         !ImGuiChildFlags_Borders)) {
-    printf("%f\n", avail - context_height);
     if (ImGui::BeginTable("Hit Table", 4, ImGuiTableFlags_ScrollY)) {
-      printf("table started\n");
       ImGuiListClipper ListClipper;
       ListClipper.Begin(Hits.size());
       while (ListClipper.Step()) {
@@ -69,24 +86,6 @@ void HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
   }
 }
 
-// I really really don't wanna have this read bytes live,
-// but the chosen one IS the only one that needs their bytes updated. everything
-// else is value. should I really be updating the bytes of every single hit?
-// seems redundant. value on the other hand is a must.
-// But then there would be times where "bytes around" are just really stale and
-// their freshenss depends on being explicitly called by this one object. Is
-// that okay?
-
-// verdict:
-// we should NOT refresh everything every x miliseconds or something by default.
-// Since this is live, data WILL get stale. However it will represent a stable
-// snapshot of what "was". We *should* have a button to refresh values and tag
-// them and display their previous value. we should also be able to have the
-// user be able to choose automatic refresh. Even when opening byte screen, only
-// refresh ON DEMAND OR explicit automatic refresh. We CANNOT just arbitarily
-// refresh them.
-// ***
-
 void HitsW::DrawContextMenu(const HitInfoT Hit) {
   int constexpr BYTES_BEFORE = 32;
   int constexpr BYTES_AFTER = 32;
@@ -94,19 +93,15 @@ void HitsW::DrawContextMenu(const HitInfoT Hit) {
 
   if (Hit.bytes_around.size() !=
       Hit.value.size() + BYTES_BEFORE + BYTES_AFTER) {
-    printf("bytes around size: %zu, other stuff: %zu\n",
-           Hit.bytes_around.size(),
-           Hit.value.size() + BYTES_AFTER + BYTES_BEFORE);
     Log::Error("Hit " + std::to_string(Hit.location) +
                " is near a memory region and I have not implemented a way to "
                "reliably display bytes for that case. TODO later.");
     return;
   }
 
-  // 16 bytes per row with spacing after the 8th seems fine...In my mind.
-
   for (int i = 0; i < Hit.bytes_around.size(); ++i) {
-    if (i % 16 == 0)
+    ImGui::SameLine(0, 4);
+    if (i % 32 == 0)
       ImGui::NewLine();
     else if (i % 8 == 0) {
       ImGui::Text(" ");
@@ -119,7 +114,40 @@ void HitsW::DrawContextMenu(const HitInfoT Hit) {
       ImGui::PopStyleColor();
     } else
       ImGui::Text("%02X", Hit.bytes_around[i]);
-
-    ImGui::SameLine(0, 4);
   }
+}
+
+std::string HitsW::DrawRefreshAllButton() {
+  float button_w = 150.0f;
+
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       ImGui::GetContentRegionAvail().x - button_w);
+
+  if (ImGui::Button("Refresh All Hits", {button_w, 0})) {
+    return "refresh all";
+  }
+  return "";
+}
+
+std::string HitsW::DrawRefreshContextButton() {
+  float button_w = 150.0f;
+
+  if (ImGui::Button("Refresh Context Hit", {button_w, 0})) {
+    return "refresh context";
+  }
+
+  return "";
+}
+
+void HitsW::AlignButtons() {
+  float button_h = ImGui::GetFrameHeight();
+  float button_w = 150.0f;
+  float current_h = ImGui::GetContentRegionAvail().y;
+
+  if (current_h > button_h) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
+  }
+
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       (ImGui::GetContentRegionAvail().x - button_w) / 2);
 }

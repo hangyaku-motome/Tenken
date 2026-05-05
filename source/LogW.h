@@ -1,17 +1,17 @@
 #pragma once
 
-#include "imgui.h"
 #include "types.h"
 #include <string>
 
 class LogW {
 
 private:
-  void InitW(WindowInfoT LogsWindow, ImGuiWindowFlags flagsWindowDefault);
+  void InitW();
   void EndW();
 
 public:
-  void CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags flagsWindowDefault);
+  void CycleW();
+  WindowInfoT Window;
 };
 
 namespace Log {

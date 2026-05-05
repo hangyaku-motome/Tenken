@@ -20,7 +20,7 @@ void Scanner::StartScan(const TargetInfoT &TargetInfo) { // FirstScan ?
   if (Maps.empty())
     return;
 
-  Log::Info(std::to_string(Maps.size()) + " regions found.");
+  Log::Info(std::to_string(Maps.size()) + " map regions found.");
 
   for (const auto &Map : Maps) {
 
@@ -28,7 +28,9 @@ void Scanner::StartScan(const TargetInfoT &TargetInfo) { // FirstScan ?
 
     for (auto RelativeOffset : SearchValue(Data, TargetInfo.value)) {
       Hits.push_back(
-          {TargetInfo.value, Map.start + RelativeOffset,
+          {TargetInfo.value,
+           {},
+           Map.start + RelativeOffset,
            FindBytesAround(RelativeOffset, Data, TargetInfo.value.size())});
     }
   }
@@ -65,3 +67,24 @@ Scanner::FindBytesAround(const uint32_t offset,
   memcpy(bytes.data(), &data[START], END - START);
   return bytes;
 }
+
+// we should also add something that also rescans maps and deals with hits from
+// there...at some point.
+
+// oh and a way to compare old and new bytes around? I'd also need to add that
+// to hitinfo struct.
+
+void Scanner::RescanHit(uint64_t index) {
+
+  Hits[index].previous_value = Hits[index].value;
+
+  Hits[index].bytes_around =
+      proc_->read(Hits[index].location - 32,
+                  Hits[index].value.size() + 64); // we really n
+  memcpy(Hits[index].value.data(), Hits[index].bytes_around.data() + 32,
+         Hits[index].value.size());
+  return;
+}
+
+// unfinished. for next time.
+void Scanner::TagHit(const uint64_t index, const TargetInfoT &TargetInfo) {}

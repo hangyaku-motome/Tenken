@@ -23,37 +23,32 @@
 
 ## Done:
 
-*Just about every single Window has been worked and improved upon.
-*Scanner logic is progressing.
-*Still struggling with abstractions and managing objects.
+Moved window info into each window object.
 
+Implemented rescan logic on the byte level (no comparative rescaning yet).
+Added refresh buttons to HitsW.
 
 Next:
 
-Copied from HitsW.cpp since it's important.
+showing previous value.
+showing previous value comparative tagging (higher, lower, unchanged, for hit labels).
+setting up rescan logic in SearchW (changed, unchanged, higher, lower, specific value for filtering hits).
 
-// I really really don't wanna have this read bytes live,
-// but the chosen one IS the only one that needs their bytes updated. everything
-// else is value. should I really be updating the bytes of every single hit?
-// seems redundant. value on the other hand is a must.
-// But then there would be times where "bytes around" are just really stale and
-// their freshenss depends on being explicitly called by this one object. Is
-// that okay?
+With this kind of setup, even if you choose "changed" you aren't going to just get hits that are all labeled "changed". you'd get all changed ones which would be higher or lower ones.
 
-// verdict:
-// we should NOT refresh everything every x miliseconds or something by default.
-// Since this is live, data WILL get stale. However it will represent a stable
-// snapshot of what "was". We *should* have a button to refresh values and tag
-// them and display their previous value. we should also be able to have the
-// user be able to choose automatic refresh. Even when opening byte screen, only
-// refresh ON DEMAND OR explicit automatic refresh. We CANNOT just arbitarily
-// refresh them.
-// ***
+Even if you choose specific value, it will still show you if it is higher or lower as a value.
 
-I've set up hits view. I've set up a...very clunky looking byte view as well.
-(Ohh we can add addresses to the left maybe.)
+(for string higher or value obviously shouldn't apply. We'll need to specially config some things to work with string.)
 
-Either way I shouldn't worry about UI look *too* much for now. We can polish it to our heart's content after we get something working. (Although I must admit I haven't ever worked with front end before, so I never had to think about "coloring" "layout" or such things. Hell, this is the first time I'm ever making a non CLI program. We'll see to it later.).
+Then...Hit edit logic...
+
+Ideally, I was imagining being able to just double click on the hit value in hits table to edit the value. after editing, we would ONLY update value, old value, ONLY hit bytes inside around_bytes.
+
+A bit more later:
+
+New window for "addresses of interest". Where you can tag addresses to:
+Regularly monitor their values.
+Freeze them at a certain value.
 
 
 

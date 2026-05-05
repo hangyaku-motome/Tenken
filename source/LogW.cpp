@@ -8,16 +8,16 @@
 
 std::string LogText;
 
-void LogW::InitW(WindowInfoT LogsWindow, ImGuiWindowFlags Flags) {
-  ImGui::SetNextWindowPos(ImVec2(LogsWindow.XPos, LogsWindow.YPos));
-  ImGui::SetNextWindowSize(ImVec2(LogsWindow.W, LogsWindow.H));
-  ImGui::Begin("Log", nullptr, Flags);
+void LogW::InitW() {
+  ImGui::SetNextWindowPos(ImVec2(Window.XPos, Window.YPos));
+  ImGui::SetNextWindowSize(ImVec2(Window.W, Window.H));
+  ImGui::Begin("Log", nullptr, Window.flags);
 }
 
 void LogW::EndW() { ImGui::End(); }
 
-void LogW::CycleW(WindowInfoT LogsWindow, ImGuiWindowFlags Flags) {
-  InitW(LogsWindow, Flags);
+void LogW::CycleW() {
+  InitW();
   for (const auto &Text : Log::GetLogsText()) {
     ImGui::Text("%s", Text.c_str());
   }

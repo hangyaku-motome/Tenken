@@ -28,4 +28,7 @@ public:
   void Start(int pid);
 
   void StartScan(const TargetInfoT &TargetInfo);
+
+  void RescanHit(const uint64_t index);
+  void TagHit(const uint64_t index, const TargetInfoT &TargetInfo);
 };

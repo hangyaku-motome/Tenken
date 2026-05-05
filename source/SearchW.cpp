@@ -117,9 +117,8 @@ void SearchW::GetTargetValue(TargetInfoT &TargetInfo) {
   };
 }
 
-int SearchW::CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
-                    ChosenParams &ActiveInfo) {
-  InitW(SearchWindow, Flags);
+int SearchW::CycleW(ChosenParams &ActiveInfo) {
+  InitW(Window, Window.flags);
   if (!ActiveInfo.TargetProc.pid) {
     ImGui::Text("No target chosen yet.");
     ImGui::End();
@@ -138,13 +137,12 @@ int SearchW::CycleW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags,
     ImGui::BeginDisabled(!InitValueGiven);
     bool PressedScan = ImGui::Button("Start First Scan!");
     ImGui::EndDisabled();
+    EndW();
     if (PressedScan) {
       IsOnFirstScanWindow = false;
-      EndW();
       return 1;
-    }
-    EndW();
-    return 0;
+    } else
+      return 0;
   }
   EndW();
   return 0;
