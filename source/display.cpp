@@ -129,58 +129,6 @@ void MainMenuBarCycle(TargetPopUp &TargetPUp) {
   }
 }
 
-template <typename T> T readAs(const std::vector<uint8_t> &buffer) {
-  T This{};
-
-  if (buffer.size() >= sizeof(T))
-    memcpy((void *)&This, buffer.data(), sizeof(This));
-
-  return This;
-}
-
-// maybe add unsigned/signed to TargetType itself?
-std::string HitToStr(const std::vector<uint8_t> &Bytes,
-                     TargetInfoT TargetInfo) {
-
-  if (TargetInfo.IsUnsigned) {
-    switch (TargetInfo.TargetType) {
-    case TargetTypeT::Int8:
-      return std::to_string(readAs<int8_t>(Bytes));
-    case TargetTypeT::Int16:
-      return std::to_string(readAs<int16_t>(Bytes));
-    case TargetTypeT::Int32:
-      return std::to_string(readAs<int32_t>(Bytes));
-    case TargetTypeT::Int64:
-      return std::to_string(readAs<int64_t>(Bytes));
-    case TargetTypeT::Float:
-      return std::to_string(readAs<float>(Bytes));
-    case TargetTypeT::Double:
-      return std::to_string(readAs<double>(Bytes));
-    case TargetTypeT::String:
-      return readAs<std::string>(Bytes);
-    default:
-      Log::Error("Why is TargetType undefined in HitToStr?? (TargetType: " +
-                 std::to_string((int)TargetInfo.TargetType));
-      return {};
-    }
-  } else {
-    switch (TargetInfo.TargetType) {
-    case TargetTypeT::Int8:
-      return std::to_string(readAs<uint8_t>(Bytes));
-    case TargetTypeT::Int16:
-      return std::to_string(readAs<uint16_t>(Bytes));
-    case TargetTypeT::Int32:
-      return std::to_string(readAs<uint32_t>(Bytes));
-    case TargetTypeT::Int64:
-      return std::to_string(readAs<uint64_t>(Bytes));
-    default:
-      Log::Error("Why is TargetType undefined in HitToStr?? (TargetType: " +
-                 std::to_string((int)TargetInfo.TargetType));
-      return {};
-    }
-  }
-}
-
 std::string BytesToHex(const std::vector<uint8_t> &Data) {
   char static constexpr hex[] = "0123456789ABCDEF";
   std::string ReturnStr;

@@ -1,6 +1,5 @@
 #include "HitsW.h"
 #include "LogW.h"
-#include "display.h"
 #include "imgui.h"
 #include "types.h"
 #include <GL/gl.h>
@@ -10,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 void HitsW::InitW() {
   ImGui::SetNextWindowPos(ImVec2(Window.XPos, Window.YPos));
@@ -58,7 +58,7 @@ void HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
   float context_height = std::clamp(avail * 0.1f, 100.0f, 250.0f);
   if (ImGui::BeginChild("hitstable", {0, avail - context_height},
                         !ImGuiChildFlags_Borders)) {
-    if (ImGui::BeginTable("Hit Table", 4, ImGuiTableFlags_ScrollY)) {
+    if (ImGui::BeginTable("Hit Table", 6, ImGuiTableFlags_ScrollY)) {
       ImGuiListClipper ListClipper;
       ListClipper.Begin(Hits.size());
       while (ListClipper.Step()) {
@@ -77,7 +77,21 @@ void HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
             selected_row = row;
           }
           ImGui::TableNextColumn();
-          ImGui::Text("%s", HitToStr(Hits[row].value, TargetInfo).c_str());
+          ImGui::Text("%s", HitValToStr(Hits[row].value, TargetInfo).c_str());
+          if (!Hits[row].previous_value.empty()) {
+            ImGui::TableNextColumn();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(169, 169, 169, 255));
+            ImGui::Text(
+                "%s",
+                HitValToStr(Hits[row].previous_value, TargetInfo).c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::TableNextColumn();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(238, 75, 43, 255));
+            ImGui::Text(
+                "%s", HitChangeToStr(Hits[row], TargetInfo.TargetType).c_str());
+            ImGui::PopStyleColor();
+          }
         }
       }
       ImGui::EndTable();
@@ -150,4 +164,71 @@ void HitsW::AlignButtons() {
 
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                        (ImGui::GetContentRegionAvail().x - button_w) / 2);
+}
+
+// for some reason this kind of feels redundant. will check on the exact logic
+// later.
+// (Later in question...) Ohh wait what about a function that returns a type
+// based on TargetInfoT, and then with that return we can implement a lambda?
+// I'll look into that later.
+std::string HitsW::HitValToStr(const std::vector<uint8_t> &Bytes,
+                               TargetInfoT TargetInfo) {
+
+  switch (TargetInfo.TargetType) {
+  case TargetTypeT::uInt8:
+    return std::to_string(readAs<uint8_t>(Bytes));
+  case TargetTypeT::uInt16:
+    return std::to_string(readAs<uint16_t>(Bytes));
+  case TargetTypeT::uInt32:
+    return std::to_string(readAs<uint32_t>(Bytes));
+  case TargetTypeT::uInt64:
+    return std::to_string(readAs<uint64_t>(Bytes));
+  case TargetTypeT::Int8:
+    return std::to_string(readAs<int8_t>(Bytes));
+  case TargetTypeT::Int16:
+    return std::to_string(readAs<int16_t>(Bytes));
+  case TargetTypeT::Int32:
+    return std::to_string(readAs<int32_t>(Bytes));
+  case TargetTypeT::Int64:
+    return std::to_string(readAs<int64_t>(Bytes));
+  case TargetTypeT::Float:
+    return std::to_string(readAs<float>(Bytes));
+  case TargetTypeT::Double:
+    return std::to_string(readAs<double>(Bytes));
+  case TargetTypeT::String:
+    return std::string(reinterpret_cast<const char *>(Bytes.data()),
+                       Bytes.size());
+  default:
+    Log::Error("Why is TargetType undefined in HitValToStr?? (TargetType: " +
+               std::to_string((int)TargetInfo.TargetType));
+    return {};
+  }
+}
+
+std::string HitsW::HitChangeToStr(const HitInfoT &Hit, const TargetTypeT Type) {
+  switch (Hit.Status) {
+  case RelativeStatus::INCREASED:
+    return "Increased";
+  case RelativeStatus::DECREASED:
+    return "Decreased";
+  case RelativeStatus::UNCHANGED:
+    return "Unchanged";
+  case RelativeStatus::CHANGED:
+    return "Changed";
+  case RelativeStatus::UNSET:
+    return "Unset...";
+  }
+  return "";
+}
+
+template <typename T> T HitsW::readAs(const std::vector<uint8_t> &buffer) {
+  T This{};
+
+  static_assert(std::is_arithmetic_v<T>,
+                "CompareValues only works with numeric types");
+
+  if (buffer.size() >= sizeof(T))
+    memcpy(&This, buffer.data(), sizeof(This));
+
+  return This;
 }

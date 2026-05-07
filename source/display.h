@@ -18,6 +18,4 @@ void SetDisplayInfo(GLFWwindow *window, DisplayInfoT DisplayInfo,
                     ImGuiWindowFlags flagsWindowDefault, LogW &LogObj,
                     SearchW &SearchObj, HitsW &HitObj);
 void MainMenuBarCycle(TargetPopUp &TargetPUp);
-std::string HitToStr(const std::vector<uint8_t> &Bytes, TargetInfoT TargetInfo);
-template <typename T> T readAs(const std::vector<uint8_t> &buffer);
 std::string BytesToHex(const std::vector<uint8_t> &Data);

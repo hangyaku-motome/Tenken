@@ -6,6 +6,10 @@
 #include <vector>
 
 enum class TargetTypeT {
+  uInt8,
+  uInt16,
+  uInt32,
+  uInt64,
   Int8,
   Int16,
   Int32,
@@ -16,14 +20,14 @@ enum class TargetTypeT {
   Invalid
 };
 
-enum class HitRelativeStatus { UNSET, UNCHANGED, INCREASED, DECREASED };
+enum class RelativeStatus { UNCHANGED, CHANGED, INCREASED, DECREASED, UNSET };
 
 struct HitInfoT {
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
   uint64_t location;
   std::vector<uint8_t> bytes_around;
-  HitRelativeStatus Status = HitRelativeStatus::UNSET;
+  RelativeStatus Status = RelativeStatus::UNSET;
 };
 
 struct MapInfoT {
@@ -58,33 +62,4 @@ struct ProcessInfoT {
 struct TargetInfoT {
   std::vector<uint8_t> value;
   TargetTypeT TargetType = TargetTypeT::Invalid;
-  bool IsUnsigned = false;
 };
-
-struct ChosenParams {
-  ProcessInfoT TargetProc;
-  TargetInfoT TargetValInfo;
-};
-
-inline std::string TargetTypeToString(TargetTypeT TargetType) {
-  switch (TargetType) {
-  case TargetTypeT::Int8:
-    return "Int8";
-  case TargetTypeT::Int16:
-    return "Int16";
-  case TargetTypeT::Int32:
-    return "Int32";
-  case TargetTypeT::Int64:
-    return "Int64";
-  case TargetTypeT::Float:
-    return "Float";
-  case TargetTypeT::Double:
-    return "Double";
-  case TargetTypeT::String:
-    return "String";
-  default:
-    return "Invalid";
-  }
-}
-
-// the names might be a bit confusing..

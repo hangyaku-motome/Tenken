@@ -13,7 +13,7 @@ void TargetPopUp::Clicked() {
   IsClicked = false;
 }
 
-std::string TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
+std::string TargetPopUp::CyclePUp(ProcessInfoT &TargetProc) {
   if (IsClicked)
     Clicked();
 
@@ -44,7 +44,7 @@ std::string TargetPopUp::CyclePUp(ChosenParams &ChosenParams) {
 
         if (ImGui::Selectable(std::to_string(ImGui::TableGetRowIndex()).c_str(),
                               false, ImGuiSelectableFlags_SpanAllColumns)) {
-          ChosenParams.TargetProc = Target;
+          TargetProc = Target;
           return_val = "new target";
           Log::Info("...Chosen PID: " + std::to_string(Target.pid) +
                     "   Target Comm:" + Target.FieldComm +

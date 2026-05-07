@@ -18,17 +18,25 @@ private:
 
   const std::vector<uint8_t> FindBytesAround(const uint32_t offset,
                                              const std::vector<uint8_t> &data,
-                                             const uint32_t TargetSize);
+                                             const uint32_t Size);
+  template <typename T> RelativeStatus CompareValues(const HitInfoT &Hit);
+
+  void RescanHitData(const uint64_t index);
+  void TagHitChange(const uint64_t index, const TargetInfoT &TargetInfo);
 
 public:
   Scanner() {};
 
   std::vector<HitInfoT> Hits;
 
-  void Start(int pid);
+  void Init(int pid);
 
   void StartScan(const TargetInfoT &TargetInfo);
 
-  void RescanHit(const uint64_t index);
-  void TagHit(const uint64_t index, const TargetInfoT &TargetInfo);
+  void RescanHit(const uint64_t index, const TargetInfoT &TargetInfo) {
+    RescanHitData(index);
+    TagHitChange(index, TargetInfo);
+  }
+  void FilterHit(const RelativeStatus Keep1);
+  void FilterHit(const std::vector<uint8_t> &keepValue);
 };

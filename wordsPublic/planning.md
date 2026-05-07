@@ -7,7 +7,7 @@
 - Multithreading. Basically required considering GUI always needs to be
   responsive while we do heavy work in the background.
 - Random but: Effective Cancel buttons for tasks.
-- Definltely refine the UI. I'm essentially using the defaults for now.
+- Definitely refine the UI. I'm essentially using the defaults for now.
 - Keyboard shortcuts.
 - Sections like "help", "save" and "load" (for saving variable names...Oh. I
     haven't even set up that window yet.) 
@@ -23,34 +23,33 @@
 
 ## Done:
 
-Moved window info into each window object.
+  // again...we might wanna add unsigned or signed-ness into TargetType. We can
+  // just remove IsUnsigned with that.
 
-Implemented rescan logic on the byte level (no comparative rescaning yet).
-Added refresh buttons to HitsW.
+^^ okay I'll actually do that right now. Done.
+
+Changed to GPLv3 from MIT because it is better :)
+
+Added previous value and relative value to previous value to hit table.
+
+Added filtering logic and implemented the second window of SearchW.
+
+Changed some enum structures, and names.
+
+Other general structure changes in SearchW and some others.
 
 Next:
 
-showing previous value.
-showing previous value comparative tagging (higher, lower, unchanged, for hit labels).
-setting up rescan logic in SearchW (changed, unchanged, higher, lower, specific value for filtering hits).
+Hit edit logic! I think that is the only major necessity we haven't added. After that, it *should* be technically ready for actual usage.
 
-With this kind of setup, even if you choose "changed" you aren't going to just get hits that are all labeled "changed". you'd get all changed ones which would be higher or lower ones.
+Although, the goal isn't something "technically ready for actual usage". Not to mention it's missing a lot of things, it is also definitely full of bugs that I need to observe and fix with usage.
 
-Even if you choose specific value, it will still show you if it is higher or lower as a value.
+Tomorrow, I will finish up the edit logic, add the new "address of interest" window. Refine things.
 
-(for string higher or value obviously shouldn't apply. We'll need to specially config some things to work with string.)
+Optionally, If I do find myself with more time on my hands: Windows Implementation as well.
 
-Then...Hit edit logic...
+Probably a little bit later:
 
-Ideally, I was imagining being able to just double click on the hit value in hits table to edit the value. after editing, we would ONLY update value, old value, ONLY hit bytes inside around_bytes.
+Don't forget for a way for regular refreshing values.
 
-A bit more later:
-
-New window for "addresses of interest". Where you can tag addresses to:
-Regularly monitor their values.
-Freeze them at a certain value.
-
-
-
-
-- *Definitely* implement multithreading. Scanner should do most things on another thread, otherwise the GUI dies while all of that heavy work is happening.
+- Still...implement multithreading. I'd assume this'll be easy to do. Since it's clear which functions do the heavy work and should be moved aside to another thread. (various functions in scanner, for example.). This would also mean implementing some sort of "loading bar" while things of interest are happening in the background.

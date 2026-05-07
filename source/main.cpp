@@ -27,14 +27,18 @@ int main() {
                                         ImGuiWindowFlags_NoResize |
                                         ImGuiWindowFlags_NoCollapse;
 
-  ChosenParams ActiveInfo;
+  TargetInfoT TargetInfo;
+  ProcessInfoT TargetProc;
+
   DisplayInfoT DisplayInfo;
 
   LogW LogObj;
   SearchW SearchObj;
   HitsW HitObj;
-  TargetPopUp TargetPUp;
+  TargetPopUp TargetPUpObj;
   Scanner ScannerObj;
+
+  bool TargetProcChosen = false;
 
   // Main loop.
   while (!glfwWindowShouldClose(window)) {
@@ -48,35 +52,57 @@ int main() {
     SetDisplayInfo(window, DisplayInfo, flagsWindowDefault, LogObj, SearchObj,
                    HitObj);
 
-    MainMenuBarCycle(TargetPUp);
+    MainMenuBarCycle(TargetPUpObj);
 
     // target popup.
-    if (TargetPUp.CyclePUp(ActiveInfo) == "new target") {
+    if (TargetPUpObj.CyclePUp(TargetProc) == "new target") {
       SearchObj = {};
       HitObj = {};
-      ActiveInfo.TargetValInfo = {};
+      TargetInfo = {};
       ScannerObj = {};
+      TargetProcChosen = true;
     }
 
     // Hits.
-    auto RefreshType = HitObj.CycleW(ScannerObj.Hits, ActiveInfo.TargetValInfo);
+    {
+      auto RefreshType = HitObj.CycleW(ScannerObj.Hits, TargetInfo);
 
-    if (RefreshType == "refresh all") {
-      for (uint64_t i = 0; i < ScannerObj.Hits.size(); ++i)
-        ScannerObj.RescanHit(i);
-    } else if (RefreshType == "refresh context") {
-      ScannerObj.RescanHit(HitObj.selected_row);
+      if (RefreshType == "refresh all") {
+        for (uint64_t i = 0; i < ScannerObj.Hits.size(); ++i)
+          ScannerObj.RescanHit(i, TargetInfo);
+      } else if (RefreshType == "refresh context") {
+        ScannerObj.RescanHit(HitObj.selected_row, TargetInfo);
+      }
     }
 
     // Search.
-    if (SearchObj.CycleW(ActiveInfo) == 1) {
-      Log::Info("Starting initial scan...");
-      ScannerObj.Start(ActiveInfo.TargetProc.pid);
-      ScannerObj.StartScan(ActiveInfo.TargetValInfo);
+    {
+      if (SearchObj.IsOnFirstScanWindow) {
+        if (SearchObj.CycleFirstW(TargetInfo, TargetProcChosen) ==
+            "initial scan") {
+          Log::Info("Starting initial scan...");
+          ScannerObj.Init(TargetProc.pid);
+          ScannerObj.StartScan(TargetInfo);
+        }
+      } else {
+        if (SearchObj.CycleSecondW(TargetInfo) == "rescan") {
+          if (!SearchObj.BasedOnCurrentValues)
+            for (uint64_t i = 0; i < ScannerObj.Hits.size(); ++i)
+              ScannerObj.RescanHit(i, TargetInfo);
+
+          if (SearchObj.TempFilterType == 4)
+            ScannerObj.FilterHit(TargetInfo.value);
+          else
+            ScannerObj.FilterHit(
+                static_cast<RelativeStatus>(SearchObj.TempFilterType));
+        }
+      }
     }
 
     // Log.
-    LogObj.CycleW();
+    {
+      LogObj.CycleW();
+    }
 
     end_frame(DisplayInfo.display_w, DisplayInfo.display_h, clear_color,
               window);

@@ -12,5 +12,5 @@ public:
   bool IsClicked = 0;
   WindowInfoT Window;
 
-  std::string CyclePUp(ChosenParams &ActiveInfo);
+  std::string CyclePUp(ProcessInfoT &TargetProc);
 };

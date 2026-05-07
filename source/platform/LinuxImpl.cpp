@@ -69,7 +69,7 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
       name = "UNNAMED_REGION";
 
     if (MemoryAddresses.find("-") == std::string::npos) {
-      printf("what the fuck?\n");
+      printf("couldn't find \"-\" in maps\n");
       exit(1);
     }
 

@@ -7,19 +7,25 @@
 
 class SearchW {
 private:
-  bool InitValueGiven = false;
   void InitW(WindowInfoT SearchWindow, ImGuiWindowFlags Flags);
   void EndW();
   void GetTargetType(TargetTypeT &TargetType);
-  void GetIsUnsigned(bool &IsUnsigned, bool IsInt);
   void GetTargetValue(TargetInfoT &TargetInfo);
+  inline std::string TargetTypeToString(TargetTypeT TargetType);
+  std::string GetHitFilter(TargetInfoT &TargetInfo);
 
-  bool IsOnFirstScanWindow = true;
+  bool InitValueGiven = false;
+
+  int TempTargetType = -1;
+  bool IsUnsigned = false;
 
 public:
+  bool IsOnFirstScanWindow = true;
+  int TempFilterType = -1;
+  bool BasedOnCurrentValues = false;
+
   WindowInfoT Window;
 
-  int CycleW(ChosenParams &ActiveInfo);
-
-  void ClearWindow();
+  std::string CycleFirstW(TargetInfoT &TargetInfo, bool TargetProcChosen);
+  std::string CycleSecondW(TargetInfoT &TargetInfo);
 };

@@ -14,6 +14,10 @@ private:
   std::string DrawRefreshAllButton();
   std::string DrawRefreshContextButton();
   void AlignButtons();
+  std::string HitValToStr(const std::vector<uint8_t> &Bytes,
+                          TargetInfoT TargetInfo);
+  std::string HitChangeToStr(const HitInfoT &Hit, const TargetTypeT Type);
+  template <typename T> T readAs(const std::vector<uint8_t> &buffer);
 
 public:
   int64_t selected_row = -1;
