@@ -21,22 +21,27 @@ private:
                                              const uint32_t Size);
   template <typename T> RelativeStatus CompareValues(const HitInfoT &Hit);
 
-  void RescanHitData(const uint64_t index);
-  void TagHitChange(const uint64_t index, const TargetInfoT &TargetInfo);
+  template <typename T>
+  void RescanEntryData(std::vector<T> &entries, const uint64_t index);
+  template <typename T>
+  void TagEntryChange(std::vector<T> &entries, const uint64_t index,
+                      const TargetInfoT &TargetInfo);
 
 public:
   Scanner() {};
 
   std::vector<HitInfoT> Hits;
+  std::vector<FavouriteInfoT> Favourites;
 
   void Init(int pid);
 
   void StartScan(const TargetInfoT &TargetInfo);
 
-  void RescanHit(const uint64_t index, const TargetInfoT &TargetInfo) {
-    RescanHitData(index);
-    TagHitChange(index, TargetInfo);
-  }
+  void RescanHit(const uint64_t index, const TargetInfoT &TargetInfo);
+  void RescanFavourite(const uint64_t index, const TargetInfoT &TargetInfo);
+  void AddToFavourite(const uint64_t index);
+  void WriteAdr(const uint64_t index,
+                const std::vector<uint8_t> &value); // unfinished right now.
   void FilterHit(const RelativeStatus Keep1);
   void FilterHit(const std::vector<uint8_t> &keepValue);
 };

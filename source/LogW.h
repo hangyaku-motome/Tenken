@@ -1,7 +1,7 @@
 #pragma once
 
-#include "types.h"
 #include <string>
+#include <vector>
 
 class LogW {
 
@@ -11,7 +11,6 @@ private:
 
 public:
   void CycleW();
-  WindowInfoT Window;
 };
 
 namespace Log {

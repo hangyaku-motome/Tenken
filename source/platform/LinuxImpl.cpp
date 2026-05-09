@@ -31,8 +31,10 @@ public:
   LinuxImpl(int pid) : pid_(pid) {}
 
   std::vector<MapInfoT> getRegions() override;
-  // std::vector<uint8_t> read(uint64_t address, uint64_t amount) override;
-  std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
+  std::vector<uint8_t> read(const uint64_t address,
+                            const uint64_t ReadSize) override;
+  bool write(const uint64_t address,
+             const std::vector<uint8_t> &value) override;
 
 }; // namespace LinuxImpl IProcess
 
@@ -86,28 +88,49 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
   return MapRegions;
 };
 
-std::vector<uint8_t> LinuxImpl::read(uint64_t address, uint64_t ReadSize) {
+std::vector<uint8_t> LinuxImpl::read(const uint64_t address,
+                                     const uint64_t ReadSize) {
   std::vector<uint8_t> read_buf(ReadSize);
 
   struct iovec Receive;
-  struct iovec MapsInfo;
+  struct iovec WriteTo;
 
   Receive.iov_base = read_buf.data();
   Receive.iov_len = ReadSize;
 
-  MapsInfo.iov_base = reinterpret_cast<void *>(address);
-  MapsInfo.iov_len = ReadSize;
+  WriteTo.iov_base = reinterpret_cast<void *>(address);
+  WriteTo.iov_len = ReadSize;
 
-  int64_t read_amount = process_vm_readv(pid_, &Receive, 1, &MapsInfo, 1, 0);
+  int64_t read_amount = process_vm_readv(pid_, &Receive, 1, &WriteTo, 1, 0);
 
   if (read_amount == -1) {
     std::stringstream ss;
     ss << std::hex << address;
-    // Some sort of counter for maps unreadable.
+    // Some sort of counter for unreadable.
     return {};
   }
 
   return read_buf;
+}
+
+bool LinuxImpl::write(const uint64_t address,
+                      const std::vector<uint8_t> &value) {
+  struct iovec Receive;
+  struct iovec WriteTo;
+
+  Receive.iov_base = const_cast<unsigned char *>(value.data());
+  Receive.iov_len = value.size();
+
+  WriteTo.iov_base = reinterpret_cast<void *>(address);
+  WriteTo.iov_len = value.size();
+  int64_t write_amount = process_vm_writev(pid_, &Receive, 1, &WriteTo, 1, 0);
+
+  // checking -1 would be unncessary if we check for value size but we should be
+  // explicit about that failure condition.
+  if (write_amount == -1 | write_amount != value.size()) {
+    return false;
+  }
+  return true;
 }
 
 std::vector<int> ListPid() {
@@ -147,6 +170,8 @@ std::vector<ProcessInfoT> GetProcTargets() {
     std::string path = "/proc/" + std::to_string(pid) + "/";
 
     comm = ReadFileString(path + "comm");
+    if (comm.empty())
+      continue;
     comm.erase(comm.find("\n"));
     cmdline = ReadFileString(path + "cmdline");
     if (cmdline.empty()) {

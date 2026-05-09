@@ -10,18 +10,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/third_party/imgui)
+
+
 add_library(imgui STATIC
-    third_party/imgui/imgui.cpp
-    third_party/imgui/imgui_widgets.cpp
-    third_party/imgui/imgui_draw.cpp
-    third_party/imgui/imgui_tables.cpp
-    third_party/imgui/backends/imgui_impl_glfw.cpp
-    third_party/imgui/backends/imgui_impl_opengl3.cpp
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 target_include_directories(imgui PUBLIC 
-    third_party/imgui
-    third_party/imgui/backends
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
 )
 
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
@@ -34,6 +37,7 @@ add_executable(main
     source/HitsW.cpp
     source/SearchW.cpp
     source/Scanner.cpp
+    source/FavouriteW.cpp
 )
 
 target_include_directories(main PRIVATE source)
@@ -48,3 +52,5 @@ target_link_libraries(main PRIVATE imgui)
 
 set_target_properties(main PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
+target_compile_options(main PRIVATE -fsanitize=address,undefined -g)
+target_link_options(main PRIVATE -fsanitize=address,undefined)

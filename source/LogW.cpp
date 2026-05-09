@@ -1,6 +1,5 @@
 #include "LogW.h"
 #include "imgui.h"
-#include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <string>
@@ -8,11 +7,7 @@
 
 std::string LogText;
 
-void LogW::InitW() {
-  ImGui::SetNextWindowPos(ImVec2(Window.XPos, Window.YPos));
-  ImGui::SetNextWindowSize(ImVec2(Window.W, Window.H));
-  ImGui::Begin("Log", nullptr, Window.flags);
-}
+void LogW::InitW() { ImGui::Begin("Log"); }
 
 void LogW::EndW() { ImGui::End(); }
 
@@ -32,8 +27,6 @@ std::vector<std::string> Logs;
 const std::vector<std::string> &GetLogsText() { return Logs; }
 
 void Info(std::string WrittenString) { Logs.push_back(WrittenString); }
-// also implement different ones for error and idk other stuff. Oh and make the
-// type some sort of LogInfo instead of string (for Logs) for better formatting.
 void Error(std::string WrittenString) {
   Logs.push_back("ERROR: " + WrittenString);
 }

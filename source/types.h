@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -62,4 +63,41 @@ struct ProcessInfoT {
 struct TargetInfoT {
   std::vector<uint8_t> value;
   TargetTypeT TargetType = TargetTypeT::Invalid;
+};
+
+enum class OpType {
+  NONE,
+  INIT_SCANNER,
+  FIRST_SCAN,
+  EDIT_HIT,
+  RESCAN,
+  ADD_TO_FAVOURITES,
+  REFRESH_FAVOURITES,
+  REFRESH_ALL_FAVOURITES,
+  REMOVE_FROM_FAVOURITES,
+  REFRESH_ALL_HITS,
+  REFRESH_HIT,
+};
+
+// at some point we might want to remove the value members and just calculate
+// from bytes. for now, this is fine.
+struct FavouriteInfoT {
+  uint64_t location;
+  std::vector<uint8_t> value;
+  std::vector<uint8_t> previous_value;
+  std::vector<uint8_t> bytes_around;
+  std::vector<uint8_t>
+      previous_bytes_around; // thought about adding to hits as well but meh.
+  RelativeStatus Status = RelativeStatus::UNSET;
+  bool Frozen = false;
+  std::string Description = "";
+};
+
+struct Action {
+  OpType Type = OpType::NONE;
+  std::optional<uint64_t> index;
+  std::optional<std::vector<uint8_t>> newval;
+  std::optional<RelativeStatus> KeepType;
+  std::optional<bool> BasedOnCurrentValues =
+      false; // we might wanna remove the default value.
 };

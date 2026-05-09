@@ -8,20 +8,18 @@ class HitsW {
 private:
   void InitW();
   void EndW();
-  void DrawHitTable(const std::vector<HitInfoT> &Hits,
-                    const TargetInfoT &TargetInfo);
+  Action DrawHitTable(const std::vector<HitInfoT> &Hits,
+                      const TargetInfoT &TargetInfo);
   void DrawContextMenu(const HitInfoT Hit);
-  std::string DrawRefreshAllButton();
-  std::string DrawRefreshContextButton();
+  bool DrawRefreshAllButton();
+  bool DrawRefreshContextButton();
   void AlignButtons();
-  std::string HitValToStr(const std::vector<uint8_t> &Bytes,
-                          TargetInfoT TargetInfo);
-  std::string HitChangeToStr(const HitInfoT &Hit, const TargetTypeT Type);
-  template <typename T> T readAs(const std::vector<uint8_t> &buffer);
+
+  bool IsEditing = false;
+  bool JustStartedEditing = false;
 
 public:
   int64_t selected_row = -1;
-  WindowInfoT Window;
-  std::string CycleW(const std::vector<HitInfoT> &Hits,
-                     const TargetInfoT &TargetInfo);
+  Action CycleW(const std::vector<HitInfoT> &Hits,
+                const TargetInfoT &TargetInfo);
 };

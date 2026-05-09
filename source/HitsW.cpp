@@ -1,5 +1,6 @@
 #include "HitsW.h"
 #include "LogW.h"
+#include "display.h"
 #include "imgui.h"
 #include "types.h"
 #include <GL/gl.h>
@@ -11,25 +12,20 @@
 #include <string>
 #include <vector>
 
-void HitsW::InitW() {
-  ImGui::SetNextWindowPos(ImVec2(Window.XPos, Window.YPos));
-  ImGui::SetNextWindowSize(ImVec2(Window.W, Window.H));
-
-  ImGui::Begin("Hits", nullptr, Window.flags);
-}
+void HitsW::InitW() { ImGui::Begin("Hits"); }
 
 void HitsW::EndW() { ImGui::End(); }
 
-std::string HitsW::CycleW(const std::vector<HitInfoT> &Hits,
-                          const TargetInfoT &TargetInfo) {
+Action HitsW::CycleW(const std::vector<HitInfoT> &Hits,
+                     const TargetInfoT &TargetInfo) {
   InitW();
   if (Hits.empty()) {
     EndW();
-    return "";
+    return {};
   }
-  std::string return_val = "";
+  Action return_val;
 
-  DrawHitTable(Hits, TargetInfo);
+  auto return_1 = DrawHitTable(Hits, TargetInfo);
 
   bool disable_context_refresh = true;
   if (selected_row >= 0 && selected_row <= Hits.size()) {
@@ -39,65 +35,131 @@ std::string HitsW::CycleW(const std::vector<HitInfoT> &Hits,
   AlignButtons();
   if (disable_context_refresh)
     ImGui::BeginDisabled();
-  std::string return_1 = DrawRefreshContextButton();
+  auto return_2 = DrawRefreshContextButton();
   if (disable_context_refresh)
     ImGui::EndDisabled();
   ImGui::SameLine();
-  std::string return_2 = DrawRefreshAllButton();
-
-  return_val = return_1.empty() ? return_2 : return_1;
+  auto return_3 = DrawRefreshAllButton();
 
   EndW();
 
-  return return_val;
+  if (return_1.Type != OpType::NONE)
+    return return_1;
+  if (return_2)
+    return Action{OpType::REFRESH_HIT, selected_row};
+  if (return_3)
+    return Action{OpType::REFRESH_ALL_HITS};
+
+  return Action{OpType::NONE};
 }
 
-void HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
-                         const TargetInfoT &TargetInfo) {
+Action HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
+                           const TargetInfoT &TargetInfo) {
+  Action ReturnAction;
+
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1f, 100.0f, 250.0f);
-  if (ImGui::BeginChild("hitstable", {0, avail - context_height},
-                        !ImGuiChildFlags_Borders)) {
+  if (ImGui::BeginChild("hitstable", {0, avail - context_height})) {
     if (ImGui::BeginTable("Hit Table", 6, ImGuiTableFlags_ScrollY)) {
+
+      ImGui::TableSetupColumn("##");
+      ImGui::TableSetupColumn("Address");
+      ImGui::TableSetupColumn("Value");
+      ImGui::TableSetupColumn("Old Value");
+      ImGui::TableSetupColumn("Status");
+      ImGui::TableHeadersRow();
+
       ImGuiListClipper ListClipper;
       ListClipper.Begin(Hits.size());
       while (ListClipper.Step()) {
         for (uint32_t row = ListClipper.DisplayStart;
              row < ListClipper.DisplayEnd; ++row) {
           ImGui::TableNextRow();
+
           ImGui::TableNextColumn();
-          ImGui::Text("%d", ImGui::TableGetRowIndex() + 1);
+
+          ImGui::Text("%d", ImGui::TableGetRowIndex());
+
           ImGui::TableNextColumn();
+
+          // kind of annoying to do this.
           char location_buf[16];
           std::snprintf(location_buf, sizeof(location_buf), "0x%" PRIXPTR,
                         Hits[row].location);
 
           if (ImGui::Selectable(location_buf, selected_row == row,
-                                ImGuiSelectableFlags_SpanAllColumns)) {
+                                ImGuiSelectableFlags_SpanAllColumns |
+                                    ImGuiSelectableFlags_AllowDoubleClick)) {
             selected_row = row;
+            if (ImGui::IsMouseDoubleClicked(0)) {
+              IsEditing = true;
+              JustStartedEditing = true;
+            }
           }
+          ImGui::PushID(row);
+
+          if (ImGui::BeginPopupContextItem("hit_context_menu")) {
+            selected_row = row;
+            if (ImGui::MenuItem("Add to Favourites")) {
+              ReturnAction.Type = OpType::ADD_TO_FAVOURITES;
+              ReturnAction.index = selected_row;
+            }
+            ImGui::EndPopup();
+          }
+          ImGui::PopID();
+
           ImGui::TableNextColumn();
-          ImGui::Text("%s", HitValToStr(Hits[row].value, TargetInfo).c_str());
+
+          if (IsEditing && row == selected_row) {
+            bool CancelEdit = false;
+            if (JustStartedEditing) {
+              ImGui::SetKeyboardFocusHere();
+              JustStartedEditing = false;
+              CancelEdit = true;
+            }
+            std::vector<uint8_t> tmpbuf(TargetInfo.value.size());
+            ImGui::PushStyleColor(ImGuiCol_NavHighlight, IM_COL32(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, IM_COL32(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+
+            if (GetTargetValue(TargetInfo, tmpbuf,
+                               ImGuiInputTextFlags_EnterReturnsTrue)) {
+              ReturnAction.newval = tmpbuf;
+              ReturnAction.Type = OpType::EDIT_HIT;
+              ReturnAction.index = row;
+              IsEditing = false;
+            } else if (!CancelEdit && !ImGui::IsItemActive() &&
+                       !ImGui::IsItemHovered())
+              IsEditing = false;
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar();
+          } else
+            ImGui::Text(
+                "%s", ValToStr(Hits[row].value, TargetInfo.TargetType).c_str());
+
           if (!Hits[row].previous_value.empty()) {
             ImGui::TableNextColumn();
+
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(169, 169, 169, 255));
             ImGui::Text(
-                "%s",
-                HitValToStr(Hits[row].previous_value, TargetInfo).c_str());
+                "%s", ValToStr(Hits[row].previous_value, TargetInfo.TargetType)
+                          .c_str());
             ImGui::PopStyleColor();
 
             ImGui::TableNextColumn();
+
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(238, 75, 43, 255));
-            ImGui::Text(
-                "%s", HitChangeToStr(Hits[row], TargetInfo.TargetType).c_str());
+            ImGui::Text("%s", RelativeStatusToStr(Hits[row].Status).c_str());
             ImGui::PopStyleColor();
           }
         }
       }
       ImGui::EndTable();
     }
-    ImGui::EndChild();
   }
+  ImGui::EndChild();
+  return ReturnAction;
 }
 
 void HitsW::DrawContextMenu(const HitInfoT Hit) {
@@ -131,26 +193,26 @@ void HitsW::DrawContextMenu(const HitInfoT Hit) {
   }
 }
 
-std::string HitsW::DrawRefreshAllButton() {
+bool HitsW::DrawRefreshAllButton() {
   float button_w = 150.0f;
 
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                        ImGui::GetContentRegionAvail().x - button_w);
 
   if (ImGui::Button("Refresh All Hits", {button_w, 0})) {
-    return "refresh all";
+    return true;
   }
-  return "";
+  return false;
 }
 
-std::string HitsW::DrawRefreshContextButton() {
+bool HitsW::DrawRefreshContextButton() {
   float button_w = 150.0f;
 
   if (ImGui::Button("Refresh Context Hit", {button_w, 0})) {
-    return "refresh context";
+    return true;
   }
 
-  return "";
+  return false;
 }
 
 void HitsW::AlignButtons() {
@@ -164,71 +226,4 @@ void HitsW::AlignButtons() {
 
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                        (ImGui::GetContentRegionAvail().x - button_w) / 2);
-}
-
-// for some reason this kind of feels redundant. will check on the exact logic
-// later.
-// (Later in question...) Ohh wait what about a function that returns a type
-// based on TargetInfoT, and then with that return we can implement a lambda?
-// I'll look into that later.
-std::string HitsW::HitValToStr(const std::vector<uint8_t> &Bytes,
-                               TargetInfoT TargetInfo) {
-
-  switch (TargetInfo.TargetType) {
-  case TargetTypeT::uInt8:
-    return std::to_string(readAs<uint8_t>(Bytes));
-  case TargetTypeT::uInt16:
-    return std::to_string(readAs<uint16_t>(Bytes));
-  case TargetTypeT::uInt32:
-    return std::to_string(readAs<uint32_t>(Bytes));
-  case TargetTypeT::uInt64:
-    return std::to_string(readAs<uint64_t>(Bytes));
-  case TargetTypeT::Int8:
-    return std::to_string(readAs<int8_t>(Bytes));
-  case TargetTypeT::Int16:
-    return std::to_string(readAs<int16_t>(Bytes));
-  case TargetTypeT::Int32:
-    return std::to_string(readAs<int32_t>(Bytes));
-  case TargetTypeT::Int64:
-    return std::to_string(readAs<int64_t>(Bytes));
-  case TargetTypeT::Float:
-    return std::to_string(readAs<float>(Bytes));
-  case TargetTypeT::Double:
-    return std::to_string(readAs<double>(Bytes));
-  case TargetTypeT::String:
-    return std::string(reinterpret_cast<const char *>(Bytes.data()),
-                       Bytes.size());
-  default:
-    Log::Error("Why is TargetType undefined in HitValToStr?? (TargetType: " +
-               std::to_string((int)TargetInfo.TargetType));
-    return {};
-  }
-}
-
-std::string HitsW::HitChangeToStr(const HitInfoT &Hit, const TargetTypeT Type) {
-  switch (Hit.Status) {
-  case RelativeStatus::INCREASED:
-    return "Increased";
-  case RelativeStatus::DECREASED:
-    return "Decreased";
-  case RelativeStatus::UNCHANGED:
-    return "Unchanged";
-  case RelativeStatus::CHANGED:
-    return "Changed";
-  case RelativeStatus::UNSET:
-    return "Unset...";
-  }
-  return "";
-}
-
-template <typename T> T HitsW::readAs(const std::vector<uint8_t> &buffer) {
-  T This{};
-
-  static_assert(std::is_arithmetic_v<T>,
-                "CompareValues only works with numeric types");
-
-  if (buffer.size() >= sizeof(T))
-    memcpy(&This, buffer.data(), sizeof(This));
-
-  return This;
 }

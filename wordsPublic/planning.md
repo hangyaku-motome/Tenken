@@ -9,6 +9,7 @@
 - Random but: Effective Cancel buttons for tasks.
 - Definitely refine the UI. I'm essentially using the defaults for now.
 - Keyboard shortcuts.
+- In favourites, a way to config a address so that a notification sounds is made when it changes in value...Or to a specific value.
 - Sections like "help", "save" and "load" (for saving variable names...Oh. I
     haven't even set up that window yet.) 
 - Add a window for "freeze values" and/or for giving a name to certain variables that live in memory, star them and easily edit/view them. 
@@ -23,30 +24,24 @@
 
 ## Done:
 
-  // again...we might wanna add unsigned or signed-ness into TargetType. We can
-  // just remove IsUnsigned with that.
+I've done both a lot for these 2 days, and at the same time not enough.
 
-^^ okay I'll actually do that right now. Done.
+Unfortunately, I did not have much time the day before.
 
-Changed to GPLv3 from MIT because it is better :)
+A **lot** has happened.
 
-Added previous value and relative value to previous value to hit table.
+Switched to docking branch of Dear ImGui. Rewrote some stuff to fit that.
 
-Added filtering logic and implemented the second window of SearchW.
+Changed window returns to "Action" struct type.
 
-Changed some enum structures, and names.
+Added FavouriteW...That's still mostly unfinished.
 
-Other general structure changes in SearchW and some others.
+Some more stuff that frankly I won't bother to check to see and name.
 
-Next:
 
-Hit edit logic! I think that is the only major necessity we haven't added. After that, it *should* be technically ready for actual usage.
+## Next:
 
-Although, the goal isn't something "technically ready for actual usage". Not to mention it's missing a lot of things, it is also definitely full of bugs that I need to observe and fix with usage.
-
-Tomorrow, I will finish up the edit logic, add the new "address of interest" window. Refine things.
-
-Optionally, If I do find myself with more time on my hands: Windows Implementation as well.
+- Finish implementation for FavouritesW. Needs editing, naming, bytes viewing, removing favourite, freezing, and logic that also compares to previous bytes. The table is also kind of ugly right now.
 
 Probably a little bit later:
 

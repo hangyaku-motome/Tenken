@@ -15,7 +15,7 @@
 
 void Scanner::Init(int pid) { proc_ = ActOS::Attach(pid); }
 
-void Scanner::StartScan(const TargetInfoT &TargetInfo) { // FirstScan ?
+void Scanner::StartScan(const TargetInfoT &TargetInfo) {
   Hits.clear();
   std::vector<MapInfoT> Maps = proc_->getRegions();
   if (Maps.empty())
@@ -74,15 +74,15 @@ Scanner::FindBytesAround(const uint32_t offset,
 // oh and a way to compare old and new bytes around? I'd also need to add that
 // to hitinfo struct.
 
-void Scanner::RescanHitData(uint64_t index) {
+template <typename T>
+void Scanner::RescanEntryData(std::vector<T> &entries, const uint64_t index) {
+  entries[index].previous_value = entries[index].value;
 
-  Hits[index].previous_value = Hits[index].value;
-
-  Hits[index].bytes_around =
-      proc_->read(Hits[index].location - 32,
-                  Hits[index].value.size() + 64); // we really n
-  memcpy(Hits[index].value.data(), Hits[index].bytes_around.data() + 32,
-         Hits[index].value.size());
+  entries[index].bytes_around =
+      proc_->read(entries[index].location - 32,
+                  entries[index].value.size() + 64); // we really n
+  memcpy(entries[index].value.data(), entries[index].bytes_around.data() + 32,
+         entries[index].value.size());
   return;
 }
 
@@ -94,8 +94,8 @@ RelativeStatus Scanner::CompareValues(const HitInfoT &Hit) {
   static_assert(std::is_arithmetic_v<T>,
                 "CompareValues only works with numeric types");
 
-  memcpy(&newval, Hit.value.data(), Hit.value.size());
-  memcpy(&oldval, Hit.previous_value.data(), Hit.value.size());
+  memcpy(&newval, Hit.value.data(), sizeof(newval));
+  memcpy(&oldval, Hit.previous_value.data(), sizeof(oldval));
 
   if (newval == oldval)
     return RelativeStatus::UNCHANGED;
@@ -106,11 +106,11 @@ RelativeStatus Scanner::CompareValues(const HitInfoT &Hit) {
 
   return RelativeStatus::CHANGED;
 }
-
-void Scanner::TagHitChange(const uint64_t index,
-                           const TargetInfoT &TargetInfo) {
+template <typename T>
+void Scanner::TagEntryChange(std::vector<T> &entries, const uint64_t index,
+                             const TargetInfoT &TargetInfo) {
   if (TargetInfo.TargetType == TargetTypeT::Invalid) {
-    Log::Error("Target type is invalid in TagHit, index is: " +
+    Log::Error("Target type is invalid in TagEntry, index is: " +
                std::to_string(index));
     return;
   }
@@ -189,4 +189,33 @@ void Scanner::FilterHit(const std::vector<uint8_t> &keepValue) {
                                             keepValue.size()) != 0;
                             }),
              Hits.end());
+}
+
+void Scanner::WriteAdr(const uint64_t index,
+                       const std::vector<uint8_t> &value) {
+  bool Success = proc_->write(Hits[index].location, value);
+
+  if (!Success) {
+    Log::Error("Write to address " + std::to_string(Hits[index].location) +
+               " failed!");
+  }
+}
+
+void Scanner::AddToFavourite(const uint64_t index) {
+  FavouriteInfoT PushFavourite;
+  PushFavourite.bytes_around = Hits[index].bytes_around;
+  PushFavourite.location = Hits[index].location;
+  PushFavourite.value = Hits[index].value;
+  Favourites.push_back(PushFavourite);
+}
+
+void Scanner::RescanFavourite(const uint64_t index,
+                              const TargetInfoT &TargetInfo) {
+  Favourites[index].previous_bytes_around = Favourites[index].bytes_around;
+  RescanEntryData(Favourites, index);
+  TagEntryChange(Favourites, index, TargetInfo);
+}
+void Scanner::RescanHit(const uint64_t index, const TargetInfoT &TargetInfo) {
+  RescanEntryData(Hits, index);
+  TagEntryChange(Hits, index, TargetInfo);
 }

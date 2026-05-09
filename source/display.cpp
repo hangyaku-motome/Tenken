@@ -1,14 +1,17 @@
 #include "display.h"
-#include "HitsW.h"
 #include "LogW.h"
-#include "SearchW.h"
 #include "TargetPopUp.hpp"
+#include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "imgui_internal.h"
 #include "types.h"
 #include <GLFW/glfw3.h>
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <iterator>
 #include <vector>
 
 static void glfw_error_callback(int error, const char *description) {
@@ -82,38 +85,56 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color,
   glfwSwapBuffers(window);
 }
 
-void SetDisplayInfo(GLFWwindow *window, DisplayInfoT DisplayInfo,
-                    ImGuiWindowFlags flagsWindowDefault, LogW &LogObj,
-                    SearchW &SearchObj, HitsW &HitObj) {
-  int tempdisplay_w, tempdisplay_h;
+void SetDefaultDisplay() {
+  ImGuiWindowFlags flags =
+      ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+      ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+      ImGuiWindowFlags_NoBackground;
 
-  glfwGetFramebufferSize(window, &tempdisplay_w, &tempdisplay_h);
-  if (DisplayInfo.display_h == tempdisplay_h &&
-      DisplayInfo.display_w == tempdisplay_w)
-    return;
-  DisplayInfo.TopMenuHeight = ImGui::GetFrameHeight();
+  ImGuiViewport *viewport = ImGui::GetMainViewport();
+  ImGui::SetNextWindowPos(viewport->Pos);
+  ImGui::SetNextWindowSize(viewport->Size);
+  ImGui::SetNextWindowViewport(viewport->ID);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-  DisplayInfo.display_h = tempdisplay_h;
-  DisplayInfo.display_w = tempdisplay_w;
+  ImGui::Begin("DockingWindow", nullptr, flags);
+  ImGui::PopStyleVar(3);
 
-  HitObj.Window.W = DisplayInfo.display_w / 2.0 * 1.3;
-  HitObj.Window.H = DisplayInfo.display_h / 2.0 * 1.1;
-  HitObj.Window.XPos = 0;
-  HitObj.Window.YPos = DisplayInfo.TopMenuHeight;
-  HitObj.Window.flags = flagsWindowDefault;
+  ImGuiID dockspaceID = ImGui::GetID("DockSpace");
+  ImGui::DockSpace(dockspaceID, ImVec2(0, 0),
+                   ImGuiDockNodeFlags_PassthruCentralNode);
 
-  LogObj.Window.W = DisplayInfo.display_w;
-  LogObj.Window.H =
-      DisplayInfo.display_h - HitObj.Window.H - DisplayInfo.TopMenuHeight;
-  LogObj.Window.XPos = 0;
-  LogObj.Window.YPos = HitObj.Window.H + DisplayInfo.TopMenuHeight;
-  LogObj.Window.flags = flagsWindowDefault;
+  static bool first_launch = true;
+  if (first_launch) {
+    ImGui::DockBuilderRemoveNode(dockspaceID);
+    ImGui::DockBuilderAddNode(dockspaceID,
+                              ImGuiDockNodeFlags_PassthruCentralNode |
+                                  ImGuiDockNodeFlags_DockSpace);
+    ImGui::DockBuilderSetNodeSize(dockspaceID, viewport->Size);
 
-  SearchObj.Window.W = DisplayInfo.display_w - HitObj.Window.W;
-  SearchObj.Window.H = HitObj.Window.H;
-  SearchObj.Window.XPos = HitObj.Window.W;
-  SearchObj.Window.YPos = DisplayInfo.TopMenuHeight;
-  SearchObj.Window.flags = flagsWindowDefault;
+    ImGuiID main = dockspaceID;
+    ImGuiID bottom =
+        ImGui::DockBuilderSplitNode(main, ImGuiDir_Down, 0.3f, nullptr, &main);
+    ImGuiID top_right =
+        ImGui::DockBuilderSplitNode(main, ImGuiDir_Right, 0.3f, nullptr, &main);
+
+    ImGuiID bottom_right = ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Right,
+                                                       0.5f, nullptr, &bottom);
+
+    ImGui::DockBuilderDockWindow("Hits", main);
+    ImGui::DockBuilderDockWindow("Log", bottom);
+    ImGui::DockBuilderDockWindow("Search", top_right);
+    ImGui::DockBuilderDockWindow("Favourite", bottom_right);
+
+    ImGui::DockBuilderFinish(dockspaceID);
+
+    first_launch = false;
+  }
+  ImGui::End();
 }
 
 void MainMenuBarCycle(TargetPopUp &TargetPUp) {
@@ -140,4 +161,166 @@ std::string BytesToHex(const std::vector<uint8_t> &Data) {
     ReturnStr += hex[Data[i] & 0x0F];
   }
   return ReturnStr;
+}
+
+template <typename Out, typename In>
+void WriteVal(const In val, std::vector<uint8_t> &write_to) {
+  Out write;
+  write = static_cast<Out>(val);
+  write_to.resize(sizeof(Out));
+  memcpy(write_to.data(), &write, sizeof(write));
+}
+
+bool GetTargetValue(const TargetInfoT &TargetInfo,
+                    std::vector<uint8_t> &write_to, ImGuiInputTextFlags flags) {
+
+  if (TargetInfo.TargetType == TargetTypeT::Invalid)
+    return false;
+
+  std::vector<uint8_t> tempbuf(64);
+  if (!ImGui::InputText("##value", (char *)(tempbuf.data()), tempbuf.size(),
+                        flags))
+    return false;
+
+  char *end;
+
+  uint64_t u_val = strtoull((char *)(tempbuf.data()), &end, 10);
+  bool uval_ok = (*end == '\0' || end != (char *)tempbuf.data());
+
+  int64_t s_val = strtoll((char *)(tempbuf.data()), &end, 10);
+  bool sval_ok = (*end == '\0' || end != (char *)tempbuf.data());
+
+  switch (TargetInfo.TargetType) {
+  case TargetTypeT::uInt8:
+    if (!(u_val <= UINT8_MAX) || !uval_ok)
+      return false;
+    WriteVal<uint8_t>(u_val, write_to);
+    return true;
+  case TargetTypeT::uInt16:
+    if (!(u_val <= UINT16_MAX) || !uval_ok)
+      return false;
+    WriteVal<uint16_t>(u_val, write_to);
+    return true;
+  case TargetTypeT::uInt32:
+    if (!(u_val <= UINT32_MAX) || !uval_ok)
+      return false;
+    WriteVal<uint32_t>(u_val, write_to);
+    return true;
+  case TargetTypeT::uInt64:
+    if (!uval_ok)
+      return false;
+    WriteVal<uint64_t>(u_val, write_to);
+    return true;
+  case TargetTypeT::Int8:
+    if (!(s_val <= INT8_MAX) || !(INT8_MIN <= s_val) || !sval_ok)
+      return false;
+    WriteVal<int8_t>(s_val, write_to);
+    return true;
+  case TargetTypeT::Int16:
+    if (!(s_val <= INT16_MAX) || !(INT16_MIN <= s_val) || !sval_ok)
+      return false;
+    WriteVal<int16_t>(s_val, write_to);
+    return true;
+  case TargetTypeT::Int32:
+    if (!(s_val <= INT32_MAX) || !(INT32_MIN <= s_val) || !sval_ok)
+      return false;
+    WriteVal<int32_t>(s_val, write_to);
+    return true;
+  case TargetTypeT::Int64:
+    if (!sval_ok)
+      return false;
+    WriteVal<int64_t>(s_val, write_to);
+    return true;
+  case TargetTypeT::Float: {
+    float float_value = strtof((char *)(tempbuf.data()), &end);
+    if (!(*end == '\0' || end != (char *)tempbuf.data()))
+      return false;
+    WriteVal<float>(float_value, write_to);
+    return true;
+  }
+  case TargetTypeT::Double: {
+    double double_value = strtof((char *)(tempbuf.data()), &end);
+    if (!(*end == '\0' || end != (char *)tempbuf.data()))
+      return false;
+    WriteVal<double>(double_value, write_to);
+    return true;
+  }
+  case TargetTypeT::String: {
+    auto null_ter = std::find(tempbuf.begin(), tempbuf.end(), '\0');
+    write_to.resize(std::distance(tempbuf.begin(), null_ter));
+    memcpy(write_to.data(), tempbuf.data(), write_to.size());
+    return true;
+  }
+  default:
+  case TargetTypeT::Invalid:
+    Log::Error("Why did get target value recieve invalid target type?");
+    return false;
+  }
+}
+
+template <typename T> T readAs(const std::vector<uint8_t> &buffer) {
+  T This{};
+
+  static_assert(std::is_arithmetic_v<T>,
+                "CompareValues only works with numeric types");
+
+  if (buffer.size() >= sizeof(T))
+    memcpy(&This, buffer.data(), sizeof(This));
+
+  return This;
+}
+
+// for some reason this kind of feels redundant. will check on the exact logic
+// later.
+// (Later in question...) Ohh wait what about a function that returns a type
+// based on TargetInfoT, and then with that return we can implement a lambda?
+// I'll look into that later.
+std::string ValToStr(const std::vector<uint8_t> &Bytes,
+                     const TargetTypeT TargetType) {
+
+  switch (TargetType) {
+  case TargetTypeT::uInt8:
+    return std::to_string(readAs<uint8_t>(Bytes));
+  case TargetTypeT::uInt16:
+    return std::to_string(readAs<uint16_t>(Bytes));
+  case TargetTypeT::uInt32:
+    return std::to_string(readAs<uint32_t>(Bytes));
+  case TargetTypeT::uInt64:
+    return std::to_string(readAs<uint64_t>(Bytes));
+  case TargetTypeT::Int8:
+    return std::to_string(readAs<int8_t>(Bytes));
+  case TargetTypeT::Int16:
+    return std::to_string(readAs<int16_t>(Bytes));
+  case TargetTypeT::Int32:
+    return std::to_string(readAs<int32_t>(Bytes));
+  case TargetTypeT::Int64:
+    return std::to_string(readAs<int64_t>(Bytes));
+  case TargetTypeT::Float:
+    return std::to_string(readAs<float>(Bytes));
+  case TargetTypeT::Double:
+    return std::to_string(readAs<double>(Bytes));
+  case TargetTypeT::String:
+    return std::string(reinterpret_cast<const char *>(Bytes.data()),
+                       Bytes.size());
+  default:
+    Log::Error("Why is TargetType undefined in HitValToStr?? (TargetType: " +
+               std::to_string((int)TargetType));
+    return {};
+  }
+}
+
+std::string RelativeStatusToStr(const RelativeStatus Status) {
+  switch (Status) {
+  case RelativeStatus::INCREASED:
+    return "Increased";
+  case RelativeStatus::DECREASED:
+    return "Decreased";
+  case RelativeStatus::UNCHANGED:
+    return "Unchanged";
+  case RelativeStatus::CHANGED:
+    return "Changed";
+  case RelativeStatus::UNSET:
+    return "Unset...";
+  }
+  return "";
 }
