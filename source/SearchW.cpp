@@ -79,7 +79,7 @@ OpType SearchW::CycleFirstW(TargetInfoT &TargetInfo, bool TargetProcChosen) {
 
   // We should check if it also empty, not just "Init value given" which
   // changes on any change. "" is not valid.
-  if (GetTargetValue(TargetInfo, TargetInfo.value) == true)
+  if (GetTargetValue(TargetInfo.TargetType, TargetInfo.value) == true)
     InitValueGiven = true;
   ImGui::BeginDisabled(!InitValueGiven);
   bool PressedScan = ImGui::Button("Start First Scan!");
@@ -102,7 +102,7 @@ Action SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
           "unchanged\0changed\0increased\0decreased\0specific value\0\0")) {
   }
   if (TempFilterType == 4) {
-    GetTargetValue(TargetInfo, TargetInfo.value);
+    GetTargetValue(TargetInfo.TargetType, TargetInfo.value);
   }
 
   if (TempFilterType != -1) {
@@ -123,9 +123,9 @@ Action SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
 
   if (ImGui::Button("Rescan!")) {
     Action ReturnVal;
-    ReturnVal.Type = OpType::RESCAN;
+    ReturnVal.Type = OpType::FILTER;
     ReturnVal.BasedOnCurrentValues = BasedOnCurrentValues;
-
+    ReturnVal.WorkOn = DataType::HIT;
     if (TempFilterType != 4)
       ReturnVal.KeepType = static_cast<RelativeStatus>(TempFilterType);
     EndW();

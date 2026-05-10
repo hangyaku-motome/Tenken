@@ -171,10 +171,10 @@ void WriteVal(const In val, std::vector<uint8_t> &write_to) {
   memcpy(write_to.data(), &write, sizeof(write));
 }
 
-bool GetTargetValue(const TargetInfoT &TargetInfo,
+bool GetTargetValue(const TargetTypeT TargetType,
                     std::vector<uint8_t> &write_to, ImGuiInputTextFlags flags) {
 
-  if (TargetInfo.TargetType == TargetTypeT::Invalid)
+  if (TargetType == TargetTypeT::Invalid)
     return false;
 
   std::vector<uint8_t> tempbuf(64);
@@ -190,7 +190,7 @@ bool GetTargetValue(const TargetInfoT &TargetInfo,
   int64_t s_val = strtoll((char *)(tempbuf.data()), &end, 10);
   bool sval_ok = (*end == '\0' || end != (char *)tempbuf.data());
 
-  switch (TargetInfo.TargetType) {
+  switch (TargetType) {
   case TargetTypeT::uInt8:
     if (!(u_val <= UINT8_MAX) || !uval_ok)
       return false;
@@ -275,6 +275,8 @@ template <typename T> T readAs(const std::vector<uint8_t> &buffer) {
 // (Later in question...) Ohh wait what about a function that returns a type
 // based on TargetInfoT, and then with that return we can implement a lambda?
 // I'll look into that later.
+// Yeah IDK what I meant with that up there anymore ^^ I'll look into that later
+// 2x
 std::string ValToStr(const std::vector<uint8_t> &Bytes,
                      const TargetTypeT TargetType) {
 

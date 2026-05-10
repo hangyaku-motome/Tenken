@@ -17,7 +17,7 @@ std::string BytesToHex(const std::vector<uint8_t> &Data);
 std::string ValToStr(const std::vector<uint8_t> &Bytes,
                      const TargetTypeT TargetType);
 std::string RelativeStatusToStr(const RelativeStatus Status);
-bool GetTargetValue(const TargetInfoT &TargetInfo,
+bool GetTargetValue(const TargetTypeT TargetType,
                     std::vector<uint8_t> &write_to,
                     ImGuiInputTextFlags flags = 0);
 template <typename T> T readAs(const std::vector<uint8_t> &buffer);

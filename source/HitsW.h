@@ -3,6 +3,7 @@
 #include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
+#include <atomic>
 
 class HitsW {
 private:
@@ -21,5 +22,6 @@ private:
 public:
   int64_t selected_row = -1;
   Action CycleW(const std::vector<HitInfoT> &Hits,
-                const TargetInfoT &TargetInfo);
+                const TargetInfoT &TargetInfo,
+                std::atomic<float> Progress = -1);
 };

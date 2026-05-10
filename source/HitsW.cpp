@@ -6,9 +6,9 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <atomic>
 #include <cinttypes>
 #include <cstdint>
-#include <cstdio>
 #include <string>
 #include <vector>
 
@@ -17,12 +17,22 @@ void HitsW::InitW() { ImGui::Begin("Hits"); }
 void HitsW::EndW() { ImGui::End(); }
 
 Action HitsW::CycleW(const std::vector<HitInfoT> &Hits,
-                     const TargetInfoT &TargetInfo) {
+                     const TargetInfoT &TargetInfo,
+                     std::atomic<float> Progress) {
   InitW();
   if (Hits.empty()) {
     EndW();
     return {};
   }
+
+  if (Progress != -1) {
+    ImGui::Text("Scanning in progress.");
+    ImGui::NewLine();
+    ImGui::ProgressBar(Progress);
+    ImGui::EndChild();
+    return {};
+  }
+
   Action return_val;
 
   auto return_1 = DrawHitTable(Hits, TargetInfo);
@@ -46,9 +56,9 @@ Action HitsW::CycleW(const std::vector<HitInfoT> &Hits,
   if (return_1.Type != OpType::NONE)
     return return_1;
   if (return_2)
-    return Action{OpType::REFRESH_HIT, selected_row};
+    return Action{OpType::REFRESH, DataType::HIT, selected_row};
   if (return_3)
-    return Action{OpType::REFRESH_ALL_HITS};
+    return Action{OpType::REFRESH_ALL, DataType::HIT, selected_row};
 
   return Action{OpType::NONE};
 }
@@ -75,6 +85,7 @@ Action HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
         for (uint32_t row = ListClipper.DisplayStart;
              row < ListClipper.DisplayEnd; ++row) {
           ImGui::TableNextRow();
+          ImGui::PushID(row);
 
           ImGui::TableNextColumn();
 
@@ -82,40 +93,35 @@ Action HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
 
           ImGui::TableNextColumn();
 
-          // kind of annoying to do this.
-          char location_buf[16];
-          std::snprintf(location_buf, sizeof(location_buf), "0x%" PRIXPTR,
-                        Hits[row].location);
-
-          if (ImGui::Selectable(location_buf, selected_row == row,
+          if (ImGui::Selectable("##selectable", selected_row == row,
                                 ImGuiSelectableFlags_SpanAllColumns |
                                     ImGuiSelectableFlags_AllowDoubleClick)) {
             selected_row = row;
-            if (ImGui::IsMouseDoubleClicked(0)) {
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
               IsEditing = true;
               JustStartedEditing = true;
             }
-          }
-          ImGui::PushID(row);
-
-          if (ImGui::BeginPopupContextItem("hit_context_menu")) {
-            selected_row = row;
-            if (ImGui::MenuItem("Add to Favourites")) {
-              ReturnAction.Type = OpType::ADD_TO_FAVOURITES;
-              ReturnAction.index = selected_row;
+          } else {
+            if (ImGui::BeginPopupContextItem("hit_context_menu")) {
+              printf("ehhh\n");
+              selected_row = row;
+              if (ImGui::MenuItem("Add to Favourites")) {
+                ReturnAction.Type = OpType::ADD_TO_FAVOURITES;
+                ReturnAction.index = selected_row;
+              }
+              ImGui::EndPopup();
             }
-            ImGui::EndPopup();
+            ImGui::SameLine();
+            ImGui::Text("0x%" PRIX64, Hits[row].location);
           }
-          ImGui::PopID();
 
           ImGui::TableNextColumn();
-
+          bool CancelEdit = true;
           if (IsEditing && row == selected_row) {
-            bool CancelEdit = false;
             if (JustStartedEditing) {
               ImGui::SetKeyboardFocusHere();
               JustStartedEditing = false;
-              CancelEdit = true;
+              CancelEdit = false;
             }
             std::vector<uint8_t> tmpbuf(TargetInfo.value.size());
             ImGui::PushStyleColor(ImGuiCol_NavHighlight, IM_COL32(0, 0, 0, 0));
@@ -123,21 +129,27 @@ Action HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
             ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-            if (GetTargetValue(TargetInfo, tmpbuf,
+            if (GetTargetValue(TargetInfo.TargetType, tmpbuf,
                                ImGuiInputTextFlags_EnterReturnsTrue)) {
               ReturnAction.newval = tmpbuf;
-              ReturnAction.Type = OpType::EDIT_HIT;
+              ReturnAction.Type = OpType::EDIT;
+              ReturnAction.WorkOn = DataType::HIT;
               ReturnAction.index = row;
               IsEditing = false;
-            } else if (!CancelEdit && !ImGui::IsItemActive() &&
-                       !ImGui::IsItemHovered())
-              IsEditing = false;
+              CancelEdit = true;
+            }
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar();
+            if (CancelEdit && (!ImGui::IsItemActive())) {
+              IsEditing = false;
+              selected_row = -1;
+            }
           } else
             ImGui::Text(
                 "%s", ValToStr(Hits[row].value, TargetInfo.TargetType).c_str());
-
+          if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) {
+            selected_row = -1;
+          }
           if (!Hits[row].previous_value.empty()) {
             ImGui::TableNextColumn();
 
@@ -153,6 +165,7 @@ Action HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
             ImGui::Text("%s", RelativeStatusToStr(Hits[row].Status).c_str());
             ImGui::PopStyleColor();
           }
+          ImGui::PopID();
         }
       }
       ImGui::EndTable();
@@ -185,7 +198,7 @@ void HitsW::DrawContextMenu(const HitInfoT Hit) {
     }
     // logic might be wrong let's see
     if (i >= BYTES_BEFORE && i + BYTES_AFTER < Hit.bytes_around.size()) {
-      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 220, 100, 255));
+      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
       ImGui::Text("%02X", Hit.bytes_around[i]);
       ImGui::PopStyleColor();
     } else

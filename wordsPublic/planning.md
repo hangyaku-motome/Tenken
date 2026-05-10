@@ -4,8 +4,6 @@
 - Add a search bar to TargetPUp.
 - Mark user processes in green in TargetPUp.
 - Add an option to start out with unknown target value (snapshots and whatnot).
-- Multithreading. Basically required considering GUI always needs to be
-  responsive while we do heavy work in the background.
 - Random but: Effective Cancel buttons for tasks.
 - Definitely refine the UI. I'm essentially using the defaults for now.
 - Keyboard shortcuts.
@@ -24,27 +22,49 @@
 
 ## Done:
 
-I've done both a lot for these 2 days, and at the same time not enough.
+Multhithreading implemented.
 
-Unfortunately, I did not have much time the day before.
+Heavy scans are given to another thread.
 
-A **lot** has happened.
+Freezing has it's own thread.
 
-Switched to docking branch of Dear ImGui. Rewrote some stuff to fit that.
+Favourites window is functional. Can freeze values, can label them, and can refresh the value. Previous byte comparision lacking. Won't be hard to add though.
 
-Changed window returns to "Action" struct type.
+I also did some rewrites here and there. It all still feels like a mess, just less like one.
 
-Added FavouriteW...That's still mostly unfinished.
+I think I will keep the hard line for not allowing windows to edit values outside what they directly own. So...After checking the freeze button, it's not set as so inside the object, it will return an action to resolve in main that does that. 
 
-Some more stuff that frankly I won't bother to check to see and name.
+The reason is...Well, it just feels like a more flexible way of doing it. State changes themselves shouldn't be dependent on windows. Only the requests should be done through the window.
+
+^^ Though on that note SearchW does not follow that. We might want to change that as well.
+
 
 
 ## Next:
 
-- Finish implementation for FavouritesW. Needs editing, naming, bytes viewing, removing favourite, freezing, and logic that also compares to previous bytes. The table is also kind of ugly right now.
+No regular refreshing option, still. This wouldn't be hard to implement...Probably. A small field next to "refresh all hits" for refresh x second logic. For favourite, we should set it up per entry, and it'll be next to refresh context button.
 
-Probably a little bit later:
+...Each change to the entry can emit an action. Action{REFRESH_REGULAR, HIT, [seconds somewhere, probably new field.]}, each time we recieve this we'll have a thread that keeps up with it's pace. When set to 0, it will be joined.
 
-Don't forget for a way for regular refreshing values.
+Same logic is...Not necessary for favourite. since the scale is really small. end of each field we can call RefreshFavourite and will refresh a favourite if it's time arrives. Although I'll have to learn how to keep track of time properly like that.
 
-- Still...implement multithreading. I'd assume this'll be easy to do. Since it's clear which functions do the heavy work and should be moved aside to another thread. (various functions in scanner, for example.). This would also mean implementing some sort of "loading bar" while things of interest are happening in the background.
+We'll also need to add previous bytes to favourite. It should also print them comparatively...Well, the question is do we only tag changed/unchanged or also add higher/lower logic for the bytes.
+
+Oh, and an option to remove from favourites. the backend is there. just the frontend is lacking. Very simple to add.
+
+
+
+
+After those, we can just move over to windows implementation. Or, we stay here a bit more and refine the UX a bit more.
+
+At the very least:
+
+A search option for target.
+
+More descriptive log (rescans add nothing).
+
+
+
+
+
+

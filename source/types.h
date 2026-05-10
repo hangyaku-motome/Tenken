@@ -65,22 +65,28 @@ struct TargetInfoT {
   TargetTypeT TargetType = TargetTypeT::Invalid;
 };
 
+// we can merge some of these types and just add a bool for "favourite or hit".
 enum class OpType {
   NONE,
   INIT_SCANNER,
   FIRST_SCAN,
-  EDIT_HIT,
-  RESCAN,
+  EDIT,
+  FILTER,
   ADD_TO_FAVOURITES,
-  REFRESH_FAVOURITES,
-  REFRESH_ALL_FAVOURITES,
   REMOVE_FROM_FAVOURITES,
-  REFRESH_ALL_HITS,
-  REFRESH_HIT,
+  CHANGE_NAME, // Questionable entry.
+  REFRESH,
+  REFRESH_ALL,
+  FREEZE,
+  UNFREEZE
 };
 
+enum class DataType { INVALID, HIT, FAVOURITE };
+
 // at some point we might want to remove the value members and just calculate
-// from bytes. for now, this is fine.
+// from bytes. for now, this is fine. // Yeah, to add to this...If a byte is
+// invalid, we can draw it as ##. We can have an  vector of bool for each byte
+// for valid/invalid...Eh. Will need some thinking.
 struct FavouriteInfoT {
   uint64_t location;
   std::vector<uint8_t> value;
@@ -91,12 +97,15 @@ struct FavouriteInfoT {
   RelativeStatus Status = RelativeStatus::UNSET;
   bool Frozen = false;
   std::string Description = "";
+  std::vector<uint8_t> frozen_value;
 };
 
 struct Action {
   OpType Type = OpType::NONE;
+  DataType WorkOn;
   std::optional<uint64_t> index;
   std::optional<std::vector<uint8_t>> newval;
+  std::optional<std::string> newname;
   std::optional<RelativeStatus> KeepType;
   std::optional<bool> BasedOnCurrentValues =
       false; // we might wanna remove the default value.

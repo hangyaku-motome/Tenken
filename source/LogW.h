@@ -14,7 +14,7 @@ public:
 };
 
 namespace Log {
-const std::vector<std::string> &GetLogsText();
+const std::vector<std::string> GetLogsText();
 
 void Info(std::string WrittenString);
 void Error(std::string WrittenString);

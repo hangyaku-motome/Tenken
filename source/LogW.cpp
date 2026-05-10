@@ -2,10 +2,9 @@
 #include "imgui.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
+#include <mutex>
 #include <string>
 #include <vector>
-
-std::string LogText;
 
 void LogW::InitW() { ImGui::Begin("Log"); }
 
@@ -21,13 +20,21 @@ void LogW::CycleW() {
 
 namespace Log {
 namespace {
+std::mutex LogMutex;
 std::vector<std::string> Logs;
+} // namespace
+
+const std::vector<std::string> GetLogsText() {
+  std::scoped_lock<std::mutex> lock(LogMutex);
+  return Logs;
 }
 
-const std::vector<std::string> &GetLogsText() { return Logs; }
-
-void Info(std::string WrittenString) { Logs.push_back(WrittenString); }
+void Info(std::string WrittenString) {
+  std::scoped_lock<std::mutex> lock(LogMutex);
+  Logs.push_back(WrittenString);
+}
 void Error(std::string WrittenString) {
+  std::scoped_lock<std::mutex> lock(LogMutex);
   Logs.push_back("ERROR: " + WrittenString);
 }
 
