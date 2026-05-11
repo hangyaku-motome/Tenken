@@ -1,3 +1,4 @@
-# My_MemScanner (Temporary Name)
+# Tenken
 
-A memory scanner made in C++ with Dear ImGui that is cross-platform. In progress.
+A memory scanner made in C++ with Dear ImGui that is cross-platform.
+

@@ -108,14 +108,13 @@ Action SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
   if (TempFilterType != -1) {
     // would not make sense to include this in first rescan...Well, at least
     // it must be after hits are rescaned once.
-
     ImGui::Checkbox("Based on CURRENT values?", &BasedOnCurrentValues);
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
       ImGui::SetTooltip(
           "When ticked, it will not fetch the latest data, instead it will "
-          "filter based on current tags. Useful for when you rescan from "
+          "filter based on current tags. \nUseful for when you rescan from "
           "hits "
           "window and want to work with that snapshot of values.");
     }
@@ -131,6 +130,25 @@ Action SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
     EndW();
     return ReturnVal;
   }
+
+  float button_h = ImGui::GetFrameHeight();
+  float button_w = 120.0f;
+  float current_h = ImGui::GetContentRegionAvail().y;
+
+  if (current_h > button_h) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
+  }
+
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       (ImGui::GetContentRegionAvail().x - button_w) / 2);
+
+  if (ImGui::Button("Restart scan.", {button_w, 0})) {
+    Action ReturnVal;
+    ReturnVal.Type = OpType::RESTART_STATE;
+    EndW();
+    return ReturnVal;
+  }
+
   EndW();
   return Action{OpType::NONE};
 }

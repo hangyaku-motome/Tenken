@@ -7,6 +7,7 @@
 #include <GLFW/glfw3.h>
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -36,27 +37,27 @@ private:
   template <typename T>
   void WriteEntryAdr(const T entry, const std::vector<uint8_t> &value);
 
-  // favourite should always follow mutex!
   std::vector<FavouriteInfoT> Favourites;
   std::mutex FavouriteMutex;
 
   std::atomic<bool> FreezeRunning = false;
 
   std::thread FreezeThread;
+  std::thread ScannerThread;
 
   void WriteFreezeValues();
 
+  std::chrono::steady_clock::time_point SinceHitRefresh;
+
 public:
   Scanner() {};
+  ~Scanner() { FullClear(); }
 
-  void Clear() {
-    Hits.clear();
-    EndFreezeThread();
-    std::scoped_lock<std::mutex> lock(
-        FavouriteMutex); // feels useless but oh well.
-    Favourites.clear();
-    IsScanning = false;
-  }
+  void FullClear();
+
+  void RestartClear();
+
+  std::atomic<int32_t> HitRefreshInterval = -1;
 
   std::vector<HitInfoT> Hits;
 
@@ -68,46 +69,28 @@ public:
 
   void StartScan(const TargetInfoT &TargetInfo);
 
-  void AddToFavourite(const uint64_t index); // mutex
-
-  // I made wrappers cause it felt weird to otherwise call scanner from main
-  // with one of it's own variables.
   void RescanHit(const uint64_t index, const TargetTypeT &TargetType);
-  void RescanAllHits(const TargetTypeT &TargetType) {
-    IsScanning = true;
-    TotalLoad = Hits.size();
-    for (CurrentProgress = 0; CurrentProgress < Hits.size(); ++CurrentProgress)
-      RescanHit(CurrentProgress, TargetType);
-    IsScanning = false;
-  }
-
-  void RescanFavourite(const uint64_t index,
-                       const TargetTypeT &TargetType); // mutex
-
-  std::vector<FavouriteInfoT> GetFavourites() { // mutex
-    std::scoped_lock<std::mutex> lock(FavouriteMutex);
-    return Favourites;
-  }
-
-  void WriteFavourite(const uint64_t index,
-                      const std::vector<uint8_t> &value); // mutex
-
-  void SetFavouriteFreeze(const uint64_t index, const bool SetTo) { // mutex
-    std::scoped_lock<std::mutex> lock(FavouriteMutex);
-
-    Favourites[index].Frozen = SetTo;
-  }
-  void SetDescriptionFavourite(const uint64_t index,
-                               const std::string desc) { // mutex
-    std::scoped_lock<std::mutex> lock(FavouriteMutex);
-    Favourites[index].Description = desc;
-  }
-
+  void RescanAllHits(const TargetTypeT &TargetType);
   void WriteHit(const uint64_t index, const std::vector<uint8_t> &value);
-
   void FilterHit(const RelativeStatus Keep1);
   void FilterHit(const std::vector<uint8_t> &keepValue);
 
+  void AddToFavourite(const uint64_t index, const TargetTypeT TargetType);
+  std::vector<FavouriteInfoT> GetFavourites();
+  void RescanFavourite(const uint64_t index);
+  void WriteFavourite(const uint64_t index, const std::vector<uint8_t> &value);
+  void SetFreezeFavourite(const uint64_t index, const bool SetTo);
+  void SetDescriptionFavourite(const uint64_t index, const std::string desc);
+  void SetRefreshDurationFavourite(const uint64_t index, const float Duration);
+
   void StartFreezeThread();
   void EndFreezeThread();
+
+  void RunOnScannerThread(std::function<void(Scanner &)> task);
+
+  void AutoRefreshHits(const std::chrono::steady_clock::time_point LoopTime,
+                       const TargetTypeT &TargetType);
+
+  void
+  AutoRefreshFavourites(const std::chrono::steady_clock::time_point LoopTime);
 };

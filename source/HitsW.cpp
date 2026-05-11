@@ -1,5 +1,4 @@
 #include "HitsW.h"
-#include "LogW.h"
 #include "display.h"
 #include "imgui.h"
 #include "types.h"
@@ -26,39 +25,35 @@ Action HitsW::CycleW(const std::vector<HitInfoT> &Hits,
   }
 
   if (Progress != -1) {
-    ImGui::Text("Scanning in progress.");
-    ImGui::NewLine();
-    ImGui::ProgressBar(Progress);
-    ImGui::EndChild();
+    if (Hits.size() >= 100) {
+
+      ImGui::Text("Scanning in progress.");
+      ImGui::NewLine();
+      ImGui::ProgressBar(Progress);
+    };
+    EndW();
     return {};
   }
 
-  Action return_val;
+  auto HitTableAction = DrawHitTable(Hits, TargetInfo);
 
-  auto return_1 = DrawHitTable(Hits, TargetInfo);
-
-  bool disable_context_refresh = true;
+  Action ContextAction;
   if (selected_row >= 0 && selected_row <= Hits.size()) {
-    DrawContextMenu(Hits[selected_row]);
-    disable_context_refresh = false;
+    ContextAction =
+        Context.CycleContext(selected_row, Hits[selected_row], RefreshDuration);
   }
-  AlignButtons();
-  if (disable_context_refresh)
-    ImGui::BeginDisabled();
-  auto return_2 = DrawRefreshContextButton();
-  if (disable_context_refresh)
-    ImGui::EndDisabled();
-  ImGui::SameLine();
-  auto return_3 = DrawRefreshAllButton();
-
   EndW();
 
-  if (return_1.Type != OpType::NONE)
-    return return_1;
-  if (return_2)
-    return Action{OpType::REFRESH, DataType::HIT, selected_row};
-  if (return_3)
-    return Action{OpType::REFRESH_ALL, DataType::HIT, selected_row};
+  if (ContextAction.seconds.has_value())
+    RefreshDuration = ContextAction.seconds.value();
+
+  if (HitTableAction.Type != OpType::NONE)
+    return HitTableAction;
+
+  if (ContextAction.Type != OpType::NONE) {
+    ContextAction.WorkOn = DataType::HIT;
+    return ContextAction;
+  }
 
   return Action{OpType::NONE};
 }
@@ -103,7 +98,6 @@ Action HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
             }
           } else {
             if (ImGui::BeginPopupContextItem("hit_context_menu")) {
-              printf("ehhh\n");
               selected_row = row;
               if (ImGui::MenuItem("Add to Favourites")) {
                 ReturnAction.Type = OpType::ADD_TO_FAVOURITES;
@@ -173,70 +167,4 @@ Action HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
   }
   ImGui::EndChild();
   return ReturnAction;
-}
-
-void HitsW::DrawContextMenu(const HitInfoT Hit) {
-  int constexpr BYTES_BEFORE = 32;
-  int constexpr BYTES_AFTER = 32;
-  int constexpr BYTES_PER_ROW = 16;
-
-  if (Hit.bytes_around.size() !=
-      Hit.value.size() + BYTES_BEFORE + BYTES_AFTER) {
-    Log::Error("Hit " + std::to_string(Hit.location) +
-               " is near a memory region and I have not implemented a way to "
-               "reliably display bytes for that case. TODO later.");
-    return;
-  }
-
-  for (int i = 0; i < Hit.bytes_around.size(); ++i) {
-    ImGui::SameLine(0, 4);
-    if (i % 32 == 0)
-      ImGui::NewLine();
-    else if (i % 8 == 0) {
-      ImGui::Text(" ");
-      ImGui::SameLine(0, 4);
-    }
-    // logic might be wrong let's see
-    if (i >= BYTES_BEFORE && i + BYTES_AFTER < Hit.bytes_around.size()) {
-      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
-      ImGui::Text("%02X", Hit.bytes_around[i]);
-      ImGui::PopStyleColor();
-    } else
-      ImGui::Text("%02X", Hit.bytes_around[i]);
-  }
-}
-
-bool HitsW::DrawRefreshAllButton() {
-  float button_w = 150.0f;
-
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       ImGui::GetContentRegionAvail().x - button_w);
-
-  if (ImGui::Button("Refresh All Hits", {button_w, 0})) {
-    return true;
-  }
-  return false;
-}
-
-bool HitsW::DrawRefreshContextButton() {
-  float button_w = 150.0f;
-
-  if (ImGui::Button("Refresh Context Hit", {button_w, 0})) {
-    return true;
-  }
-
-  return false;
-}
-
-void HitsW::AlignButtons() {
-  float button_h = ImGui::GetFrameHeight();
-  float button_w = 150.0f;
-  float current_h = ImGui::GetContentRegionAvail().y;
-
-  if (current_h > button_h) {
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
-  }
-
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       (ImGui::GetContentRegionAvail().x - button_w) / 2);
 }

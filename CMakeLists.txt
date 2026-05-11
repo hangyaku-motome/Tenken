@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(My_MemScanner CXX)
+project(Tenken CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

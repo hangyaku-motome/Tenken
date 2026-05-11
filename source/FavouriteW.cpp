@@ -1,5 +1,4 @@
 #include "Favourite.h"
-#include "LogW.h"
 #include "display.h"
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -12,39 +11,43 @@ void FavouriteW::InitW() { ImGui::Begin("Favourite"); }
 
 void FavouriteW::EndW() { ImGui::End(); }
 
-Action FavouriteW::CycleW(const std::vector<FavouriteInfoT> &Favourites,
-                          const TargetTypeT &TargetType) {
+Action FavouriteW::CycleW(const std::vector<FavouriteInfoT> &Favourites) {
   InitW();
-  auto ActionType = DrawFavouriteTable(Favourites, TargetType);
+  auto TableAction = DrawFavouriteTable(Favourites);
 
+  Action ContextAction;
   bool disable_context_refresh = true;
   if (selected_row >= 0 && selected_row <= Favourites.size()) {
-    DrawContextMenu(Favourites[selected_row]);
-    disable_context_refresh = false;
+    bool SetRefresh =
+        Favourites[selected_row].auto_refresh_seconds == -1 ? false : true;
+    ContextAction = Context.CycleContext(
+        selected_row, Favourites[selected_row],
+        Favourites[selected_row].auto_refresh_seconds, SetRefresh);
   }
-  AlignButtons();
-  if (disable_context_refresh)
-    ImGui::BeginDisabled();
-  auto return_1 = DrawRefreshContextButton();
-  if (disable_context_refresh)
-    ImGui::EndDisabled();
+
   EndW();
 
-  if (return_1)
-    return Action{OpType::REFRESH, DataType::FAVOURITE, selected_row};
+  if (TableAction.Type != OpType::NONE)
+    return TableAction;
 
-  return ActionType;
+  if (ContextAction.Type != OpType::NONE) {
+    ContextAction.WorkOn = DataType::FAVOURITE;
+    ContextAction.index = selected_row;
+    return ContextAction;
+  }
+
+  return {}; // unsure if we should return none or {} (I think default handles
+             // that right?)
 }
 
 Action
-FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
-                               const TargetTypeT &TargetType) {
+FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
 
   Action ReturnAction;
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1f, 100.0f, 250.0f);
   if (ImGui::BeginChild("favouritestable", {0, avail - context_height})) {
-    if (ImGui::BeginTable("Favourites", 6,
+    if (ImGui::BeginTable("Favourites", 7,
                           ImGuiTableFlags_Resizable |
                               ImGuiTableFlags_ScrollY)) {
       ImGui::TableSetupColumn("Desc");
@@ -53,6 +56,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
       ImGui::TableSetupColumn("Old Value");
       ImGui::TableSetupColumn("Status");
       ImGui::TableSetupColumn("Frozen");
+      ImGui::TableSetupColumn("Type");
       ImGui::TableHeadersRow();
 
       for (uint64_t row = 0; row < Favourites.size(); row++) {
@@ -146,7 +150,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
           }
 
           std::vector<uint8_t> newval_buf(Favourites[row].value.size());
-          if (GetTargetValue(TargetType, newval_buf,
+          if (GetTargetValue(Favourites[row].TargetType, newval_buf,
                              ImGuiInputTextFlags_EnterReturnsTrue)) {
             ReturnAction.WorkOn = DataType::FAVOURITE;
             ReturnAction.index = row;
@@ -161,8 +165,9 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
             IsEditingVal = false;
           }
         } else
-          ImGui::Text("%s",
-                      ValToStr(Favourites[row].value, TargetType).c_str());
+          ImGui::Text(
+              "%s", ValToStr(Favourites[row].value, Favourites[row].TargetType)
+                        .c_str());
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar();
 
@@ -170,9 +175,9 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
 
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(169, 169, 169, 255));
         if (!Favourites[row].previous_value.empty())
-          ImGui::Text(
-              "%s",
-              ValToStr(Favourites[row].previous_value, TargetType).c_str());
+          ImGui::Text("%s", ValToStr(Favourites[row].previous_value,
+                                     Favourites[row].TargetType)
+                                .c_str());
         ImGui::PopStyleColor();
 
         ImGui::TableNextColumn();
@@ -186,6 +191,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
         ImGui::TableNextColumn();
 
         bool Freeze = Favourites[row].Frozen;
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
         ImGui::Checkbox("##freeze", &Freeze);
         if (Freeze != Favourites[row].Frozen) {
           if (Freeze) {
@@ -198,6 +204,12 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
             ReturnAction.index = row;
           }
         }
+        ImGui::PopStyleVar();
+
+        ImGui::TableNextColumn();
+
+        ImGui::Text("%s", TargetTypetoStr(Favourites[row].TargetType).c_str());
+
         if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) {
           AllColumnChosen = false;
           selected_row = -1;
@@ -210,58 +222,4 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites,
   }
   ImGui::EndChild();
   return ReturnAction;
-}
-
-bool FavouriteW::DrawRefreshContextButton() {
-  float button_w = 150.0f;
-
-  if (ImGui::Button("Refresh Context Hit", {button_w, 0})) {
-    return true;
-  }
-
-  return false;
-}
-
-void FavouriteW::AlignButtons() {
-  float button_h = ImGui::GetFrameHeight();
-  float button_w = 150.0f;
-  float current_h = ImGui::GetContentRegionAvail().y;
-
-  if (current_h > button_h) {
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
-  }
-
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       (ImGui::GetContentRegionAvail().x - button_w) / 2);
-}
-
-void FavouriteW::DrawContextMenu(const FavouriteInfoT Favourite) {
-  int constexpr BYTES_BEFORE = 32;
-  int constexpr BYTES_AFTER = 32;
-  int constexpr BYTES_PER_ROW = 16;
-
-  if (Favourite.bytes_around.size() !=
-      Favourite.value.size() + BYTES_BEFORE + BYTES_AFTER) {
-    Log::Error("Favourite " + std::to_string(Favourite.location) +
-               " is near a memory region and I have not implemented a way to "
-               "reliably display bytes for that case. TODO later.");
-    return;
-  }
-
-  for (int i = 0; i < Favourite.bytes_around.size(); ++i) {
-    ImGui::SameLine(0, 4);
-    if (i % 32 == 0)
-      ImGui::NewLine();
-    else if (i % 8 == 0) {
-      ImGui::Text(" ");
-      ImGui::SameLine(0, 4);
-    }
-    // logic might be wrong let's see
-    if (i >= BYTES_BEFORE && i + BYTES_AFTER < Favourite.bytes_around.size()) {
-      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
-      ImGui::Text("%02X", Favourite.bytes_around[i]);
-      ImGui::PopStyleColor();
-    } else
-      ImGui::Text("%02X", Favourite.bytes_around[i]);
-  }
 }

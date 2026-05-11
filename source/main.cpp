@@ -11,7 +11,6 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <cstdint>
-#include <thread>
 
 int main() {
 
@@ -33,11 +32,9 @@ int main() {
   TargetPopUp TargetPUpObj;
   FavouriteW FavouriteObj;
 
-  std::thread ScannerThread;
-
   Scanner ScannerObj;
 
-  std::vector<Action> PendingActions;
+  std::vector<Action> PendingActions{};
   bool TargetProcChosen = false;
 
   // Main loop.
@@ -46,6 +43,7 @@ int main() {
       ImGui_ImplGlfw_Sleep(10);
       continue;
     }
+    const auto LoopTime = std::chrono::steady_clock::now();
 
     start_frame();
     SetDefaultDisplay();
@@ -58,7 +56,7 @@ int main() {
       SearchObj = {};
       HitObj = {};
       TargetInfo = {};
-      ScannerObj.Clear();
+      ScannerObj.FullClear();
       TargetProcChosen = true;
       ScannerObj.StartFreezeThread();
     }
@@ -73,14 +71,11 @@ int main() {
     // Hits window.
     PendingActions.push_back(
         HitObj.CycleW(ScannerObj.Hits, TargetInfo, ProgressBar));
-
     // Search window.
     PendingActions.push_back(SearchObj.CycleW(TargetInfo, TargetProcChosen));
 
     // Favourite window.
-    PendingActions.push_back(
-        FavouriteObj.CycleW(ScannerObj.GetFavourites(), TargetInfo.TargetType));
-
+    PendingActions.push_back(FavouriteObj.CycleW(ScannerObj.GetFavourites()));
     // Log window.
     // should also tell found hit count on rescans and how many were filtered.
     LogObj.CycleW();
@@ -105,29 +100,23 @@ int main() {
                      "no index?");
           continue;
         }
-        ScannerObj.AddToFavourite(Action.index.value());
+        ScannerObj.AddToFavourite(Action.index.value(), TargetInfo.TargetType);
         continue;
       case OpType::FIRST_SCAN: // super heavy
         Log::Info("Starting initial scan...");
-        if (ScannerThread.joinable())
-          ScannerThread.join();
-        ScannerObj.IsScanning = true;
-        ScannerThread = std::thread(
-            [&ScannerObj, TargetInfo]() { ScannerObj.StartScan(TargetInfo); });
+        ScannerObj.RunOnScannerThread(
+            [&TargetInfo](Scanner &s) { s.StartScan(TargetInfo); });
         continue;
       case OpType::REMOVE_FROM_FAVOURITES:
         continue;
       case OpType::REFRESH_ALL: // kinda heavy.
-        if (Action.WorkOn == DataType::HIT) {
-          if (ScannerThread.joinable())
-            ScannerThread.join();
-          ScannerObj.IsScanning = true;
-          ScannerThread = std::thread([&ScannerObj, TargetInfo]() {
-            ScannerObj.RescanAllHits(TargetInfo.TargetType);
+        if (Action.WorkOn == DataType::HIT)
+          ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
+            s.RescanAllHits(TargetInfo.TargetType);
           });
-        } else if (Action.WorkOn == DataType::FAVOURITE)
+        else if (Action.WorkOn == DataType::FAVOURITE)
           for (uint64_t i = 0; i < ScannerObj.GetFavourites().size(); ++i)
-            ScannerObj.RescanFavourite(i, TargetInfo.TargetType);
+            ScannerObj.RescanFavourite(i);
         continue;
       case OpType::EDIT:
         if (!Action.newval.has_value()) {
@@ -141,17 +130,15 @@ int main() {
         } else if (Action.WorkOn == DataType::FAVOURITE) {
           ScannerObj.WriteFavourite(Action.index.value(),
                                     Action.newval.value());
-          ScannerObj.RescanFavourite(Action.index.value(),
-                                     TargetInfo.TargetType);
+          ScannerObj.RescanFavourite(Action.index.value());
         }
         continue;
       case OpType::FILTER: // heavy.
         if (Action.WorkOn != DataType::HIT)
           continue;
-        printf("hi you tried to rescan\n");
-        if (!Action.BasedOnCurrentValues.value())
-          for (uint64_t i = 0; i < ScannerObj.Hits.size(); ++i)
-            ScannerObj.RescanHit(i, TargetInfo.TargetType);
+        ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
+          s.RescanAllHits(TargetInfo.TargetType);
+        });
         if (Action.KeepType.has_value())
           ScannerObj.FilterHit(Action.KeepType.value());
         else
@@ -166,26 +153,69 @@ int main() {
         if (Action.WorkOn == DataType::HIT)
           ScannerObj.RescanHit(Action.index.value(), TargetInfo.TargetType);
         else if (Action.WorkOn == DataType::FAVOURITE)
-          ScannerObj.RescanFavourite(Action.index.value(),
-                                     TargetInfo.TargetType);
+          ScannerObj.RescanFavourite(Action.index.value());
         continue;
       case OpType::FREEZE:
         if (!Action.index.has_value()) {
           Log::Error("In action freeze, no index value");
           continue;
         }
-        ScannerObj.SetFavouriteFreeze(Action.index.value(), true);
+        ScannerObj.SetFreezeFavourite(Action.index.value(), true);
 
         continue;
       case OpType::UNFREEZE:
-        ScannerObj.SetFavouriteFreeze(Action.index.value(), false);
+        ScannerObj.SetFreezeFavourite(Action.index.value(), false);
         continue;
       case OpType::CHANGE_NAME:
+        if (!Action.index.has_value()) {
+          printf("sdfasfsad\n");
+          continue;
+        }
+        if (!Action.newname.has_value()) {
+          printf("stinkly\n");
+        }
         ScannerObj.SetDescriptionFavourite(Action.index.value(),
                                            Action.newname.value());
+        continue;
+      case OpType::REGULAR_REFRESH:
+        if (Action.WorkOn == DataType::HIT) {
+          if (Action.seconds.value() == -1) {
+            ScannerObj.HitRefreshInterval = -1;
+            continue;
+          }
+          if (Action.seconds.value() == 0) {
+            ScannerObj.HitRefreshInterval = 0;
+            continue;
+          }
+          printf("I came here too!\n");
+          ScannerObj.HitRefreshInterval =
+              static_cast<uint32_t>(Action.seconds.value() * 1000) >= 300
+                  ? static_cast<uint32_t>(Action.seconds.value() * 1000)
+                  : 300;
+          continue;
+        }
+        if (Action.WorkOn == DataType::FAVOURITE) {
+          printf("okay you want me to regularly refresh favourite %lu. with "
+                 "duration %f\n",
+                 Action.index.value(), Action.seconds.value());
+          ScannerObj.SetRefreshDurationFavourite(Action.index.value(),
+                                                 Action.seconds.value());
+        }
+        continue;
+      case OpType::RESTART_STATE:
+        HitObj = {};
+        ScannerObj.RestartClear();
+        TargetProcChosen = true;
+        ScannerObj.StartFreezeThread();
+        TargetInfo = {};
+        SearchObj = {};
+        continue;
       }
     }
     PendingActions.clear();
+
+    ScannerObj.AutoRefreshHits(LoopTime, TargetInfo.TargetType);
+    ScannerObj.AutoRefreshFavourites(LoopTime);
   }
   exit_main(window);
 }

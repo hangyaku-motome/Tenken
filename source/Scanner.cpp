@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
@@ -207,7 +208,8 @@ void Scanner::WriteEntryAdr(const T entry, const std::vector<uint8_t> &value) {
   }
 }
 
-void Scanner::AddToFavourite(const uint64_t index) { // mutex
+void Scanner::AddToFavourite(const uint64_t index,
+                             const TargetTypeT TargetType) { // mutex
   std::scoped_lock<std::mutex> lock(FavouriteMutex);
 
   FavouriteInfoT PushFavourite;
@@ -215,6 +217,7 @@ void Scanner::AddToFavourite(const uint64_t index) { // mutex
   PushFavourite.location = Hits[index].location;
   PushFavourite.value = Hits[index].value;
   PushFavourite.frozen_value = PushFavourite.value;
+  PushFavourite.TargetType = TargetType;
   Favourites.push_back(PushFavourite);
 }
 
@@ -227,12 +230,12 @@ void Scanner::RescanEntry(T &entry, const TargetTypeT &TargetType) {
 void Scanner::RescanHit(const uint64_t index, const TargetTypeT &TargetType) {
   RescanEntry(Hits[index], TargetType);
 }
-void Scanner::RescanFavourite(const uint64_t index,
-                              const TargetTypeT &TargetType) { // mutex
+
+void Scanner::RescanFavourite(const uint64_t index) { // mutex
   std::scoped_lock<std::mutex> lock(FavouriteMutex);
 
   Favourites[index].previous_bytes_around = Favourites[index].bytes_around;
-  RescanEntry(Favourites[index], TargetType);
+  RescanEntry(Favourites[index], Favourites[index].TargetType);
 }
 
 void Scanner::WriteFavourite(const uint64_t index,
@@ -267,4 +270,98 @@ void Scanner::EndFreezeThread() {
   FreezeRunning = false;
   if (FreezeThread.joinable())
     FreezeThread.join();
+}
+
+void Scanner::RescanAllHits(const TargetTypeT &TargetType) {
+  TotalLoad = Hits.size();
+  for (CurrentProgress = 0; CurrentProgress < Hits.size(); ++CurrentProgress)
+    RescanHit(CurrentProgress, TargetType);
+}
+
+void Scanner::RunOnScannerThread(std::function<void(Scanner &)> task) {
+  if (ScannerThread.joinable())
+    ScannerThread.join();
+  IsScanning = true;
+  ScannerThread = std::thread([this, task]() {
+    task(*this);
+    IsScanning = false;
+  });
+}
+
+void Scanner::SetDescriptionFavourite(const uint64_t index,
+                                      const std::string desc) { // mutex
+  std::scoped_lock<std::mutex> lock(FavouriteMutex);
+  Favourites[index].Description = desc;
+}
+
+void Scanner::SetFreezeFavourite(const uint64_t index,
+                                 const bool SetTo) { // mutex
+  std::scoped_lock<std::mutex> lock(FavouriteMutex);
+
+  Favourites[index].Frozen = SetTo;
+}
+
+std::vector<FavouriteInfoT> Scanner::GetFavourites() { // mutex
+  std::scoped_lock<std::mutex> lock(FavouriteMutex);
+  return Favourites;
+}
+
+void Scanner::FullClear() {
+  EndFreezeThread();
+  if (ScannerThread.joinable())
+    ScannerThread.join();
+  Hits.clear();
+  std::scoped_lock<std::mutex> lock(FavouriteMutex);
+  Favourites.clear();
+  IsScanning = false;
+}
+
+void Scanner::RestartClear() {
+  EndFreezeThread();
+  if (ScannerThread.joinable())
+    ScannerThread.join();
+  Hits.clear();
+  IsScanning = false;
+}
+
+void Scanner::SetRefreshDurationFavourite(const uint64_t index,
+                                          const float Duration) {
+  std::scoped_lock<std::mutex> lock(FavouriteMutex);
+
+  Favourites[index].auto_refresh_seconds = Duration;
+}
+
+// no mutex
+void Scanner::AutoRefreshFavourites(
+    const std::chrono::steady_clock::time_point LoopTime) {
+
+  for (uint64_t i = 0; i < Favourites.size(); ++i) {
+    if (Favourites[i].auto_refresh_seconds < 0.3)
+      continue;
+
+    std::chrono::milliseconds difference =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            LoopTime - Favourites[i].since_last_auto_refresh);
+    if (difference.count() < Favourites[i].auto_refresh_seconds * 1000)
+      continue;
+
+    std::cout << std::to_string(difference.count()) << "  \n";
+    RescanFavourite(i);
+    Favourites[i].since_last_auto_refresh = LoopTime;
+  }
+}
+
+void Scanner::AutoRefreshHits(
+    const std::chrono::steady_clock::time_point LoopTime,
+    const TargetTypeT &TargetType) {
+  std::chrono::milliseconds difference =
+      std::chrono::duration_cast<std::chrono::milliseconds>(LoopTime -
+                                                            SinceHitRefresh);
+  if (IsScanning || HitRefreshInterval < 0.3 ||
+      difference.count() < HitRefreshInterval)
+    return;
+  printf("refreshed em!!\n");
+  RunOnScannerThread(
+      [&TargetType](Scanner &s) { s.RescanAllHits(TargetType); });
+  SinceHitRefresh = LoopTime;
 }

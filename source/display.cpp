@@ -33,7 +33,7 @@ GLFWwindow *initalise_main() {
 
   GLFWwindow *window =
       glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale),
-                       "My_MemScanner", nullptr, nullptr);
+                       "Tenken", nullptr, nullptr);
   if (window == nullptr)
     exit(1);
 
@@ -311,6 +311,36 @@ std::string ValToStr(const std::vector<uint8_t> &Bytes,
   }
 }
 
+std::string TargetTypetoStr(const TargetTypeT TargetType) {
+  switch (TargetType) {
+  case TargetTypeT::uInt8:
+    return "uint8";
+  case TargetTypeT::uInt16:
+    return "uint16";
+  case TargetTypeT::uInt32:
+    return "uint32";
+  case TargetTypeT::uInt64:
+    return "uint64";
+  case TargetTypeT::Int8:
+    return "int8";
+  case TargetTypeT::Int16:
+    return "int16";
+  case TargetTypeT::Int32:
+    return "int32";
+  case TargetTypeT::Int64:
+    return "int64";
+  case TargetTypeT::Float:
+    return "float";
+  case TargetTypeT::Double:
+    return "double";
+  case TargetTypeT::String:
+    return "string";
+  case TargetTypeT::Invalid:
+  default:
+    return "invalid";
+  }
+}
+
 std::string RelativeStatusToStr(const RelativeStatus Status) {
   switch (Status) {
   case RelativeStatus::INCREASED:
@@ -325,4 +355,87 @@ std::string RelativeStatusToStr(const RelativeStatus Status) {
     return "Unset...";
   }
   return "";
+}
+
+void ContextDisplay::AlignButtons() {
+  button_h = ImGui::GetFrameHeight();
+  button_w = 150.0f;
+  float current_h = ImGui::GetContentRegionAvail().y;
+
+  if (current_h > button_h) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
+  }
+
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       (ImGui::GetContentRegionAvail().x - button_w) / 2);
+}
+
+bool ContextDisplay::DrawRefreshContextButton() {
+  float button_w = 150.0f;
+
+  if (ImGui::Button("Refresh Context Entry", {button_w, 0})) {
+    return true;
+  }
+
+  return false;
+}
+
+bool ContextDisplay::DrawRefreshAllButton() {
+  float current_h = ImGui::GetContentRegionAvail().y;
+  if (current_h > button_h) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
+  }
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       ImGui::GetContentRegionAvail().x - button_w);
+
+  if (ImGui::Button("Refresh All Entries", {button_w, 0})) {
+    return true;
+  }
+  return false;
+}
+
+float ContextDisplay::DrawRefreshInterval(const float RefreshDuration) {
+  float DisplaySeconds = RefreshDuration < 0.3 ? 0 : RefreshDuration;
+  int32_t returnval = -2;
+
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       ImGui::GetContentRegionAvail().x - slider_w -
+                       checkbox_w - 25);
+  ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
+                       ImGui::GetContentRegionAvail().y - 50);
+
+  ImGui::TextDisabled("(?)");
+  if (ImGui::IsItemHovered()) {
+    ImGui::SetTooltip("Will regularly refresh entry each given duration.\n");
+  }
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       ImGui::GetContentRegionAvail().x - slider_w -
+                       checkbox_w);
+  ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
+                       ImGui::GetContentRegionAvail().y - 50);
+  if (ImGui::Checkbox("##Regular Refresh", &IsRefresh)) {
+    if (!IsRefresh) {
+      returnval = -1;
+    }
+    if (IsRefresh)
+      returnval = 0;
+  }
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                       ImGui::GetContentRegionAvail().x - slider_w);
+  ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
+                       ImGui::GetContentRegionAvail().y - 50);
+
+  ImGui::SetNextItemWidth(slider_w);
+
+  if (!IsRefresh)
+    ImGui::BeginDisabled();
+  if (ImGui::SliderFloat("##interval", &DisplaySeconds, 0.3f, 3.0f, "%.1f",
+                         ImGuiSliderFlags_AlwaysClamp)) {
+    return DisplaySeconds;
+  }
+
+  if (!IsRefresh)
+    ImGui::EndDisabled();
+
+  return returnval;
 }

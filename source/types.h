@@ -1,6 +1,7 @@
 #pragma once
 
 #include "imgui.h"
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -65,7 +66,6 @@ struct TargetInfoT {
   TargetTypeT TargetType = TargetTypeT::Invalid;
 };
 
-// we can merge some of these types and just add a bool for "favourite or hit".
 enum class OpType {
   NONE,
   INIT_SCANNER,
@@ -77,8 +77,10 @@ enum class OpType {
   CHANGE_NAME, // Questionable entry.
   REFRESH,
   REFRESH_ALL,
+  REGULAR_REFRESH,
   FREEZE,
-  UNFREEZE
+  UNFREEZE,
+  RESTART_STATE
 };
 
 enum class DataType { INVALID, HIT, FAVOURITE };
@@ -91,6 +93,7 @@ struct FavouriteInfoT {
   uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
+  TargetTypeT TargetType;
   std::vector<uint8_t> bytes_around;
   std::vector<uint8_t>
       previous_bytes_around; // thought about adding to hits as well but meh.
@@ -98,6 +101,8 @@ struct FavouriteInfoT {
   bool Frozen = false;
   std::string Description = "";
   std::vector<uint8_t> frozen_value;
+  float auto_refresh_seconds = -1;
+  std::chrono::steady_clock::time_point since_last_auto_refresh{};
 };
 
 struct Action {
@@ -109,4 +114,10 @@ struct Action {
   std::optional<RelativeStatus> KeepType;
   std::optional<bool> BasedOnCurrentValues =
       false; // we might wanna remove the default value.
+  std::optional<TargetTypeT> TargetType;
+  // Refresh seconds and interpertation:
+  // -1 means stop regular refreshing.
+  // 0 means start regular refreshing.
+  // 0.3 < x < 3.0 is valid.
+  std::optional<float> seconds;
 };
