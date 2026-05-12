@@ -6,16 +6,16 @@
 class LogW {
 
 private:
-  void InitW();
-  void EndW();
+  static void InitW();
+  static void EndW();
 
 public:
-  void CycleW();
+  static void CycleW();
 };
 
 namespace Log {
-const std::vector<std::string> GetLogsText();
+std::vector<std::string> GetLogsText();
 
-void Info(std::string WrittenString);
-void Error(std::string WrittenString);
+void Info(const std::string &WrittenString);
+void Error(const std::string &WrittenString);
 } // namespace Log

@@ -5,6 +5,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include "types.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
@@ -21,7 +22,7 @@ static void glfw_error_callback(int error, const char *description) {
 GLFWwindow *initalise_main() {
   glfwSetErrorCallback(glfw_error_callback);
 
-  if (!glfwInit())
+  if (glfwInit() == 0)
     exit(1);
 
   const char *glsl_version = "#version 130";
@@ -31,9 +32,9 @@ GLFWwindow *initalise_main() {
   float main_scale =
       ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
 
-  GLFWwindow *window =
-      glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale),
-                       "Tenken", nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(static_cast<int32_t>(1280 * main_scale),
+                                        static_cast<int32_t>(800 * main_scale),
+                                        "Tenken", nullptr, nullptr);
   if (window == nullptr)
     exit(1);
 
@@ -97,8 +98,8 @@ void SetDefaultDisplay() {
   ImGui::SetNextWindowPos(viewport->Pos);
   ImGui::SetNextWindowSize(viewport->Size);
   ImGui::SetNextWindowViewport(viewport->ID);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0F);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
   ImGui::Begin("DockingWindow", nullptr, flags);
@@ -118,12 +119,12 @@ void SetDefaultDisplay() {
 
     ImGuiID main = dockspaceID;
     ImGuiID bottom =
-        ImGui::DockBuilderSplitNode(main, ImGuiDir_Down, 0.3f, nullptr, &main);
+        ImGui::DockBuilderSplitNode(main, ImGuiDir_Down, 0.3F, nullptr, &main);
     ImGuiID top_right =
-        ImGui::DockBuilderSplitNode(main, ImGuiDir_Right, 0.3f, nullptr, &main);
+        ImGui::DockBuilderSplitNode(main, ImGuiDir_Right, 0.3F, nullptr, &main);
 
     ImGuiID bottom_right = ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Right,
-                                                       0.5f, nullptr, &bottom);
+                                                       0.5F, nullptr, &bottom);
 
     ImGui::DockBuilderDockWindow("Hits", main);
     ImGui::DockBuilderDockWindow("Log", bottom);
@@ -150,19 +151,6 @@ void MainMenuBarCycle(TargetPopUp &TargetPUp) {
   }
 }
 
-std::string BytesToHex(const std::vector<uint8_t> &Data) {
-  char static constexpr hex[] = "0123456789ABCDEF";
-  std::string ReturnStr;
-  ReturnStr.reserve(Data.size() * 3);
-  for (int i = 0; i < Data.size(); ++i) {
-    if (i > 0)
-      ReturnStr += " ";
-    ReturnStr += hex[Data[i] >> 4];
-    ReturnStr += hex[Data[i] & 0x0F];
-  }
-  return ReturnStr;
-}
-
 template <typename Out, typename In>
 void WriteVal(const In val, std::vector<uint8_t> &write_to) {
   Out write;
@@ -177,77 +165,83 @@ bool GetTargetValue(const TargetTypeT TargetType,
   if (TargetType == TargetTypeT::Invalid)
     return false;
 
-  std::vector<uint8_t> tempbuf(64);
-  if (!ImGui::InputText("##value", (char *)(tempbuf.data()), tempbuf.size(),
-                        flags))
+  std::string tempbuf = ValToStr(write_to, TargetType);
+  if (!ImGui::InputText("##value", &tempbuf, flags)) {
+    if (tempbuf.empty())
+      write_to.clear();
     return false;
+  }
 
   char *end;
 
-  uint64_t u_val = strtoull((char *)(tempbuf.data()), &end, 10);
-  bool uval_ok = (*end == '\0' || end != (char *)tempbuf.data());
+  uint64_t u_val = strtoull(reinterpret_cast<char *>(tempbuf.data()), &end, 10);
+  bool uval_ok =
+      (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
 
-  int64_t s_val = strtoll((char *)(tempbuf.data()), &end, 10);
-  bool sval_ok = (*end == '\0' || end != (char *)tempbuf.data());
+  int64_t s_val = strtoll(reinterpret_cast<char *>(tempbuf.data()), &end, 10);
+  bool sval_ok =
+      (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
 
   switch (TargetType) {
   case TargetTypeT::uInt8:
     if (!(u_val <= UINT8_MAX) || !uval_ok)
-      return false;
+      break;
     WriteVal<uint8_t>(u_val, write_to);
     return true;
   case TargetTypeT::uInt16:
     if (!(u_val <= UINT16_MAX) || !uval_ok)
-      return false;
+      break;
     WriteVal<uint16_t>(u_val, write_to);
     return true;
   case TargetTypeT::uInt32:
     if (!(u_val <= UINT32_MAX) || !uval_ok)
-      return false;
+      break;
     WriteVal<uint32_t>(u_val, write_to);
     return true;
   case TargetTypeT::uInt64:
     if (!uval_ok)
-      return false;
+      break;
     WriteVal<uint64_t>(u_val, write_to);
     return true;
   case TargetTypeT::Int8:
     if (!(s_val <= INT8_MAX) || !(INT8_MIN <= s_val) || !sval_ok)
-      return false;
+      break;
     WriteVal<int8_t>(s_val, write_to);
     return true;
   case TargetTypeT::Int16:
     if (!(s_val <= INT16_MAX) || !(INT16_MIN <= s_val) || !sval_ok)
-      return false;
+      break;
     WriteVal<int16_t>(s_val, write_to);
     return true;
   case TargetTypeT::Int32:
     if (!(s_val <= INT32_MAX) || !(INT32_MIN <= s_val) || !sval_ok)
-      return false;
+      break;
     WriteVal<int32_t>(s_val, write_to);
     return true;
   case TargetTypeT::Int64:
     if (!sval_ok)
-      return false;
+      break;
     WriteVal<int64_t>(s_val, write_to);
     return true;
   case TargetTypeT::Float: {
-    float float_value = strtof((char *)(tempbuf.data()), &end);
-    if (!(*end == '\0' || end != (char *)tempbuf.data()))
-      return false;
+    float float_value = strtof(reinterpret_cast<char *>(tempbuf.data()), &end);
+    if (*end != '\0' && end == reinterpret_cast<char *>(tempbuf.data()))
+      break;
     WriteVal<float>(float_value, write_to);
     return true;
   }
   case TargetTypeT::Double: {
-    double double_value = strtof((char *)(tempbuf.data()), &end);
-    if (!(*end == '\0' || end != (char *)tempbuf.data()))
-      return false;
+    double double_value =
+        strtof(reinterpret_cast<char *>(tempbuf.data()), &end);
+    if (*end != '\0' && end == reinterpret_cast<char *>(tempbuf.data()))
+      break;
     WriteVal<double>(double_value, write_to);
     return true;
   }
   case TargetTypeT::String: {
-    auto null_ter = std::find(tempbuf.begin(), tempbuf.end(), '\0');
-    write_to.resize(std::distance(tempbuf.begin(), null_ter));
+    auto null_ter = std::ranges::find(tempbuf, '\0');
+    write_to.resize(
+        static_cast<uint64_t>(std::distance(tempbuf.begin(), null_ter)));
     memcpy(write_to.data(), tempbuf.data(), write_to.size());
     return true;
   }
@@ -256,6 +250,10 @@ bool GetTargetValue(const TargetTypeT TargetType,
     Log::Error("Why did get target value recieve invalid target type?");
     return false;
   }
+
+  tempbuf.clear();
+  write_to.clear();
+  return false;
 }
 
 template <typename T> T readAs(const std::vector<uint8_t> &buffer) {
@@ -280,6 +278,8 @@ template <typename T> T readAs(const std::vector<uint8_t> &buffer) {
 std::string ValToStr(const std::vector<uint8_t> &Bytes,
                      const TargetTypeT TargetType) {
 
+  if (Bytes.empty())
+    return "";
   switch (TargetType) {
   case TargetTypeT::uInt8:
     return std::to_string(readAs<uint8_t>(Bytes));
@@ -306,12 +306,12 @@ std::string ValToStr(const std::vector<uint8_t> &Bytes,
                        Bytes.size());
   default:
     Log::Error("Why is TargetType undefined in HitValToStr?? (TargetType: " +
-               std::to_string((int)TargetType));
+               std::to_string(static_cast<int>(TargetType)));
     return {};
   }
 }
 
-std::string TargetTypetoStr(const TargetTypeT TargetType) {
+std::string TargetTypeToStr(const TargetTypeT TargetType) {
   switch (TargetType) {
   case TargetTypeT::uInt8:
     return "uint8";
@@ -355,87 +355,4 @@ std::string RelativeStatusToStr(const RelativeStatus Status) {
     return "Unset...";
   }
   return "";
-}
-
-void ContextDisplay::AlignButtons() {
-  button_h = ImGui::GetFrameHeight();
-  button_w = 150.0f;
-  float current_h = ImGui::GetContentRegionAvail().y;
-
-  if (current_h > button_h) {
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
-  }
-
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       (ImGui::GetContentRegionAvail().x - button_w) / 2);
-}
-
-bool ContextDisplay::DrawRefreshContextButton() {
-  float button_w = 150.0f;
-
-  if (ImGui::Button("Refresh Context Entry", {button_w, 0})) {
-    return true;
-  }
-
-  return false;
-}
-
-bool ContextDisplay::DrawRefreshAllButton() {
-  float current_h = ImGui::GetContentRegionAvail().y;
-  if (current_h > button_h) {
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
-  }
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       ImGui::GetContentRegionAvail().x - button_w);
-
-  if (ImGui::Button("Refresh All Entries", {button_w, 0})) {
-    return true;
-  }
-  return false;
-}
-
-float ContextDisplay::DrawRefreshInterval(const float RefreshDuration) {
-  float DisplaySeconds = RefreshDuration < 0.3 ? 0 : RefreshDuration;
-  int32_t returnval = -2;
-
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       ImGui::GetContentRegionAvail().x - slider_w -
-                       checkbox_w - 25);
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
-                       ImGui::GetContentRegionAvail().y - 50);
-
-  ImGui::TextDisabled("(?)");
-  if (ImGui::IsItemHovered()) {
-    ImGui::SetTooltip("Will regularly refresh entry each given duration.\n");
-  }
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       ImGui::GetContentRegionAvail().x - slider_w -
-                       checkbox_w);
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
-                       ImGui::GetContentRegionAvail().y - 50);
-  if (ImGui::Checkbox("##Regular Refresh", &IsRefresh)) {
-    if (!IsRefresh) {
-      returnval = -1;
-    }
-    if (IsRefresh)
-      returnval = 0;
-  }
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       ImGui::GetContentRegionAvail().x - slider_w);
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
-                       ImGui::GetContentRegionAvail().y - 50);
-
-  ImGui::SetNextItemWidth(slider_w);
-
-  if (!IsRefresh)
-    ImGui::BeginDisabled();
-  if (ImGui::SliderFloat("##interval", &DisplaySeconds, 0.3f, 3.0f, "%.1f",
-                         ImGuiSliderFlags_AlwaysClamp)) {
-    return DisplaySeconds;
-  }
-
-  if (!IsRefresh)
-    ImGui::EndDisabled();
-
-  return returnval;
 }

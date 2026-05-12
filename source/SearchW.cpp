@@ -18,12 +18,14 @@ void SearchW::EndW() { ImGui::End(); }
 // I do not know what the comment above is supposed to mean.
 // Okay I do now. The problem is we are arbitarily writing the options and then
 // seperately wiring it back to the enums. It's a bit fragile, isn't it?
-void SearchW::GetTargetType(TargetTypeT &TargetType) {
+bool SearchW::GetTargetType(TargetTypeT &TargetType) {
+  bool Changed = false;
 
   if (ImGui::Combo("Type", &TempTargetType,
                    "int8\0int16\0int32\0int64\0float\0double\0string\0\0")) {
     TargetType = static_cast<TargetTypeT>(TempTargetType + 4);
-    Log::Info("Chosen target type:" + TargetTypeToString(TargetType) + "\n");
+    Log::Info("Chosen target type:" + TargetTypeToStr(TargetType) + "\n");
+    Changed = true;
   }
 
   bool IsInt = (static_cast<int>(TargetType) <= 7);
@@ -41,69 +43,52 @@ void SearchW::GetTargetType(TargetTypeT &TargetType) {
       Log::Info("Will search as signed.\n");
       TargetType = static_cast<TargetTypeT>(TempTargetType + 4);
     }
+    Changed = true;
   }
 
   ImGui::EndDisabled();
-}
 
-inline std::string SearchW::TargetTypeToString(TargetTypeT TargetType) {
-  switch (TargetType) {
-  case TargetTypeT::Int8:
-    return "Int8";
-  case TargetTypeT::Int16:
-    return "Int16";
-  case TargetTypeT::Int32:
-    return "Int32";
-  case TargetTypeT::Int64:
-    return "Int64";
-  case TargetTypeT::Float:
-    return "Float";
-  case TargetTypeT::Double:
-    return "Double";
-  case TargetTypeT::String:
-    return "String";
-  default:
-    return "Invalid";
-  }
+  return Changed;
 }
 
 OpType SearchW::CycleFirstW(TargetInfoT &TargetInfo, bool TargetProcChosen) {
   InitW();
-  if (TargetProcChosen == false) {
-    ImGui::Text("No target chosen yet.");
+  if (!TargetProcChosen) {
+    ImGui::TextUnformatted("No target chosen yet.");
     ImGui::End();
     return OpType::NONE;
   }
 
-  GetTargetType(TargetInfo.TargetType);
+  if (GetTargetType(TargetInfo.TargetType))
+    TargetInfo.value.clear();
 
-  // We should check if it also empty, not just "Init value given" which
-  // changes on any change. "" is not valid.
-  if (GetTargetValue(TargetInfo.TargetType, TargetInfo.value) == true)
+  if (GetTargetValue(TargetInfo.TargetType, TargetInfo.value))
     InitValueGiven = true;
+
+  if (TargetInfo.value.empty())
+    InitValueGiven = false;
+
   ImGui::BeginDisabled(!InitValueGiven);
   bool PressedScan = ImGui::Button("Start First Scan!");
   ImGui::EndDisabled();
   EndW();
   if (PressedScan) {
     IsOnFirstScanWindow = false;
+    TempFilterType = -1;
     return OpType::FIRST_SCAN;
-  } else
-    return OpType::NONE;
-
+  }
   return OpType::NONE;
 }
 
-Action SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
+SearchWAction SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
   InitW();
 
   if (ImGui::Combo(
           "Keep", &TempFilterType,
           "unchanged\0changed\0increased\0decreased\0specific value\0\0")) {
   }
-  if (TempFilterType == 4) {
+  if (TempFilterType == 4)
     GetTargetValue(TargetInfo.TargetType, TargetInfo.value);
-  }
 
   if (TempFilterType != -1) {
     // would not make sense to include this in first rescan...Well, at least
@@ -120,19 +105,21 @@ Action SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
     }
   }
 
+  ImGui::BeginDisabled(TempFilterType == -1);
   if (ImGui::Button("Rescan!")) {
-    Action ReturnVal;
+    SearchWAction ReturnVal;
     ReturnVal.Type = OpType::FILTER;
     ReturnVal.BasedOnCurrentValues = BasedOnCurrentValues;
-    ReturnVal.WorkOn = DataType::HIT;
     if (TempFilterType != 4)
       ReturnVal.KeepType = static_cast<RelativeStatus>(TempFilterType);
+    ImGui::EndDisabled();
     EndW();
     return ReturnVal;
   }
+  ImGui::EndDisabled();
 
   float button_h = ImGui::GetFrameHeight();
-  float button_w = 120.0f;
+  float button_w = 120.0F;
   float current_h = ImGui::GetContentRegionAvail().y;
 
   if (current_h > button_h) {
@@ -140,15 +127,15 @@ Action SearchW::CycleSecondW(TargetInfoT &TargetInfo) {
   }
 
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       (ImGui::GetContentRegionAvail().x - button_w) / 2);
+                       ((ImGui::GetContentRegionAvail().x - button_w) / 2));
 
   if (ImGui::Button("Restart scan.", {button_w, 0})) {
-    Action ReturnVal;
+    SearchWAction ReturnVal;
     ReturnVal.Type = OpType::RESTART_STATE;
     EndW();
     return ReturnVal;
   }
 
   EndW();
-  return Action{OpType::NONE};
+  return {};
 }

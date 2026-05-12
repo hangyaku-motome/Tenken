@@ -13,7 +13,7 @@ void LogW::EndW() { ImGui::End(); }
 void LogW::CycleW() {
   InitW();
   for (const auto &Text : Log::GetLogsText()) {
-    ImGui::Text("%s", Text.c_str());
+    ImGui::TextUnformatted(Text.c_str());
   }
   EndW();
 }
@@ -24,16 +24,16 @@ std::mutex LogMutex;
 std::vector<std::string> Logs;
 } // namespace
 
-const std::vector<std::string> GetLogsText() {
+std::vector<std::string> GetLogsText() {
   std::scoped_lock<std::mutex> lock(LogMutex);
   return Logs;
 }
 
-void Info(std::string WrittenString) {
+void Info(const std::string &WrittenString) {
   std::scoped_lock<std::mutex> lock(LogMutex);
   Logs.push_back(WrittenString);
 }
-void Error(std::string WrittenString) {
+void Error(const std::string &WrittenString) {
   std::scoped_lock<std::mutex> lock(LogMutex);
   Logs.push_back("ERROR: " + WrittenString);
 }

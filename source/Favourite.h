@@ -1,9 +1,11 @@
-#include "display.h"
+#pragma once
+
+#include "ContextDisplay.h"
 #include "types.h"
 
 class FavouriteW {
-  void InitW();
-  void EndW();
+  static void InitW();
+  static void EndW();
   int64_t selected_row = -1;
   int64_t selected_element = 0;
   bool IsEditingDesc = false;
@@ -12,13 +14,14 @@ class FavouriteW {
   bool JustStartedEditingVal = false;
   bool AllColumnChosen = false;
 
-  Action DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites);
+  FavouriteWAction
+  DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites);
   bool DrawRefreshContextButton();
   void AlignButtons();
-  void DrawContextMenu(const FavouriteInfoT Favourite);
+  void DrawContextMenu(const FavouriteInfoT &Favourite);
 
   ContextDisplay Context;
 
 public:
-  Action CycleW(const std::vector<FavouriteInfoT> &Favourites);
+  FavouriteWAction CycleW(const std::vector<FavouriteInfoT> &Favourites);
 };

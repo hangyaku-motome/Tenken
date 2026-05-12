@@ -6,10 +6,9 @@
 
 class SearchW {
 private:
-  void InitW();
-  void EndW();
-  void GetTargetType(TargetTypeT &TargetType);
-  inline std::string TargetTypeToString(TargetTypeT TargetType);
+  static void InitW();
+  static void EndW();
+  bool GetTargetType(TargetTypeT &TargetType);
   std::string GetHitFilter(TargetInfoT &TargetInfo);
 
   bool InitValueGiven = false;
@@ -17,17 +16,18 @@ private:
   bool IsUnsigned = false;
   int TempFilterType = -1;
 
-public:
   bool IsOnFirstScanWindow = true;
   bool BasedOnCurrentValues = false;
 
+public:
   OpType CycleFirstW(TargetInfoT &TargetInfo, bool TargetProcChosen);
-  Action CycleSecondW(TargetInfoT &TargetInfo);
+  SearchWAction CycleSecondW(TargetInfoT &TargetInfo);
 
-  Action CycleW(TargetInfoT &TargetInfo, bool TargetProcChosen) {
+  SearchWAction CycleW(TargetInfoT &TargetInfo, bool TargetProcChosen) {
     if (IsOnFirstScanWindow)
-      return Action{CycleFirstW(TargetInfo, TargetProcChosen)};
-    else
-      return CycleSecondW(TargetInfo);
+      return SearchWAction{.Type = CycleFirstW(TargetInfo, TargetProcChosen),
+                           .KeepType = RelativeStatus::UNSET};
+
+    return CycleSecondW(TargetInfo);
   }
 };

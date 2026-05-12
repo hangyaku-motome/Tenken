@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-enum class TargetTypeT {
+enum class TargetTypeT : std::int8_t {
   uInt8,
   uInt16,
   uInt32,
@@ -22,7 +22,13 @@ enum class TargetTypeT {
   Invalid
 };
 
-enum class RelativeStatus { UNCHANGED, CHANGED, INCREASED, DECREASED, UNSET };
+enum class RelativeStatus : std::int8_t {
+  UNCHANGED,
+  CHANGED,
+  INCREASED,
+  DECREASED,
+  UNSET
+};
 
 struct HitInfoT {
   std::vector<uint8_t> value;
@@ -39,25 +45,23 @@ struct MapInfoT {
 };
 
 struct WindowInfoT {
-  float H = 0;
-  float W = 0;
-  int XPos = 0;
-  int YPos = 0;
+  float H;
+  float W;
+  int XPos;
+  int YPos;
   ImGuiWindowFlags flags;
 };
 
 struct DisplayInfoT {
   int display_w = 0;
   int display_h = 0;
-
   float TopMenuHeight = 0;
 };
 
-// should we really be initalising defaults like this?
 struct ProcessInfoT {
   int pid = 0;
-  std::string FieldComm = "";
-  std::string FieldCmdline = "";
+  std::string FieldComm;
+  std::string FieldCmdline;
   int uid = 0;
 };
 
@@ -66,7 +70,7 @@ struct TargetInfoT {
   TargetTypeT TargetType = TargetTypeT::Invalid;
 };
 
-enum class OpType {
+enum class OpType : std::int8_t {
   NONE,
   INIT_SCANNER,
   FIRST_SCAN,
@@ -74,16 +78,12 @@ enum class OpType {
   FILTER,
   ADD_TO_FAVOURITES,
   REMOVE_FROM_FAVOURITES,
-  CHANGE_NAME, // Questionable entry.
   REFRESH,
-  REFRESH_ALL,
   REGULAR_REFRESH,
   FREEZE,
   UNFREEZE,
   RESTART_STATE
 };
-
-enum class DataType { INVALID, HIT, FAVOURITE };
 
 // at some point we might want to remove the value members and just calculate
 // from bytes. for now, this is fine. // Yeah, to add to this...If a byte is
@@ -99,25 +99,42 @@ struct FavouriteInfoT {
       previous_bytes_around; // thought about adding to hits as well but meh.
   RelativeStatus Status = RelativeStatus::UNSET;
   bool Frozen = false;
-  std::string Description = "";
+  std::string Description;
   std::vector<uint8_t> frozen_value;
   float auto_refresh_seconds = -1;
-  std::chrono::steady_clock::time_point since_last_auto_refresh{};
+  std::chrono::steady_clock::time_point since_last_auto_refresh;
 };
 
-struct Action {
+struct HitWAction {
   OpType Type = OpType::NONE;
-  DataType WorkOn;
   std::optional<uint64_t> index;
-  std::optional<std::vector<uint8_t>> newval;
+  std::optional<std::vector<uint8_t>> buf;
+  std::optional<float> seconds;
+  std::optional<RelativeStatus> KeepType = RelativeStatus::UNSET;
+};
+
+struct FavouriteWAction {
+  OpType Type = OpType::NONE;
+  std::optional<uint64_t> index;
+  std::optional<std::vector<uint8_t>> buf;
   std::optional<std::string> newname;
-  std::optional<RelativeStatus> KeepType;
-  std::optional<bool> BasedOnCurrentValues =
-      false; // we might wanna remove the default value.
   std::optional<TargetTypeT> TargetType;
   // Refresh seconds and interpertation:
   // -1 means stop regular refreshing.
   // 0 means start regular refreshing.
   // 0.3 < x < 3.0 is valid.
   std::optional<float> seconds;
+};
+
+struct SearchWAction {
+  OpType Type = OpType::NONE;
+  bool BasedOnCurrentValues = false;
+  std::optional<RelativeStatus> KeepType;
+};
+
+struct PendingAction {
+  OpType OverrideType = OpType::NONE;
+  HitWAction HitW;
+  FavouriteWAction FavouriteW;
+  SearchWAction SearchW;
 };

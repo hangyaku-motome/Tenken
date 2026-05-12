@@ -1,29 +1,27 @@
 #pragma once
 
-#include "display.h"
+#include "ContextDisplay.h"
 #include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <atomic>
 
-// maybe make a single "DrawContext" function that is in display and FavouriteW
-// and HitsW share.
 class HitsW {
 private:
-  void InitW();
-  void EndW();
-  Action DrawHitTable(const std::vector<HitInfoT> &Hits,
-                      const TargetInfoT &TargetInfo);
+  static void InitW();
+  static void EndW();
+  HitWAction DrawHitTable(const std::vector<HitInfoT> &Hits,
+                          const TargetInfoT &TargetInfo);
 
   bool IsEditing = false;
   bool JustStartedEditing = false;
-
   float RefreshDuration = 0;
+  int64_t selected_row = -1;
+
   ContextDisplay Context;
 
 public:
-  int64_t selected_row = -1;
-  Action CycleW(const std::vector<HitInfoT> &Hits,
-                const TargetInfoT &TargetInfo,
-                std::atomic<float> Progress = -1);
+  HitWAction CycleW(const std::vector<HitInfoT> &Hits,
+                    const TargetInfoT &TargetInfo,
+                    std::atomic<float> Progress = -1);
 };

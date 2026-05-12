@@ -11,12 +11,16 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <cstdint>
+#include <string>
+
+OpType ResolveActions(PendingAction Actions, Scanner &ScannerObj,
+                      TargetInfoT &TargetInfo);
 
 int main() {
 
   // Start up Dear ImGui.
   GLFWwindow *window = initalise_main();
-  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+  ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
 
   ImGuiIO &io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -24,9 +28,8 @@ int main() {
   TargetInfoT TargetInfo;
   ProcessInfoT TargetProc;
 
-  DisplayInfoT DisplayInfo;
+  DisplayInfoT DisplayInfo{};
 
-  LogW LogObj;
   SearchW SearchObj;
   HitsW HitObj;
   TargetPopUp TargetPUpObj;
@@ -34,11 +37,11 @@ int main() {
 
   Scanner ScannerObj;
 
-  std::vector<Action> PendingActions{};
+  PendingAction Actions{};
   bool TargetProcChosen = false;
 
   // Main loop.
-  while (!glfwWindowShouldClose(window)) {
+  while (glfwWindowShouldClose(window) == 0) {
     if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
       ImGui_ImplGlfw_Sleep(10);
       continue;
@@ -51,8 +54,8 @@ int main() {
     MainMenuBarCycle(TargetPUpObj);
 
     // Target popup.
-    PendingActions.push_back(Action{TargetPUpObj.CyclePUp(TargetProc)});
-    if (PendingActions.back().Type == OpType::INIT_SCANNER) {
+    Actions.OverrideType = TargetPUpObj.CyclePUp(TargetProc);
+    if (Actions.OverrideType == OpType::INIT_SCANNER) {
       SearchObj = {};
       HitObj = {};
       TargetInfo = {};
@@ -61,161 +64,148 @@ int main() {
       ScannerObj.StartFreezeThread();
     }
 
+    // Hits window.
     float ProgressBar = -1;
     if (ScannerObj.IsScanning) {
-      if (ScannerObj.TotalLoad >= 0 && ScannerObj.CurrentProgress >= 0)
-        ProgressBar =
-            (float)ScannerObj.CurrentProgress / (float)ScannerObj.TotalLoad;
-    }
+      ProgressBar = static_cast<float>(ScannerObj.CurrentProgress) /
+                    static_cast<float>(ScannerObj.TotalLoad);
+      Actions.HitW = HitObj.CycleW({}, TargetInfo, ProgressBar);
+    } else
+      Actions.HitW = HitObj.CycleW(ScannerObj.Hits, TargetInfo, ProgressBar);
 
-    // Hits window.
-    PendingActions.push_back(
-        HitObj.CycleW(ScannerObj.Hits, TargetInfo, ProgressBar));
     // Search window.
-    PendingActions.push_back(SearchObj.CycleW(TargetInfo, TargetProcChosen));
+    Actions.SearchW = (SearchObj.CycleW(TargetInfo, TargetProcChosen));
 
     // Favourite window.
-    PendingActions.push_back(FavouriteObj.CycleW(ScannerObj.GetFavourites()));
+    Actions.FavouriteW = (FavouriteObj.CycleW(ScannerObj.GetFavourites()));
+
     // Log window.
-    // should also tell found hit count on rescans and how many were filtered.
-    LogObj.CycleW();
+    LogW::CycleW();
 
     end_frame(DisplayInfo.display_w, DisplayInfo.display_h, clear_color,
               window);
 
     // resolve actions.
-    // oh...we can have resolve actions be on a thread. Later, though.
-    // also this doesn't exactly work. we should prolly pop and work on it,
-    // instead of clearing at the end. IDK we'll see.
-    for (auto const &Action : PendingActions) {
-      switch (Action.Type) {
-      case OpType::NONE:
-        continue;
-      case OpType::INIT_SCANNER:
-        ScannerObj.Init(TargetProc.pid);
-        continue;
-      case OpType::ADD_TO_FAVOURITES:
-        if (!Action.index.has_value()) {
-          Log::Error("In PendingActions, why does add to favourites exist but "
-                     "no index?");
-          continue;
-        }
-        ScannerObj.AddToFavourite(Action.index.value(), TargetInfo.TargetType);
-        continue;
-      case OpType::FIRST_SCAN: // super heavy
-        Log::Info("Starting initial scan...");
-        ScannerObj.RunOnScannerThread(
-            [&TargetInfo](Scanner &s) { s.StartScan(TargetInfo); });
-        continue;
-      case OpType::REMOVE_FROM_FAVOURITES:
-        continue;
-      case OpType::REFRESH_ALL: // kinda heavy.
-        if (Action.WorkOn == DataType::HIT)
-          ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
-            s.RescanAllHits(TargetInfo.TargetType);
-          });
-        else if (Action.WorkOn == DataType::FAVOURITE)
-          for (uint64_t i = 0; i < ScannerObj.GetFavourites().size(); ++i)
-            ScannerObj.RescanFavourite(i);
-        continue;
-      case OpType::EDIT:
-        if (!Action.newval.has_value()) {
-          Log::Error(
-              "In PendingActions, why does edit hit exist but no new value?");
-          continue;
-        }
-        if (Action.WorkOn == DataType::HIT) {
-          ScannerObj.WriteHit(Action.index.value(), Action.newval.value());
-          ScannerObj.RescanHit(Action.index.value(), TargetInfo.TargetType);
-        } else if (Action.WorkOn == DataType::FAVOURITE) {
-          ScannerObj.WriteFavourite(Action.index.value(),
-                                    Action.newval.value());
-          ScannerObj.RescanFavourite(Action.index.value());
-        }
-        continue;
-      case OpType::FILTER: // heavy.
-        if (Action.WorkOn != DataType::HIT)
-          continue;
-        ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
-          s.RescanAllHits(TargetInfo.TargetType);
-        });
-        if (Action.KeepType.has_value())
-          ScannerObj.FilterHit(Action.KeepType.value());
-        else
-          ScannerObj.FilterHit(TargetInfo.value);
-        continue;
-      case OpType::REFRESH:
-        if (!Action.index.has_value()) {
-          // hit this.
-          Log::Error("In PendingActions, why does refresh exist but no index?");
-          continue;
-        }
-        if (Action.WorkOn == DataType::HIT)
-          ScannerObj.RescanHit(Action.index.value(), TargetInfo.TargetType);
-        else if (Action.WorkOn == DataType::FAVOURITE)
-          ScannerObj.RescanFavourite(Action.index.value());
-        continue;
-      case OpType::FREEZE:
-        if (!Action.index.has_value()) {
-          Log::Error("In action freeze, no index value");
-          continue;
-        }
-        ScannerObj.SetFreezeFavourite(Action.index.value(), true);
-
-        continue;
-      case OpType::UNFREEZE:
-        ScannerObj.SetFreezeFavourite(Action.index.value(), false);
-        continue;
-      case OpType::CHANGE_NAME:
-        if (!Action.index.has_value()) {
-          printf("sdfasfsad\n");
-          continue;
-        }
-        if (!Action.newname.has_value()) {
-          printf("stinkly\n");
-        }
-        ScannerObj.SetDescriptionFavourite(Action.index.value(),
-                                           Action.newname.value());
-        continue;
-      case OpType::REGULAR_REFRESH:
-        if (Action.WorkOn == DataType::HIT) {
-          if (Action.seconds.value() == -1) {
-            ScannerObj.HitRefreshInterval = -1;
-            continue;
-          }
-          if (Action.seconds.value() == 0) {
-            ScannerObj.HitRefreshInterval = 0;
-            continue;
-          }
-          printf("I came here too!\n");
-          ScannerObj.HitRefreshInterval =
-              static_cast<uint32_t>(Action.seconds.value() * 1000) >= 300
-                  ? static_cast<uint32_t>(Action.seconds.value() * 1000)
-                  : 300;
-          continue;
-        }
-        if (Action.WorkOn == DataType::FAVOURITE) {
-          printf("okay you want me to regularly refresh favourite %lu. with "
-                 "duration %f\n",
-                 Action.index.value(), Action.seconds.value());
-          ScannerObj.SetRefreshDurationFavourite(Action.index.value(),
-                                                 Action.seconds.value());
-        }
-        continue;
-      case OpType::RESTART_STATE:
-        HitObj = {};
-        ScannerObj.RestartClear();
-        TargetProcChosen = true;
-        ScannerObj.StartFreezeThread();
-        TargetInfo = {};
-        SearchObj = {};
-        continue;
-      }
+    switch (ResolveActions(Actions, ScannerObj, TargetInfo)) {
+    case OpType::INIT_SCANNER:
+      ScannerObj.Init(TargetProc.pid);
+      break;
+    case OpType::RESTART_STATE:
+      HitObj = {};
+      ScannerObj.RestartClear();
+      TargetProcChosen = true;
+      ScannerObj.StartFreezeThread();
+      TargetInfo = {};
+      SearchObj = {};
+      break;
+    default:
+      break;
     }
-    PendingActions.clear();
+
+    Actions = {};
 
     ScannerObj.AutoRefreshHits(LoopTime, TargetInfo.TargetType);
     ScannerObj.AutoRefreshFavourites(LoopTime);
   }
   exit_main(window);
+}
+
+OpType ResolveActions(PendingAction Actions, Scanner &ScannerObj,
+                      TargetInfoT &TargetInfo) {
+
+  switch (Actions.OverrideType) {
+  case OpType::INIT_SCANNER:
+    return Actions.OverrideType;
+  default:
+    break;
+  }
+
+  switch (Actions.HitW.Type) {
+  case OpType::EDIT:
+    ScannerObj.WriteHit(Actions.HitW.index.value(), Actions.HitW.buf.value());
+    ScannerObj.RescanHit(Actions.HitW.index.value(), TargetInfo.TargetType);
+    break;
+  case OpType::REFRESH:
+    if (Actions.HitW.index.has_value())
+      ScannerObj.RescanHit(Actions.HitW.index.value(), TargetInfo.TargetType);
+    else
+      ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
+        s.RescanAllHits(TargetInfo.TargetType);
+      });
+    break;
+  case OpType::REGULAR_REFRESH:
+    if (Actions.HitW.seconds.value() == -1 || Actions.HitW.seconds.value() == 0)
+      ScannerObj.HitRefreshInterval =
+          static_cast<int64_t>(Actions.HitW.seconds.value());
+    else
+      ScannerObj.HitRefreshInterval =
+          static_cast<int64_t>(Actions.HitW.seconds.value() * 1000) >= 300
+              ? static_cast<int64_t>(Actions.HitW.seconds.value() * 1000)
+              : 300;
+    break;
+  case OpType::ADD_TO_FAVOURITES:
+    ScannerObj.AddToFavourite(Actions.HitW.index.value(),
+                              TargetInfo.TargetType);
+
+  default:
+    break;
+  }
+
+  switch (Actions.FavouriteW.Type) {
+  case OpType::EDIT:
+    if (Actions.FavouriteW.newname.has_value()) {
+      ScannerObj.SetDescriptionFavourite(Actions.FavouriteW.index.value(),
+                                         Actions.FavouriteW.newname.value());
+      break;
+    }
+    ScannerObj.WriteFavourite(Actions.FavouriteW.index.value(),
+                              Actions.FavouriteW.buf.value());
+    ScannerObj.RescanFavourite(Actions.FavouriteW.index.value());
+    break;
+  case OpType::FREEZE:
+    ScannerObj.SetFreezeFavourite(Actions.FavouriteW.index.value(), true);
+    break;
+  case OpType::UNFREEZE:
+    ScannerObj.SetFreezeFavourite(Actions.FavouriteW.index.value(), false);
+    break;
+  case OpType::REFRESH:
+    if (Actions.FavouriteW.index.has_value())
+      ScannerObj.RescanFavourite(Actions.FavouriteW.index.value());
+    else
+      ScannerObj.RescanAllFavourites();
+    break;
+  case OpType::REMOVE_FROM_FAVOURITES:
+    ScannerObj.RemoveFromFavourite(Actions.FavouriteW.index.value());
+    break;
+  case OpType::REGULAR_REFRESH:
+    ScannerObj.SetRefreshDurationFavourite(Actions.FavouriteW.index.value(),
+                                           Actions.FavouriteW.seconds.value());
+  default:
+    break;
+  }
+
+  switch (Actions.SearchW.Type) {
+  case OpType::FIRST_SCAN:
+    Log::Info("Starting initial scan...");
+    ScannerObj.RunOnScannerThread(
+        [&TargetInfo](Scanner &s) { s.StartScan(TargetInfo); });
+    break;
+  case OpType::FILTER:
+    if (Actions.SearchW.KeepType.has_value())
+      ScannerObj.RunOnScannerThread([&TargetInfo, &Actions](Scanner &s) {
+        s.RescanAllHits(TargetInfo.TargetType);
+        s.FilterHit(Actions.SearchW.KeepType.value());
+      });
+    else
+      ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
+        s.RescanAllHits(TargetInfo.TargetType);
+        s.FilterHit(TargetInfo.value);
+      });
+    break;
+  case OpType::RESTART_STATE:
+    return OpType::RESTART_STATE;
+  default:
+    break;
+  }
+  return {};
 }

@@ -3,8 +3,7 @@ project(Tenken CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(glfw3 REQUIRED)
@@ -23,14 +22,14 @@ add_library(imgui STATIC
     ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
-target_include_directories(imgui PUBLIC 
+target_include_directories(imgui  SYSTEM PUBLIC 
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
 )
 
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
-add_executable(main 
+add_executable(Tenken 
     source/main.cpp
     source/display.cpp
     source/LogW.cpp
@@ -39,19 +38,38 @@ add_executable(main
     source/SearchW.cpp
     source/Scanner.cpp
     source/FavouriteW.cpp
+    source/ContextDisplay.cpp
 )
 
-target_include_directories(main PRIVATE source)
+target_include_directories(Tenken PRIVATE source)
 
 if(WIN32)
-    target_sources(main PRIVATE source/platform/platform_windows.cpp)
+    target_sources(Tenken PRIVATE source/platform/platform_windows.cpp)
 elseif(UNIX)
-    target_sources(main PRIVATE source/platform/LinuxImpl.cpp)
+    target_sources(Tenken PRIVATE source/platform/LinuxImpl.cpp)
 endif()
 
-target_link_libraries(main PRIVATE imgui)
+target_link_libraries(Tenken PRIVATE imgui)
 
-set_target_properties(main PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
+set_target_properties(Tenken PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
-target_compile_options(main PRIVATE -fsanitize=address,undefined -g)
-target_link_options(main PRIVATE -fsanitize=address,undefined)
+target_compile_options(Tenken PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+    -Wconversion
+    -Wsign-conversion
+    -Wformat=2
+    -Wnull-dereference
+    -Wold-style-cast
+    -Woverloaded-virtual
+    -Wnon-virtual-dtor
+    -fno-omit-frame-pointer
+    -Wno-deprecated-enum-enum-conversion
+    -fsanitize=thread
+    -Wno-unused-private-field
+    -g
+)
+
+target_link_options(Tenken PRIVATE -fsanitize=thread)

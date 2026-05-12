@@ -9,8 +9,7 @@ private:
   void Clicked();
 
 public:
-  bool IsClicked = 0;
-  WindowInfoT Window;
+  bool IsClicked = false;
 
   OpType CyclePUp(ProcessInfoT &TargetProc);
 };

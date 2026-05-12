@@ -23,7 +23,7 @@ OpType TargetPopUp::CyclePUp(ProcessInfoT &TargetProc) {
                              ImGuiWindowFlags_AlwaysAutoResize |
                                  ImGuiWindowFlags_AlwaysVerticalScrollbar |
                                  ImGuiWindowFlags_HorizontalScrollbar)) {
-    ImGui::Text("List targets here:");
+    ImGui::TextUnformatted("List targets here:");
 
     if (ImGui::Button("Refresh")) {
       Processes = ActOS::GetProcTargets();
@@ -35,11 +35,11 @@ OpType TargetPopUp::CyclePUp(ProcessInfoT &TargetProc) {
       for (const auto &Target : Processes) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        ImGui::Text("%s", std::to_string(Target.pid).c_str());
+        ImGui::TextUnformatted(std::to_string(Target.pid).c_str());
         ImGui::TableNextColumn();
-        ImGui::Text("%s", Target.FieldComm.c_str());
+        ImGui::TextUnformatted(Target.FieldComm.c_str());
         ImGui::TableNextColumn();
-        ImGui::Text("%s", Target.FieldCmdline.c_str());
+        ImGui::TextUnformatted(Target.FieldCmdline.c_str());
         ImGui::TableNextColumn();
 
         if (ImGui::Selectable(std::to_string(ImGui::TableGetRowIndex()).c_str(),

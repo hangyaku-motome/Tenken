@@ -10,7 +10,6 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
@@ -39,11 +38,12 @@ void Scanner::StartScan(const TargetInfoT &TargetInfo) {
     std::vector<uint8_t> Data = proc_->read(Map.start, Map.end - Map.start);
 
     for (auto RelativeOffset : SearchValue(Data, TargetInfo.value)) {
-      Hits.push_back(
-          {TargetInfo.value,
-           {},
-           Map.start + RelativeOffset,
-           FindBytesAround(RelativeOffset, Data, TargetInfo.value.size())});
+      Hits.push_back({.value = TargetInfo.value,
+                      .previous_value = {},
+                      .location = Map.start + RelativeOffset,
+                      .bytes_around = FindBytesAround(
+                          RelativeOffset, Data,
+                          static_cast<uint32_t>(TargetInfo.value.size()))});
     }
   }
   IsScanning = false;
@@ -55,20 +55,19 @@ Scanner::SearchValue(const std::vector<uint8_t> &Data,
                      const std::vector<uint8_t> &TargetData) {
 
   std::vector<uint32_t> FoundOffsets;
-  uint32_t TargetSize = TargetData.size();
+  uint64_t TargetSize = TargetData.size();
 
   for (uint32_t i = 0; i + TargetSize <= Data.size(); ++i) {
-    if (!memcmp(&Data[i], TargetData.data(), TargetSize)) {
+    if (memcmp(&Data[i], TargetData.data(), TargetSize) == 0) {
       FoundOffsets.push_back(i);
     }
   }
   return FoundOffsets;
 }
 
-const std::vector<uint8_t>
-Scanner::FindBytesAround(const uint32_t offset,
-                         const std::vector<uint8_t> &data,
-                         const uint32_t Size) {
+std::vector<uint8_t> Scanner::FindBytesAround(const uint32_t offset,
+                                              const std::vector<uint8_t> &data,
+                                              const uint32_t Size) {
   uint64_t START = offset < 32 ? 0 : offset - 32;
   uint64_t END =
       offset + 32 + Size > data.size() ? data.size() : offset + 32 + Size;
@@ -79,12 +78,6 @@ Scanner::FindBytesAround(const uint32_t offset,
   return bytes;
 }
 
-// we should also add something that also rescans maps and deals with hits from
-// there...at some point.
-
-// oh and a way to compare old and new bytes around? I'd also need to add that
-// to hitinfo struct.
-
 template <typename T> void Scanner::RescanEntryData(T &entry) {
   entry.previous_value = entry.value;
 
@@ -92,7 +85,6 @@ template <typename T> void Scanner::RescanEntryData(T &entry) {
       proc_->read(entry.location - 32, entry.value.size() + 64);
   memcpy(entry.value.data(), entry.bytes_around.data() + 32,
          entry.value.size());
-  return;
 }
 
 template <typename T, typename entry_type>
@@ -110,10 +102,9 @@ RelativeStatus Scanner::CompareValues(const entry_type &entry) {
     return RelativeStatus::UNCHANGED;
   if (newval > oldval)
     return RelativeStatus::INCREASED;
-  if (newval < oldval)
-    return RelativeStatus::DECREASED;
 
-  return RelativeStatus::CHANGED;
+  // NaN is not implemented.
+  return RelativeStatus::DECREASED;
 }
 
 template <typename T>
@@ -180,15 +171,20 @@ void Scanner::FilterHit(const RelativeStatus Keep1) {
     Keep3 = RelativeStatus::DECREASED;
   }
 
+  uint64_t init_amount = Hits.size();
+
   Hits.erase(std::remove_if(Hits.begin(), Hits.end(),
                             [Keep1, Keep2, Keep3](const HitInfoT &hit) {
                               return hit.Status != Keep1 &&
                                      hit.Status != Keep2 && hit.Status != Keep3;
                             }),
              Hits.end());
+  Log::Info(std::to_string(Hits.size()) + " Hits left. (" +
+            std::to_string(init_amount - Hits.size()) + " filtered.)");
 }
 
 void Scanner::FilterHit(const std::vector<uint8_t> &keepValue) {
+  uint64_t init_amount = Hits.size();
 
   Hits.erase(std::remove_if(Hits.begin(), Hits.end(),
                             [keepValue](const HitInfoT &hit) {
@@ -196,6 +192,8 @@ void Scanner::FilterHit(const std::vector<uint8_t> &keepValue) {
                                             keepValue.size()) != 0;
                             }),
              Hits.end());
+  Log::Info(std::to_string(Hits.size()) + " Hits left. (" +
+            std::to_string(init_amount - Hits.size()) + " filtered.)");
 }
 
 template <typename T>
@@ -274,11 +272,12 @@ void Scanner::EndFreezeThread() {
 
 void Scanner::RescanAllHits(const TargetTypeT &TargetType) {
   TotalLoad = Hits.size();
-  for (CurrentProgress = 0; CurrentProgress < Hits.size(); ++CurrentProgress)
+  for (CurrentProgress = 0;
+       static_cast<uint64_t>(CurrentProgress) < Hits.size(); ++CurrentProgress)
     RescanHit(CurrentProgress, TargetType);
 }
 
-void Scanner::RunOnScannerThread(std::function<void(Scanner &)> task) {
+void Scanner::RunOnScannerThread(const std::function<void(Scanner &)> &task) {
   if (ScannerThread.joinable())
     ScannerThread.join();
   IsScanning = true;
@@ -289,7 +288,7 @@ void Scanner::RunOnScannerThread(std::function<void(Scanner &)> task) {
 }
 
 void Scanner::SetDescriptionFavourite(const uint64_t index,
-                                      const std::string desc) { // mutex
+                                      const std::string &desc) { // mutex
   std::scoped_lock<std::mutex> lock(FavouriteMutex);
   Favourites[index].Description = desc;
 }
@@ -342,10 +341,10 @@ void Scanner::AutoRefreshFavourites(
     std::chrono::milliseconds difference =
         std::chrono::duration_cast<std::chrono::milliseconds>(
             LoopTime - Favourites[i].since_last_auto_refresh);
-    if (difference.count() < Favourites[i].auto_refresh_seconds * 1000)
+    if (difference.count() <
+        static_cast<int64_t>(Favourites[i].auto_refresh_seconds * 1000))
       continue;
 
-    std::cout << std::to_string(difference.count()) << "  \n";
     RescanFavourite(i);
     Favourites[i].since_last_auto_refresh = LoopTime;
   }
@@ -357,11 +356,21 @@ void Scanner::AutoRefreshHits(
   std::chrono::milliseconds difference =
       std::chrono::duration_cast<std::chrono::milliseconds>(LoopTime -
                                                             SinceHitRefresh);
-  if (IsScanning || HitRefreshInterval < 0.3 ||
+  if (IsScanning || HitRefreshInterval < 300 ||
       difference.count() < HitRefreshInterval)
     return;
-  printf("refreshed em!!\n");
   RunOnScannerThread(
       [&TargetType](Scanner &s) { s.RescanAllHits(TargetType); });
   SinceHitRefresh = LoopTime;
+}
+
+void Scanner::RemoveFromFavourite(const uint64_t index) {
+  std::scoped_lock<std::mutex> lock(FavouriteMutex);
+
+  Favourites.erase(Favourites.begin() + static_cast<int64_t>(index));
+}
+
+void Scanner::RescanAllFavourites() {
+  for (uint64_t i = 0; i < GetFavourites().size(); ++i)
+    RescanFavourite(i);
 }

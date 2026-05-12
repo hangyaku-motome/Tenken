@@ -1,4 +1,3 @@
-
 #include "ActOS.h"
 #include "LogW.h"
 #include "types.h"
@@ -11,18 +10,18 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <sys/uio.h>
-#include <vector>
 
 namespace ActOS {
 std::vector<ProcessInfoT> GetTargetProc();
 
 namespace {
 std::vector<int> ListPid();
-std::string ReadFileString(std::string path);
+std::string ReadFileString(const std::string &path);
 
 class LinuxImpl : public IProcess {
   int pid_;
@@ -31,10 +30,8 @@ public:
   LinuxImpl(int pid) : pid_(pid) {}
 
   std::vector<MapInfoT> getRegions() override;
-  std::vector<uint8_t> read(const uint64_t address,
-                            const uint64_t ReadSize) override;
-  bool write(const uint64_t address,
-             const std::vector<uint8_t> &value) override;
+  std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
+  bool write(uint64_t address, const std::vector<uint8_t> &value) override;
 
 }; // namespace LinuxImpl IProcess
 
@@ -56,7 +53,10 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
   while (getline(maps, MapsLine)) {
     std::istringstream SplitMapsLine(MapsLine);
 
-    std::string MemoryAddresses, perms, name, uneeded;
+    std::string MemoryAddresses;
+    std::string perms;
+    std::string name;
+    std::string uneeded;
 
     SplitMapsLine >> MemoryAddresses >> perms >> uneeded >> uneeded >>
         uneeded >> name;
@@ -70,13 +70,13 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     if (name.empty())
       name = "UNNAMED_REGION";
 
-    if (MemoryAddresses.find("-") == std::string::npos) {
-      printf("couldn't find \"-\" in maps. Something is really wrong.\n");
+    if (MemoryAddresses.find('-') == std::string::npos) {
+      std::cout << "couldn't find \"-\" in maps. Something is really wrong.\n";
       exit(1);
     }
 
-    std::string StartStr = MemoryAddresses.substr(0, MemoryAddresses.find("-"));
-    std::string EndStr = MemoryAddresses.substr(MemoryAddresses.find("-") + 1);
+    std::string StartStr = MemoryAddresses.substr(0, MemoryAddresses.find('-'));
+    std::string EndStr = MemoryAddresses.substr(MemoryAddresses.find('-') + 1);
 
     uint64_t start = stoul(StartStr, nullptr, 16);
     uint64_t end = stoul(EndStr, nullptr, 16);
@@ -92,8 +92,8 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address,
                                      const uint64_t ReadSize) {
   std::vector<uint8_t> read_buf(ReadSize);
 
-  struct iovec Receive;
-  struct iovec WriteTo;
+  struct iovec Receive{};
+  struct iovec WriteTo{};
 
   Receive.iov_base = read_buf.data();
   Receive.iov_len = ReadSize;
@@ -115,8 +115,8 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address,
 
 bool LinuxImpl::write(const uint64_t address,
                       const std::vector<uint8_t> &value) {
-  struct iovec Receive;
-  struct iovec WriteTo;
+  struct iovec Receive{};
+  struct iovec WriteTo{};
 
   Receive.iov_base = const_cast<unsigned char *>(value.data());
   Receive.iov_len = value.size();
@@ -127,10 +127,8 @@ bool LinuxImpl::write(const uint64_t address,
 
   // checking -1 would be unncessary if we check for value size but we should be
   // explicit about that failure condition.
-  if (write_amount == -1 | write_amount != value.size()) {
-    return false;
-  }
-  return true;
+  return write_amount != -1 &&
+         static_cast<uint64_t>(write_amount) == value.size();
 }
 
 std::vector<int> ListPid() {
@@ -141,7 +139,7 @@ std::vector<int> ListPid() {
       continue;
 
     int pid = atoi(field.path().filename().c_str());
-    if (!pid)
+    if (pid == 0)
       continue;
 
     pidList.push_back(pid);
@@ -150,7 +148,7 @@ std::vector<int> ListPid() {
   return pidList;
 }
 
-std::string ReadFileString(std::string path) {
+std::string ReadFileString(const std::string &path) {
   std::ifstream PathStream(path);
   if (!PathStream)
     return "";
@@ -164,7 +162,9 @@ std::vector<ProcessInfoT> GetProcTargets() {
   std::vector<ProcessInfoT> Processes;
 
   for (int pid : ListPid()) {
-    std::string comm, cmdline, uid;
+    std::string comm;
+    std::string cmdline;
+    std::string uid;
     // TODO: Implement uid.
 
     std::string path = "/proc/" + std::to_string(pid) + "/";
@@ -172,7 +172,7 @@ std::vector<ProcessInfoT> GetProcTargets() {
     comm = ReadFileString(path + "comm");
     if (comm.empty())
       continue;
-    comm.erase(comm.find("\n"));
+    comm.erase(comm.find('\n'));
     cmdline = ReadFileString(path + "cmdline");
     if (cmdline.empty()) {
       continue;
