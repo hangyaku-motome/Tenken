@@ -67,9 +67,6 @@ target_compile_options(Tenken PRIVATE
     -Wnon-virtual-dtor
     -fno-omit-frame-pointer
     -Wno-deprecated-enum-enum-conversion
-    -fsanitize=thread
     -Wno-unused-private-field
     -g
 )
-
-target_link_options(Tenken PRIVATE -fsanitize=thread)

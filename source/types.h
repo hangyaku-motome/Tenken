@@ -30,10 +30,13 @@ enum class RelativeStatus : std::int8_t {
   UNSET
 };
 
+constexpr int8_t BYTES_BEFORE = 32;
+constexpr int8_t BYTES_AFTER = 32;
+
 struct HitInfoT {
+  uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
-  uint64_t location;
   std::vector<uint8_t> bytes_around;
   RelativeStatus Status = RelativeStatus::UNSET;
 };
@@ -66,7 +69,7 @@ struct ProcessInfoT {
 };
 
 struct TargetInfoT {
-  std::vector<uint8_t> value;
+  std::vector<uint8_t> value{0, 0};
   TargetTypeT TargetType = TargetTypeT::Invalid;
 };
 

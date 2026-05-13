@@ -122,8 +122,11 @@ OpType ResolveActions(PendingAction Actions, Scanner &ScannerObj,
 
   switch (Actions.HitW.Type) {
   case OpType::EDIT:
+    if (TargetInfo.value.size() < Actions.HitW.buf->size())
+      Actions.HitW.buf->resize(TargetInfo.value.size());
     ScannerObj.WriteHit(Actions.HitW.index.value(), Actions.HitW.buf.value());
     ScannerObj.RescanHit(Actions.HitW.index.value(), TargetInfo.TargetType);
+
     break;
   case OpType::REFRESH:
     if (Actions.HitW.index.has_value())

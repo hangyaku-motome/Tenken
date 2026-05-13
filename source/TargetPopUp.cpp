@@ -6,6 +6,7 @@
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <string>
+
 void TargetPopUp::Clicked() {
   Processes = ActOS::GetProcTargets();
   Log::Info("Found PID count: " + std::to_string(Processes.size()) + "\n");

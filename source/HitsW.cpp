@@ -116,6 +116,7 @@ HitWAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
           CancelEdit = false;
         }
         std::vector<uint8_t> tmpbuf(TargetInfo.value.size());
+        tmpbuf = Hits[row].value;
         ImGui::PushStyleColor(ImGuiCol_NavHighlight, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));

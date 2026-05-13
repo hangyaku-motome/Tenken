@@ -25,9 +25,6 @@ class ContextDisplay {
   bool DrawRefreshContextButton() const;
   void AlignButtons();
   template <typename T> static void DrawContextMenu(const T Entry) {
-    int constexpr BYTES_BEFORE = 32;
-    int constexpr BYTES_AFTER = 32;
-
     if (Entry.bytes_around.size() !=
         Entry.value.size() + BYTES_BEFORE + BYTES_AFTER) {
       Log::Error("Entry " + std::to_string(Entry.location) +

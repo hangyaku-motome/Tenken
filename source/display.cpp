@@ -8,11 +8,9 @@
 #include "misc/cpp/imgui_stdlib.h"
 #include "types.h"
 #include <GLFW/glfw3.h>
-#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <iterator>
 #include <vector>
 
 static void glfw_error_callback(int error, const char *description) {
@@ -239,9 +237,10 @@ bool GetTargetValue(const TargetTypeT TargetType,
     return true;
   }
   case TargetTypeT::String: {
-    auto null_ter = std::ranges::find(tempbuf, '\0');
-    write_to.resize(
-        static_cast<uint64_t>(std::distance(tempbuf.begin(), null_ter)));
+    if (write_to.size() > tempbuf.size()) {
+      tempbuf.resize(write_to.size(), '\0');
+    }
+    write_to.resize(tempbuf.size());
     memcpy(write_to.data(), tempbuf.data(), write_to.size());
     return true;
   }
@@ -355,4 +354,21 @@ std::string RelativeStatusToStr(const RelativeStatus Status) {
     return "Unset...";
   }
   return "";
+}
+
+// these prolly need a better place.
+template <typename T> uint64_t CalculateOffset(T &entry) {
+  if (entry.truncate_direction == -1)
+    return entry.bytes_around.size() - entry.target_size - BYTES_AFTER;
+  if (entry.truncate_direction == 0 || entry.truncate_direction == 1)
+    return BYTES_BEFORE;
+
+  printf("what %i\n", entry.truncate_direction);
+  exit(1);
+}
+template <typename T>
+std::vector<uint8_t> GetEntryInBytes(const T &entry, const int64_t offset) {
+
+  return {entry.bytes_around.begin() + offset,
+          entry.bytes_around.begin() + offset + entry.target_size};
 }

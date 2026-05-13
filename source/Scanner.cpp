@@ -38,9 +38,9 @@ void Scanner::StartScan(const TargetInfoT &TargetInfo) {
     std::vector<uint8_t> Data = proc_->read(Map.start, Map.end - Map.start);
 
     for (auto RelativeOffset : SearchValue(Data, TargetInfo.value)) {
-      Hits.push_back({.value = TargetInfo.value,
+      Hits.push_back({.location = Map.start + RelativeOffset,
+                      .value = TargetInfo.value,
                       .previous_value = {},
-                      .location = Map.start + RelativeOffset,
                       .bytes_around = FindBytesAround(
                           RelativeOffset, Data,
                           static_cast<uint32_t>(TargetInfo.value.size()))});
@@ -65,15 +65,15 @@ Scanner::SearchValue(const std::vector<uint8_t> &Data,
   return FoundOffsets;
 }
 
+// if near region, just gives 0 for those as well.
 std::vector<uint8_t> Scanner::FindBytesAround(const uint32_t offset,
                                               const std::vector<uint8_t> &data,
-                                              const uint32_t Size) {
+                                              const uint32_t size) {
   uint64_t START = offset < 32 ? 0 : offset - 32;
   uint64_t END =
-      offset + 32 + Size > data.size() ? data.size() : offset + 32 + Size;
+      offset + 32 + size > data.size() ? data.size() : offset + 32 + size;
 
-  std::vector<uint8_t> bytes(END - START);
-
+  std::vector<uint8_t> bytes(BYTES_BEFORE + BYTES_AFTER + size);
   memcpy(bytes.data(), &data[START], END - START);
   return bytes;
 }
@@ -113,8 +113,8 @@ void Scanner::TagEntryChange(T &entry, const TargetTypeT TargetType) {
     return;
   }
   if (TargetType == TargetTypeT::String) {
-    if (!memcmp(entry.value.data(), entry.previous_value.data(),
-                entry.value.size()))
+    if (memcmp(entry.value.data(), entry.previous_value.data(),
+               entry.value.size()))
       entry.Status = RelativeStatus::CHANGED;
     else
       entry.Status = RelativeStatus::UNCHANGED;
@@ -226,6 +226,7 @@ void Scanner::RescanEntry(T &entry, const TargetTypeT &TargetType) {
 }
 
 void Scanner::RescanHit(const uint64_t index, const TargetTypeT &TargetType) {
+
   RescanEntry(Hits[index], TargetType);
 }
 
