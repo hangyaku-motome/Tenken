@@ -56,7 +56,8 @@ Snapshot Scanner::StartUnknownValueScan(std::atomic<float> &progress) const {
     progress = static_cast<float>(i) / Maps.size();
     char *ptr = proc_->AllocMMapDisk(Maps[i].end - Maps[i].start);
     if (ptr == nullptr) {
-      Log::Error("mmap failed for region " + std::to_string(i) + " will skip.");
+      Log::Error("mmap failed for region " + std::to_string(i + 1) +
+                 " will skip."); // still wonky but whatever.
       Maps.erase(Maps.begin() + i);
       --i;
       continue;

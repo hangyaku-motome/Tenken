@@ -32,7 +32,8 @@ class LinuxImpl : public IProcess {
 public:
   LinuxImpl(int pid) : pid_(pid) {
     pid_ = pid;
-    fd_ = open("/tmp/tenken_mmap", O_RDWR | O_CREAT | O_TRUNC, 0600);
+    std::string path = "/tmp/tenken_mmap_" + std::to_string(getpid());
+    fd_ = open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0600);
   }
 
   ~LinuxImpl() {
