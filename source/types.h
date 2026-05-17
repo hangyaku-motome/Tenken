@@ -1,13 +1,22 @@
 #pragma once
 
 #include "imgui.h"
-#include <chrono>
+#include <atomic>
 #include <cstdint>
-#include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
-enum class TargetTypeT : std::int8_t {
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#endif
+
+constexpr int8_t BYTES_BEFORE = 32;
+constexpr int8_t BYTES_AFTER = 32;
+
+enum class TargetTypeT : int8_t {
   uInt8,
   uInt16,
   uInt32,
@@ -22,16 +31,13 @@ enum class TargetTypeT : std::int8_t {
   Invalid
 };
 
-enum class RelativeStatus : std::int8_t {
+enum class RelativeStatus : int8_t {
   UNCHANGED,
   CHANGED,
   INCREASED,
   DECREASED,
   UNSET
 };
-
-constexpr int8_t BYTES_BEFORE = 32;
-constexpr int8_t BYTES_AFTER = 32;
 
 struct HitInfoT {
   uint64_t location;
@@ -63,81 +69,179 @@ struct DisplayInfoT {
 
 struct ProcessInfoT {
   int pid = 0;
-  std::string FieldComm;
-  std::string FieldCmdline;
-  int uid = 0;
+  std::string name;
+  std::string cmdline;
 };
 
 struct TargetInfoT {
-  std::vector<uint8_t> value{0, 0};
+  std::vector<uint8_t> value{};
   TargetTypeT TargetType = TargetTypeT::Invalid;
 };
 
-enum class OpType : std::int8_t {
-  NONE,
-  INIT_SCANNER,
-  FIRST_SCAN,
-  EDIT,
-  FILTER,
-  ADD_TO_FAVOURITES,
-  REMOVE_FROM_FAVOURITES,
-  REFRESH,
-  REGULAR_REFRESH,
-  FREEZE,
-  UNFREEZE,
-  RESTART_STATE
-};
-
-// at some point we might want to remove the value members and just calculate
-// from bytes. for now, this is fine. // Yeah, to add to this...If a byte is
-// invalid, we can draw it as ##. We can have an  vector of bool for each byte
-// for valid/invalid...Eh. Will need some thinking.
 struct FavouriteInfoT {
   uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
-  TargetTypeT TargetType;
+  std::string desc;
+  RelativeStatus status = RelativeStatus::UNSET;
   std::vector<uint8_t> bytes_around;
-  std::vector<uint8_t>
-      previous_bytes_around; // thought about adding to hits as well but meh.
-  RelativeStatus Status = RelativeStatus::UNSET;
-  bool Frozen = false;
-  std::string Description;
+  TargetTypeT type;
+
+  bool frozen = false;
   std::vector<uint8_t> frozen_value;
-  float auto_refresh_seconds = -1;
-  std::chrono::steady_clock::time_point since_last_auto_refresh;
+  float freeze_duration = -1; // could merge frozen and freeze_duration but meh.
 };
 
-struct HitWAction {
-  OpType Type = OpType::NONE;
-  std::optional<uint64_t> index;
-  std::optional<std::vector<uint8_t>> buf;
-  std::optional<float> seconds;
-  std::optional<RelativeStatus> KeepType = RelativeStatus::UNSET;
+struct MappedRegion {
+  char *ptr = nullptr;
+  uint64_t size = 0;
+
+  MappedRegion() = default;
+  MappedRegion(char *p, uint64_t s) : ptr(p), size(s) {}
+  ~MappedRegion() {
+    if (ptr)
+#ifdef _WIN32
+      VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+      munmap(ptr, size);
+#endif
+  }
+  MappedRegion(MappedRegion &&o) noexcept : ptr(o.ptr), size(o.size) {
+    o.ptr = nullptr;
+  }
+  MappedRegion &operator=(MappedRegion &&) = delete;
+  MappedRegion(const MappedRegion &) = delete;
 };
 
-struct FavouriteWAction {
-  OpType Type = OpType::NONE;
-  std::optional<uint64_t> index;
-  std::optional<std::vector<uint8_t>> buf;
-  std::optional<std::string> newname;
-  std::optional<TargetTypeT> TargetType;
-  // Refresh seconds and interpertation:
-  // -1 means stop regular refreshing.
-  // 0 means start regular refreshing.
-  // 0.3 < x < 3.0 is valid.
-  std::optional<float> seconds;
+struct Snapshot {
+  std::vector<MappedRegion> regions;
+  std::vector<MapInfoT> maps;
 };
 
-struct SearchWAction {
-  OpType Type = OpType::NONE;
-  bool BasedOnCurrentValues = false;
-  std::optional<RelativeStatus> KeepType;
+struct SessionState {
+  TargetInfoT TargetInfo;
+  ProcessInfoT TargetProcInfo;
+  bool TargetChosen = false;
+  std::atomic<bool> IsScanning = false;
+  std::atomic<float> ScanProgress;
+  float hitRefreshSeconds = -1; // -1 disabled. 0 enabled icon. >= 0.3 active.
+  float favRefreshSeconds = -1; // -1 disabled. 0 enabled icon. >= 0.3 active.
+  enum class SearchWStatus : int8_t {
+    DISABLED,
+    FIRST,
+    SECOND,
+  } searchW = SessionState::SearchWStatus::DISABLED;
+
+  std::atomic<bool> IsUnknownnValueScan = false;
+  Snapshot Snapshots;
 };
 
-struct PendingAction {
-  OpType OverrideType = OpType::NONE;
-  HitWAction HitW;
-  FavouriteWAction FavouriteW;
-  SearchWAction SearchW;
+//
+// Action stuff.
+
+namespace Action {
+
+struct TargetProcChosen {
+  ProcessInfoT chosenProc;
 };
+
+struct firstScan {
+  TargetInfoT targetInfo;
+};
+
+struct startUnknownValueScan {};
+
+struct filterByValue {
+  std::vector<uint8_t> value;
+};
+
+struct filterByStatus {
+  RelativeStatus status;
+};
+
+struct writeHit {
+  uint64_t index;
+  std::vector<uint8_t> value;
+};
+
+struct rescanHit {
+  uint64_t index;
+};
+
+struct rescanAllHits {};
+
+struct regularRefreshHits {
+  float seconds;
+};
+
+// Favourite stuff.
+
+struct addFavourite {
+  uint64_t hitIndex;
+};
+
+struct removeFavourite {
+  uint64_t index;
+};
+
+struct writeFavourite {
+  uint64_t index;
+  std::vector<uint8_t> value;
+};
+
+struct isFreezeFavourite {
+  uint64_t index;
+  bool freeze;
+};
+
+struct freezeValueFavourite {
+  uint64_t index;
+  std::vector<uint8_t> value;
+};
+
+struct descFavourite {
+  uint64_t index;
+  std::string value;
+};
+
+struct rescanFavourite {
+  uint64_t index;
+};
+
+struct regularRefreshFavourite {
+  float seconds;
+};
+
+struct rescanAllFavourites {};
+
+// end of favourite stuff.
+
+struct restartScan {};
+
+struct setTargetInfo {
+  TargetTypeT type;
+  std::vector<uint8_t> value;
+};
+
+}; // namespace Action
+
+template <class... Ts> struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+// life changing
+using PendingAction =
+    std::variant<std::monostate, Action::TargetProcChosen, Action::firstScan,
+                 Action::startUnknownValueScan, Action::filterByValue,
+                 Action::filterByStatus, Action::writeHit, Action::addFavourite,
+                 Action::removeFavourite, Action::writeFavourite,
+                 Action::freezeValueFavourite, Action::isFreezeFavourite,
+                 Action::descFavourite, Action::restartScan,
+                 Action::regularRefreshHits, Action::regularRefreshFavourite,
+                 Action::rescanHit, Action::rescanAllHits,
+                 Action::rescanFavourite, Action::rescanAllFavourites,
+                 Action::setTargetInfo>;
+
+//
+// End of Action stuff.

@@ -1,17 +1,18 @@
 #include "LogW.h"
 #include "imgui.h"
-#include <GL/gl.h>
-#include <GLFW/glfw3.h>
 #include <mutex>
 #include <string>
 #include <vector>
 
-void LogW::InitW() { ImGui::Begin("Log"); }
+bool LogW::InitW() { return ImGui::Begin("Log"); }
 
 void LogW::EndW() { ImGui::End(); }
 
 void LogW::CycleW() {
-  InitW();
+  if (!InitW()) {
+    EndW();
+    return;
+  }
   for (const auto &Text : Log::GetLogsText()) {
     ImGui::TextUnformatted(Text.c_str());
   }

@@ -1,19 +1,20 @@
 #include "ActOS.h"
 #include "LogW.h"
 #include "types.h"
-#include <GL/gl.h>
-#include <GL/glext.h>
-#include <GLFW/glfw3.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <sys/mman.h>
+#include <unistd.h>
+
 #include <sys/uio.h>
 
 namespace ActOS {
@@ -25,15 +26,31 @@ std::string ReadFileString(const std::string &path);
 
 class LinuxImpl : public IProcess {
   int pid_;
+  int fd_ = -1;
+  uint64_t fileoffset_ = 0;
 
 public:
-  LinuxImpl(int pid) : pid_(pid) {}
+  LinuxImpl(int pid) : pid_(pid) {
+    pid_ = pid;
+    fd_ = open("/tmp/tenken_mmap", O_RDWR | O_CREAT | O_TRUNC, 0600);
+  }
+
+  ~LinuxImpl() {
+    if (fd_)
+      close(fd_);
+  }
 
   std::vector<MapInfoT> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
   bool write(uint64_t address, const std::vector<uint8_t> &value) override;
+  char *AllocMMapDisk(uint64_t size) override;
+  void UnAllocMMapDisk(uint64_t address, uint64_t size) override;
 
 }; // namespace LinuxImpl IProcess
+
+void LinuxImpl::UnAllocMMapDisk(uint64_t address, uint64_t size) {
+  munmap(reinterpret_cast<void *>(address), size);
+}
 
 std::vector<MapInfoT> LinuxImpl::getRegions() {
   std::ifstream maps;
@@ -157,22 +174,41 @@ std::string ReadFileString(const std::string &path) {
   return readString.str();
 }
 
+char *LinuxImpl::AllocMMapDisk(uint64_t size) {
+  uint64_t pagesize = sysconf(_SC_PAGESIZE);
+
+  uint64_t alignedsize = (size + pagesize - 1) & ~(pagesize - 1);
+
+  uint64_t curr_offset = fileoffset_;
+  fileoffset_ += alignedsize;
+
+  ftruncate(fd_, static_cast<int64_t>(fileoffset_));
+
+  char *ptr = static_cast<char *>(mmap(nullptr, size, PROT_READ | PROT_WRITE,
+                                       MAP_SHARED, fd_,
+                                       static_cast<int64_t>(curr_offset)));
+
+  if (ptr == MAP_FAILED) {
+    printf("mmap failed. %s\n", strerror(errno));
+    return nullptr;
+  }
+  return ptr;
+}
+
 }; // namespace
 std::vector<ProcessInfoT> GetProcTargets() {
   std::vector<ProcessInfoT> Processes;
 
   for (int pid : ListPid()) {
-    std::string comm;
+    std::string name;
     std::string cmdline;
-    std::string uid;
-    // TODO: Implement uid.
 
     std::string path = "/proc/" + std::to_string(pid) + "/";
 
-    comm = ReadFileString(path + "comm");
-    if (comm.empty())
+    name = ReadFileString(path + "comm");
+    if (name.empty())
       continue;
-    comm.erase(comm.find('\n'));
+    name.erase(name.find('\n'));
     cmdline = ReadFileString(path + "cmdline");
     if (cmdline.empty()) {
       continue;
@@ -185,9 +221,8 @@ std::vector<ProcessInfoT> GetProcTargets() {
     ProcessInfoT PushProcess;
 
     PushProcess.pid = pid;
-    PushProcess.uid = 0; // later.
-    PushProcess.FieldCmdline = cmdline;
-    PushProcess.FieldComm = comm;
+    PushProcess.cmdline = cmdline;
+    PushProcess.name = name;
 
     Processes.push_back(PushProcess);
   }

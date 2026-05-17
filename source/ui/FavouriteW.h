@@ -4,7 +4,7 @@
 #include "types.h"
 
 class FavouriteW {
-  static void InitW();
+  static bool InitW();
   static void EndW();
   int64_t selected_row = -1;
   int64_t selected_element = 0;
@@ -14,7 +14,7 @@ class FavouriteW {
   bool JustStartedEditingVal = false;
   bool AllColumnChosen = false;
 
-  FavouriteWAction
+  PendingAction
   DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites);
   bool DrawRefreshContextButton();
   void AlignButtons();
@@ -23,5 +23,6 @@ class FavouriteW {
   ContextDisplay Context;
 
 public:
-  FavouriteWAction CycleW(const std::vector<FavouriteInfoT> &Favourites);
+  PendingAction CycleW(const std::vector<FavouriteInfoT> &Favourites,
+                       SessionState &State);
 };

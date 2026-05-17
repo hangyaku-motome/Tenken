@@ -6,7 +6,7 @@
 class LogW {
 
 private:
-  static void InitW();
+  static bool InitW();
   static void EndW();
 
 public:

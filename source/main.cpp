@@ -1,44 +1,49 @@
-#include "Favourite.h"
+#include "FavouriteList.h"
+#include "FavouriteW.h"
+#include "HitList.h"
 #include "HitsW.h"
 #include "LogW.h"
 #include "Scanner.h"
 #include "SearchW.h"
-#include "TargetPopUp.hpp"
 #include "display.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
+#include "scan_ops.h"
 #include "types.h"
-#include <GL/gl.h>
-#include <GLFW/glfw3.h>
 #include <cstdint>
-#include <string>
+#include <imgui_impl_glfw.h>
+#include <thread>
+#include <vector>
 
-OpType ResolveActions(PendingAction Actions, Scanner &ScannerObj,
-                      TargetInfoT &TargetInfo);
+void ResolveActions(Scanner &ScannerObj,
+                    const std::vector<PendingAction> &Actions,
+                    SessionState &State, std::thread &scannerThread,
+                    HitList &Hit, FavouriteList &Favourite);
 
 int main() {
 
   // Start up Dear ImGui.
   GLFWwindow *window = initalise_main();
   ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
-
   ImGuiIO &io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-  TargetInfoT TargetInfo;
-  ProcessInfoT TargetProc;
+  SessionState State;
 
-  DisplayInfoT DisplayInfo{};
-
-  SearchW SearchObj;
-  HitsW HitObj;
-  TargetPopUp TargetPUpObj;
-  FavouriteW FavouriteObj;
+  SearchW SearchWObj;
+  HitsW HitWObj;
+  TargetPopUp TargetWObj;
+  FavouriteW FavouriteWObj;
 
   Scanner ScannerObj;
 
-  PendingAction Actions{};
-  bool TargetProcChosen = false;
+  HitList Hit;
+  FavouriteList Favourite;
+
+  std::vector<PendingAction> Actions;
+
+  std::thread scannerThread;
+
+  auto HitRefreshTime = std::chrono::steady_clock::now();
+  auto FavouriteRefreshTime = std::chrono::steady_clock::now();
 
   // Main loop.
   while (glfwWindowShouldClose(window) == 0) {
@@ -51,164 +56,188 @@ int main() {
     start_frame();
     SetDefaultDisplay();
 
-    MainMenuBarCycle(TargetPUpObj);
+    MainMenuBarCycle(TargetWObj);
 
     // Target popup.
-    Actions.OverrideType = TargetPUpObj.CyclePUp(TargetProc);
-    if (Actions.OverrideType == OpType::INIT_SCANNER) {
-      SearchObj = {};
-      HitObj = {};
-      TargetInfo = {};
-      ScannerObj.FullClear();
-      TargetProcChosen = true;
-      ScannerObj.StartFreezeThread();
-    }
+    Actions.push_back(TargetWObj.CyclePUp());
 
     // Hits window.
-    float ProgressBar = -1;
-    if (ScannerObj.IsScanning) {
-      ProgressBar = static_cast<float>(ScannerObj.CurrentProgress) /
-                    static_cast<float>(ScannerObj.TotalLoad);
-      Actions.HitW = HitObj.CycleW({}, TargetInfo, ProgressBar);
-    } else
-      Actions.HitW = HitObj.CycleW(ScannerObj.Hits, TargetInfo, ProgressBar);
+    if (!State.IsScanning)
+      Actions.push_back(HitWObj.CycleW(Hit.getAll(), State));
+    else
+      Actions.push_back(HitWObj.CycleW({}, State));
 
     // Search window.
-    Actions.SearchW = (SearchObj.CycleW(TargetInfo, TargetProcChosen));
+    Actions.push_back(SearchWObj.CycleW(State.TargetInfo, State.searchW,
+                                        State.IsUnknownnValueScan));
 
     // Favourite window.
-    Actions.FavouriteW = (FavouriteObj.CycleW(ScannerObj.GetFavourites()));
+    Actions.push_back(FavouriteWObj.CycleW(Favourite.get(), State));
 
     // Log window.
     LogW::CycleW();
 
-    end_frame(DisplayInfo.display_w, DisplayInfo.display_h, clear_color,
-              window);
+    end_frame(static_cast<int32_t>(io.DisplaySize.x),
+              static_cast<int32_t>(io.DisplaySize.y), clear_color, window);
 
     // resolve actions.
-    switch (ResolveActions(Actions, ScannerObj, TargetInfo)) {
-    case OpType::INIT_SCANNER:
-      ScannerObj.Init(TargetProc.pid);
-      break;
-    case OpType::RESTART_STATE:
-      HitObj = {};
-      ScannerObj.RestartClear();
-      TargetProcChosen = true;
-      ScannerObj.StartFreezeThread();
-      TargetInfo = {};
-      SearchObj = {};
-      break;
-    default:
-      break;
+    ResolveActions(ScannerObj, Actions, State, scannerThread, Hit, Favourite);
+    Actions.clear();
+
+    // regular refresh fav
+    if (State.favRefreshSeconds >= 0.3) {
+      auto favouriterefresh =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              LoopTime - FavouriteRefreshTime);
+      if (favouriterefresh.count() >=
+          static_cast<int64_t>(State.favRefreshSeconds * 1000)) {
+        Favourite.rescanAll(ScannerObj, State.TargetInfo.TargetType);
+        FavouriteRefreshTime = LoopTime;
+      }
     }
 
-    Actions = {};
-
-    ScannerObj.AutoRefreshHits(LoopTime, TargetInfo.TargetType);
-    ScannerObj.AutoRefreshFavourites(LoopTime);
+    // regular refresh hit
+    if (State.hitRefreshSeconds >= 0.3) {
+      auto hitrefresh = std::chrono::duration_cast<std::chrono::milliseconds>(
+          LoopTime - HitRefreshTime);
+      if (hitrefresh.count() >=
+          static_cast<int64_t>(State.hitRefreshSeconds * 1000)) {
+        ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
+          ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
+                                State.TargetInfo.TargetType);
+        });
+        HitRefreshTime = LoopTime;
+      }
+    }
   }
   exit_main(window);
+  Favourite.endFreezeThread();
+  if (scannerThread.joinable())
+    scannerThread.join();
 }
 
-OpType ResolveActions(PendingAction Actions, Scanner &ScannerObj,
-                      TargetInfoT &TargetInfo) {
+void ResolveActions(Scanner &ScannerObj,
+                    const std::vector<PendingAction> &Actions,
+                    SessionState &State, std::thread &scannerThread,
+                    HitList &Hit, FavouriteList &Favourite) {
 
-  switch (Actions.OverrideType) {
-  case OpType::INIT_SCANNER:
-    return Actions.OverrideType;
-  default:
-    break;
+  for (auto &Pending : Actions) {
+    std::visit(
+        overloaded{
+            [&](const Action::TargetProcChosen &a) {
+              Hit.reset();
+              Favourite.reset();
+              ScannerObj.init(a.chosenProc.pid);
+              State.TargetProcInfo = a.chosenProc;
+              State.searchW = SessionState::SearchWStatus::FIRST;
+              State.TargetChosen = true;
+              Favourite.startFreezeThread(ScannerObj);
+            },
+            [&](const Action::firstScan) {
+              ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
+                auto hits = ScannerObj.startScan(State.TargetInfo.value,
+                                                 State.ScanProgress);
+                Hit.assignNew(std::move(hits));
+              });
+              State.searchW = SessionState::SearchWStatus::SECOND;
+            },
+            [&](const Action::startUnknownValueScan) {
+              State.IsUnknownnValueScan = true;
+              ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
+                State.Snapshots =
+                    ScannerObj.StartUnknownValueScan(State.ScanProgress);
+              });
+              State.searchW = SessionState::SearchWStatus::SECOND;
+            },
+            [&](const Action::filterByValue &a) {
+              ScanOp::RunOnScannerThread(
+                  scannerThread, State, [&, value = a.value]() {
+                    ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
+                                          State.TargetInfo.TargetType);
+                    Hit.filter(value);
+                  });
+            },
+            [&](const Action::filterByStatus &a) {
+              if (State.IsUnknownnValueScan) {
+                ScanOp::RunOnScannerThread(
+                    scannerThread, State, [&, status = a.status]() {
+                      Hit.assignNew(ScannerObj.FilterSnapshots(
+                          State.Snapshots, status,
+                          State.TargetInfo.TargetType));
+                      State.IsUnknownnValueScan = false;
+                      State.Snapshots = {};
+                    });
+              } else {
+                ScanOp::RunOnScannerThread(
+                    scannerThread, State, [&, status = a.status]() {
+                      ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
+                                            State.TargetInfo.TargetType);
+                      Hit.filter(status);
+                    });
+              }
+            },
+            [&](const Action::writeHit &a) {
+              Hit.write(ScannerObj, a.index, a.value);
+              Hit.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
+            },
+            [&](const Action::rescanHit &a) {
+              Hit.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
+            },
+            [&](const Action::rescanAllHits) {
+              ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
+                ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
+                                      State.TargetInfo.TargetType);
+              });
+            },
+            [&](const Action::regularRefreshHits &a) {
+              State.hitRefreshSeconds = a.seconds;
+            },
+            // start of favourite stuff.
+            [&](const Action::addFavourite &a) {
+              Favourite.add(Hit.getIndex(a.hitIndex),
+                            State.TargetInfo.TargetType);
+            },
+            [&](const Action::removeFavourite &a) {
+              Favourite.remove(a.index);
+            },
+            [&](const Action::writeFavourite &a) {
+              Favourite.write(ScannerObj, a.index, a.value);
+              Favourite.rescan(ScannerObj, a.index,
+                               State.TargetInfo.TargetType);
+            },
+            [&](const Action::isFreezeFavourite &a) {
+              Favourite.setFreeze(a.index, a.freeze);
+            },
+            [&](const Action::freezeValueFavourite &a) {
+              Favourite.setFreezeVal(a.index, a.value);
+            },
+            [&](const Action::descFavourite &a) {
+              Favourite.setDesc(a.index, a.value);
+            },
+            [&](const Action::rescanFavourite &a) {
+              Favourite.rescan(ScannerObj, a.index,
+                               State.TargetInfo.TargetType);
+            },
+            [&](const Action::regularRefreshFavourite &a) {
+              State.favRefreshSeconds = a.seconds;
+            },
+            [&](const Action::rescanAllFavourites) {
+              Favourite.rescanAll(ScannerObj, State.TargetInfo.TargetType);
+            },
+            // end of favourite stuff.
+            [&](const Action::restartScan) {
+              Hit.reset();
+              State.favRefreshSeconds = -1;
+              State.hitRefreshSeconds = -1;
+              State.TargetInfo.TargetType = TargetTypeT::Invalid;
+              State.TargetInfo.value = {};
+              State.searchW = SessionState::SearchWStatus::FIRST;
+            },
+            [&](const Action::setTargetInfo &a) {
+              State.TargetInfo.TargetType = a.type;
+              State.TargetInfo.value = a.value;
+            },
+            [&](const std::monostate &) {}},
+        Pending);
   }
-
-  switch (Actions.HitW.Type) {
-  case OpType::EDIT:
-    if (TargetInfo.value.size() < Actions.HitW.buf->size())
-      Actions.HitW.buf->resize(TargetInfo.value.size());
-    ScannerObj.WriteHit(Actions.HitW.index.value(), Actions.HitW.buf.value());
-    ScannerObj.RescanHit(Actions.HitW.index.value(), TargetInfo.TargetType);
-
-    break;
-  case OpType::REFRESH:
-    if (Actions.HitW.index.has_value())
-      ScannerObj.RescanHit(Actions.HitW.index.value(), TargetInfo.TargetType);
-    else
-      ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
-        s.RescanAllHits(TargetInfo.TargetType);
-      });
-    break;
-  case OpType::REGULAR_REFRESH:
-    if (Actions.HitW.seconds.value() == -1 || Actions.HitW.seconds.value() == 0)
-      ScannerObj.HitRefreshInterval =
-          static_cast<int64_t>(Actions.HitW.seconds.value());
-    else
-      ScannerObj.HitRefreshInterval =
-          static_cast<int64_t>(Actions.HitW.seconds.value() * 1000) >= 300
-              ? static_cast<int64_t>(Actions.HitW.seconds.value() * 1000)
-              : 300;
-    break;
-  case OpType::ADD_TO_FAVOURITES:
-    ScannerObj.AddToFavourite(Actions.HitW.index.value(),
-                              TargetInfo.TargetType);
-
-  default:
-    break;
-  }
-
-  switch (Actions.FavouriteW.Type) {
-  case OpType::EDIT:
-    if (Actions.FavouriteW.newname.has_value()) {
-      ScannerObj.SetDescriptionFavourite(Actions.FavouriteW.index.value(),
-                                         Actions.FavouriteW.newname.value());
-      break;
-    }
-    ScannerObj.WriteFavourite(Actions.FavouriteW.index.value(),
-                              Actions.FavouriteW.buf.value());
-    ScannerObj.RescanFavourite(Actions.FavouriteW.index.value());
-    break;
-  case OpType::FREEZE:
-    ScannerObj.SetFreezeFavourite(Actions.FavouriteW.index.value(), true);
-    break;
-  case OpType::UNFREEZE:
-    ScannerObj.SetFreezeFavourite(Actions.FavouriteW.index.value(), false);
-    break;
-  case OpType::REFRESH:
-    if (Actions.FavouriteW.index.has_value())
-      ScannerObj.RescanFavourite(Actions.FavouriteW.index.value());
-    else
-      ScannerObj.RescanAllFavourites();
-    break;
-  case OpType::REMOVE_FROM_FAVOURITES:
-    ScannerObj.RemoveFromFavourite(Actions.FavouriteW.index.value());
-    break;
-  case OpType::REGULAR_REFRESH:
-    ScannerObj.SetRefreshDurationFavourite(Actions.FavouriteW.index.value(),
-                                           Actions.FavouriteW.seconds.value());
-  default:
-    break;
-  }
-
-  switch (Actions.SearchW.Type) {
-  case OpType::FIRST_SCAN:
-    Log::Info("Starting initial scan...");
-    ScannerObj.RunOnScannerThread(
-        [&TargetInfo](Scanner &s) { s.StartScan(TargetInfo); });
-    break;
-  case OpType::FILTER:
-    if (Actions.SearchW.KeepType.has_value())
-      ScannerObj.RunOnScannerThread([&TargetInfo, &Actions](Scanner &s) {
-        s.RescanAllHits(TargetInfo.TargetType);
-        s.FilterHit(Actions.SearchW.KeepType.value());
-      });
-    else
-      ScannerObj.RunOnScannerThread([&TargetInfo](Scanner &s) {
-        s.RescanAllHits(TargetInfo.TargetType);
-        s.FilterHit(TargetInfo.value);
-      });
-    break;
-  case OpType::RESTART_STATE:
-    return OpType::RESTART_STATE;
-  default:
-    break;
-  }
-  return {};
 }

@@ -1,62 +1,71 @@
 #include "HitsW.h"
+#include "ContextDisplay.h"
 #include "display.h"
 #include "imgui.h"
 #include "types.h"
-#include <GL/gl.h>
-#include <GLFW/glfw3.h>
+#include "utils.h"
 #include <algorithm>
-#include <atomic>
 #include <cinttypes>
 #include <cstdint>
 #include <string>
+#include <variant>
 #include <vector>
 
-void HitsW::InitW() { ImGui::Begin("Hits"); }
+bool HitsW::InitW() { return ImGui::Begin("Hits"); }
 
 void HitsW::EndW() { ImGui::End(); }
 
-HitWAction HitsW::CycleW(const std::vector<HitInfoT> &Hits,
-                         const TargetInfoT &TargetInfo,
-                         std::atomic<float> Progress) {
-  InitW();
+PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits,
+                            SessionState &State) {
+  if (!InitW()) {
+    EndW();
+    return {};
+  }
+
+  if (!State.TargetChosen) {
+    ImGui::TextUnformatted("No target, choose one...");
+    EndW();
+    return {};
+  }
+
+  if (State.IsScanning) {
+    ImGui::TextUnformatted("Scanning in progress.");
+    ImGui::NewLine();
+    ImGui::ProgressBar(State.ScanProgress);
+    EndW();
+    return {};
+  }
+
   if (Hits.empty()) {
+    ImGui::TextUnformatted("No hits!");
     EndW();
     return {};
   }
 
-  if (Progress != -1) {
-    if (Hits.size() >= 100) {
+  auto HitTableAction = DrawHitTable(Hits, State.TargetInfo);
 
-      ImGui::TextUnformatted("Scanning in progress.");
-      ImGui::NewLine();
-      ImGui::ProgressBar(Progress);
-    };
-    EndW();
-    return {};
-  }
-
-  auto HitTableAction = DrawHitTable(Hits, TargetInfo);
-
-  HitWAction ContextAction;
+  PendingAction ContextAction{};
   if (selected_row >= 0 && static_cast<uint64_t>(selected_row) <= Hits.size()) {
-    ContextAction = Context.CycleContext(
-        static_cast<uint64_t>(selected_row),
-        Hits[static_cast<uint64_t>(selected_row)], RefreshDuration);
+    auto ctr = Context.CycleContext(static_cast<uint64_t>(selected_row),
+                                    Hits[static_cast<uint64_t>(selected_row)],
+                                    State.hitRefreshSeconds);
+    ContextAction = Context.ResolveContextIntent(ctr, true);
   }
   EndW();
 
-  if (ContextAction.seconds.has_value())
-    RefreshDuration = ContextAction.seconds.value();
-
-  if (HitTableAction.Type != OpType::NONE)
+  if (!std::holds_alternative<std::monostate>(HitTableAction)) {
     return HitTableAction;
+  }
 
-  return ContextAction;
+  if (!std::holds_alternative<std::monostate>(ContextAction))
+    return ContextAction;
+
+  return {};
 }
 
-HitWAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
-                               const TargetInfoT &TargetInfo) {
-  HitWAction ReturnAction;
+PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
+                                  const TargetInfoT &TargetInfo) {
+  PendingAction ReturnAction{};
 
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1F, 100.0F, 250.0F);
@@ -98,8 +107,8 @@ HitWAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
         if (ImGui::BeginPopupContextItem("hit_popup_menu")) {
           selected_row = row;
           if (ImGui::MenuItem("Add to Favourites")) {
-            ReturnAction.Type = OpType::ADD_TO_FAVOURITES;
-            ReturnAction.index = selected_row;
+            ReturnAction =
+                Action::addFavourite{static_cast<uint64_t>(selected_row)};
           }
           ImGui::EndPopup();
         }
@@ -124,9 +133,7 @@ HitWAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
 
         if (GetTargetValue(TargetInfo.TargetType, tmpbuf,
                            ImGuiInputTextFlags_EnterReturnsTrue)) {
-          ReturnAction.buf = tmpbuf;
-          ReturnAction.Type = OpType::EDIT;
-          ReturnAction.index = row;
+          ReturnAction = Action::writeHit{row, tmpbuf};
           IsEditing = false;
           CancelEdit = true;
         }
@@ -138,7 +145,7 @@ HitWAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
         }
       } else if (TargetInfo.TargetType != TargetTypeT::Invalid)
         ImGui::TextUnformatted(
-            ValToStr(Hits[row].value, TargetInfo.TargetType).c_str());
+            DataToStr(Hits[row].value, TargetInfo.TargetType).c_str());
       if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) {
         selected_row = -1;
       }
@@ -148,7 +155,7 @@ HitWAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(169, 169, 169, 255));
         if (TargetInfo.TargetType != TargetTypeT::Invalid)
           ImGui::TextUnformatted(
-              ValToStr(Hits[row].previous_value, TargetInfo.TargetType)
+              DataToStr(Hits[row].previous_value, TargetInfo.TargetType)
                   .c_str());
         ImGui::PopStyleColor();
 

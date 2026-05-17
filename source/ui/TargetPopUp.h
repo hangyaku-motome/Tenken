@@ -11,5 +11,5 @@ private:
 public:
   bool IsClicked = false;
 
-  OpType CyclePUp(ProcessInfoT &TargetProc);
+  PendingAction CyclePUp();
 };
