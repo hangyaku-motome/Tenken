@@ -1,9 +1,12 @@
 #include "display.h"
+#include "LogW.h"
 #include "TargetPopUp.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
+#include "misc/cpp/imgui_stdlib.h"
+#include "utils.h"
 #include <GLFW/glfw3.h>
 #include <cstdint>
 #include <cstdlib>
@@ -143,4 +146,108 @@ void MainMenuBarCycle(TargetPopUp &TargetPUp) {
 
     ImGui::EndMainMenuBar();
   }
+}
+
+template <typename out, typename T>
+std::vector<uint8_t> ValtoData(const T &val) {
+  std::vector<uint8_t> data(sizeof(out));
+  memcpy(data.data(), &val, sizeof(out));
+  return data;
+}
+
+bool GetTargetValue(const TargetTypeT TargetType,
+                    std::vector<uint8_t> &write_to, ImGuiInputTextFlags flags) {
+
+  if (TargetType == TargetTypeT::Invalid)
+    return false;
+
+  std::string tempbuf = DataToStr(write_to, TargetType);
+  if (!ImGui::InputText("##value", &tempbuf, flags)) {
+    if (tempbuf.empty())
+      write_to.clear();
+    return false;
+  }
+
+  char *end;
+
+  uint64_t u_val = strtoull(reinterpret_cast<char *>(tempbuf.data()), &end, 10);
+  bool uval_ok =
+      (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
+
+  int64_t s_val = strtoll(reinterpret_cast<char *>(tempbuf.data()), &end, 10);
+  bool sval_ok =
+      (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
+
+  switch (TargetType) {
+  case TargetTypeT::uInt8:
+    if (!(u_val <= UINT8_MAX) || !uval_ok)
+      break;
+    write_to = ValtoData<uint8_t>(u_val);
+    return true;
+  case TargetTypeT::uInt16:
+    if (!(u_val <= UINT16_MAX) || !uval_ok)
+      break;
+    write_to = ValtoData<uint16_t>(u_val);
+    return true;
+  case TargetTypeT::uInt32:
+    if (!(u_val <= UINT32_MAX) || !uval_ok)
+      break;
+    write_to = ValtoData<uint32_t>(u_val);
+    return true;
+  case TargetTypeT::uInt64:
+    if (!uval_ok)
+      break;
+    write_to = ValtoData<uint64_t>(u_val);
+    return true;
+  case TargetTypeT::Int8:
+    if (!(s_val <= INT8_MAX) || !(INT8_MIN <= s_val) || !sval_ok)
+      break;
+    write_to = ValtoData<int8_t>(s_val);
+    return true;
+  case TargetTypeT::Int16:
+    if (!(s_val <= INT16_MAX) || !(INT16_MIN <= s_val) || !sval_ok)
+      break;
+    write_to = ValtoData<int16_t>(s_val);
+    return true;
+  case TargetTypeT::Int32:
+    if (!(s_val <= INT32_MAX) || !(INT32_MIN <= s_val) || !sval_ok)
+      break;
+    write_to = ValtoData<int32_t>(s_val);
+    return true;
+  case TargetTypeT::Int64:
+    if (!sval_ok)
+      break;
+    write_to = ValtoData<int64_t>(s_val);
+    return true;
+  case TargetTypeT::Float: {
+    float float_value = strtof(reinterpret_cast<char *>(tempbuf.data()), &end);
+    if (*end != '\0' && end == reinterpret_cast<char *>(tempbuf.data()))
+      break;
+    write_to = ValtoData<float>(float_value);
+    return true;
+  }
+  case TargetTypeT::Double: {
+    double double_value =
+        strtof(reinterpret_cast<char *>(tempbuf.data()), &end);
+    if (*end != '\0' && end == reinterpret_cast<char *>(tempbuf.data()))
+      break;
+    write_to = ValtoData<double>(double_value);
+    return true;
+  }
+  case TargetTypeT::String: {
+    auto null_ter = std::ranges::find(tempbuf, '\0');
+    write_to.resize(
+        static_cast<uint64_t>(std::distance(tempbuf.begin(), null_ter)));
+    memcpy(write_to.data(), tempbuf.data(), write_to.size());
+    return true;
+  }
+  default:
+  case TargetTypeT::Invalid:
+    Log::Error("Why did get target value recieve invalid target type?");
+    return false;
+  }
+
+  tempbuf.clear();
+  write_to.clear();
+  return false;
 }
