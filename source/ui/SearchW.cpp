@@ -90,13 +90,13 @@ PendingAction SearchW::CycleFirstW(const TargetInfoT &TargetInfo) {
 }
 
 PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo,
-                                    bool IsUnknownnValueScan) {
+                                    bool IsUnknownValueScan) {
   if (!InitW()) {
     EndW();
     return {};
   }
 
-  if (!IsUnknownnValueScan)
+  if (!IsUnknownValueScan)
     ImGui::Combo(
         "Keep", &TempFilterType,
         "unchanged\0changed\0increased\0decreased\0specific value\0\0");
@@ -131,7 +131,11 @@ PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo,
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                        ((ImGui::GetContentRegionAvail().x - button_w) / 2));
 
-  PendingAction RestartScan;
+  if (ImGui::Button("Undo scan.")) {
+    EndW();
+    return Action::undoScan{};
+  }
+  ImGui::SameLine();
   if (ImGui::Button("Restart scan.", {button_w, 0})) {
     EndW();
     return Action::restartScan{};

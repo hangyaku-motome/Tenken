@@ -244,6 +244,7 @@ void ResolveActions(Scanner &ScannerObj,
               State.TargetInfo.TargetType = a.type;
               State.TargetInfo.value = a.value;
             },
+            [&](const Action::undoScan) { Hit.RestoreOldHits(); },
             [&](const std::monostate &) {}},
         Pending);
   }

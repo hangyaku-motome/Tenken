@@ -57,6 +57,8 @@ void HitList::filter(RelativeStatus KeepType) {
     KeepType3 = RelativeStatus::DECREASED;
   }
 
+  cachedhits_ = hits_;
+
   uint64_t init_amount = hits_.size();
 
   hits_.erase(std::remove_if(
@@ -72,6 +74,9 @@ void HitList::filter(RelativeStatus KeepType) {
 
 void HitList::filter(const std::vector<uint8_t> &KeepValue) {
   std::scoped_lock<std::mutex> lock(mutex_);
+
+  cachedhits_ = hits_;
+
   uint64_t init_amount = hits_.size();
 
   hits_.erase(std::remove_if(hits_.begin(), hits_.end(),

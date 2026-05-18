@@ -35,7 +35,7 @@ public:
 
   PendingAction CycleW(TargetInfoT &TargetInfo,
                        SessionState::SearchWStatus State,
-                       bool IsUnknownnValueScan) {
+                       bool IsUnknownValueScan) {
     if (State != old_status) {
       if (State == SessionState::SearchWStatus::FIRST) {
 
@@ -59,7 +59,7 @@ public:
     case SessionState::SearchWStatus::FIRST:
       return CycleFirstW(TargetInfo);
     case SessionState::SearchWStatus::SECOND:
-      return CycleSecondW(TargetInfo, IsUnknownnValueScan);
+      return CycleSecondW(TargetInfo, IsUnknownValueScan);
     }
     return {};
   }

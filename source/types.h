@@ -223,6 +223,8 @@ struct setTargetInfo {
   std::vector<uint8_t> value;
 };
 
+struct undoScan {};
+
 }; // namespace Action
 
 template <class... Ts> struct overloaded : Ts... {
@@ -230,7 +232,6 @@ template <class... Ts> struct overloaded : Ts... {
 };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-// life changing
 using PendingAction =
     std::variant<std::monostate, Action::TargetProcChosen, Action::firstScan,
                  Action::startUnknownValueScan, Action::filterByValue,
@@ -241,7 +242,7 @@ using PendingAction =
                  Action::regularRefreshHits, Action::regularRefreshFavourite,
                  Action::rescanHit, Action::rescanAllHits,
                  Action::rescanFavourite, Action::rescanAllFavourites,
-                 Action::setTargetInfo>;
+                 Action::setTargetInfo, Action::undoScan>;
 
 //
 // End of Action stuff.

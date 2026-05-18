@@ -8,6 +8,7 @@
 
 class HitList {
 
+  std::vector<HitInfoT> cachedhits_; // assigning hits_ to this in filter
   std::vector<HitInfoT> hits_;
   std::mutex mutex_;
 
@@ -29,4 +30,6 @@ public:
   const HitInfoT &getIndex(uint64_t index) const { return hits_[index]; }
 
   void reset() { hits_.clear(); }
+
+  void RestoreOldHits() { hits_ = cachedhits_; }
 };
