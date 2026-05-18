@@ -7,32 +7,6 @@ void FavouriteList::assignNew(const std::vector<FavouriteInfoT> &NewList) {
   std::scoped_lock<std::mutex> lock(mutex_);
   favourites_ = NewList;
 }
-/*
-
-  void assignNew(const std::vector<FavouriteInfoT> &NewList);
-
-  void add(const HitInfoT &Hit, TargetTypeT TargetType);
-  void remove(uint64_t index);
-
-  void setFreeze(uint64_t index, bool setTo);
-  void setDesc(uint64_t index, std::string setTo);
-
-  void rescan(const Scanner &ScannerObj, uint64_t index);
-  void rescanAll(const Scanner &ScannerObj);
-  void write(const Scanner &ScannerObj, uint64_t index,
-             const std::vector<uint8_t> &value);
-struct FavouriteInfoT {
-  uint64_t location;
-  std::vector<uint8_t> value;
-  std::vector<uint8_t> previous_value;
-  std::string desc;
-  RelativeStatus status = RelativeStatus::UNSET;
-  std::vector<uint8_t> bytes_around;
-  TargetTypeT TargetType;
-  bool frozen = false;
-  std::vector<uint8_t> frozen_value;
-};
-             */
 
 void FavouriteList::add(const HitInfoT &hit, TargetTypeT TargetType) {
   std::scoped_lock<std::mutex> lock(mutex_);

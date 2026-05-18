@@ -6,3 +6,4 @@ compile_commands.json
 build-linux/
 build-win/
 words/
+imgui.ini
