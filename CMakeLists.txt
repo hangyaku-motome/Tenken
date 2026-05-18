@@ -55,6 +55,7 @@ add_executable(Tenken
     source/ui/SearchW.cpp
     source/ui/FavouriteW.cpp
     source/ui/ContextDisplay.cpp
+    source/ui/MapPopUp.cpp
     source/core/Scanner.cpp
     source/core/HitList.cpp
     source/core/FavouriteList.cpp

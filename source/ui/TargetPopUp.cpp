@@ -5,16 +5,16 @@
 #include "types.h"
 #include <string>
 
-void TargetPopUp::Clicked() {
+void TargetPopUp::InitPopUp() {
   Processes = ActOS::GetProcTargets();
   Log::Info("Found PID count: " + std::to_string(Processes.size()) + "\n");
   ImGui::OpenPopup("Target List");
-  IsClicked = false;
+  clicked_ = false;
 }
 
 PendingAction TargetPopUp::CyclePUp() {
-  if (IsClicked)
-    Clicked();
+  if (clicked_)
+    InitPopUp();
 
   PendingAction ReturnAction{};
 
@@ -43,8 +43,8 @@ PendingAction TargetPopUp::CyclePUp() {
                           false, ImGuiSelectableFlags_SpanAllColumns)) {
       ReturnAction = Action::TargetProcChosen{Target};
       Log::Info("...Chosen PID: " + std::to_string(Target.pid) +
-                "   Target Comm:" + Target.name +
-                "   Target CmdLine:" + Target.cmdline + "\n");
+                "   Target name:" + Target.name +
+                "   Target cmdline:" + Target.cmdline + "\n");
     }
   }
   ImGui::EndTable();

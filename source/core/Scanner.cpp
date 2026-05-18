@@ -17,37 +17,6 @@ std::vector<uint8_t> Scanner::readAdr(uint64_t address,
   return proc_->read(address, readSize);
 };
 
-std::vector<HitInfoT> Scanner::startScan(const std::vector<uint8_t> &targetval,
-                                         std::atomic<float> &progress) const {
-  std::vector<MapInfoT> Maps = getMapRegions();
-  if (Maps.empty())
-    return {};
-
-  Log::Info(std::to_string(Maps.size()) + " map regions found.");
-
-  std::vector<HitInfoT> ReturnHits;
-
-  for (uint64_t i = 0; i < Maps.size(); ++i) {
-    progress = static_cast<float>(i) / Maps.size();
-    std::vector<uint8_t> Data =
-        readAdr(Maps[i].start, Maps[i].end - Maps[i].start);
-    if (Data.size() != Maps[i].end - Maps[i].start) {
-      Maps.erase(Maps.begin() + i);
-      continue;
-    }
-    for (const auto RelativeOffset : searchValue(Data, targetval)) {
-      ReturnHits.push_back(
-          {.location = Maps[i].start + RelativeOffset,
-           .value = targetval,
-           .previous_value = {},
-           .bytes_around = findBytesAround(
-               RelativeOffset, Data, static_cast<uint32_t>(targetval.size()))});
-    }
-  }
-  Log::Info(std::to_string(ReturnHits.size()) + " hits found.");
-  return ReturnHits;
-}
-
 Snapshot Scanner::StartUnknownValueScan(std::atomic<float> &progress) const {
   std::vector<MapInfoT> Maps = proc_->getRegions();
   std::vector<MappedRegion> regs;
@@ -79,6 +48,7 @@ Snapshot Scanner::StartUnknownValueScan(std::atomic<float> &progress) const {
   return ReturnSnapshot;
 }
 
+// WILL fail for string.
 std::vector<HitInfoT> Scanner::FilterSnapshots(const Snapshot &Old,
                                                RelativeStatus KeepType,
                                                TargetTypeT TargetType) const {
@@ -96,9 +66,11 @@ std::vector<HitInfoT> Scanner::FilterSnapshots(const Snapshot &Old,
         if (k + sizeof(T) >= new_data.size())
           break;
 
-        status = compareValues<T>(
-            Old.regions[i].ptr + k,
-            reinterpret_cast<const char *>(new_data.data() + k));
+        if constexpr (!std::is_same_v<std::string, T>)
+          status =
+              tagChange(reinterpret_cast<const char *>(new_data.data() + k),
+                        reinterpret_cast<const char *>(Old.regions[i].ptr + k),
+                        TargetType);
 
         if (KeepType == RelativeStatus::CHANGED) {
           if (status != RelativeStatus::INCREASED &&
@@ -121,3 +93,9 @@ std::vector<HitInfoT> Scanner::FilterSnapshots(const Snapshot &Old,
   });
   return Hits;
 };
+
+std::vector<MapInfoT> Scanner::getMapRegions() const {
+  if (proc_ != nullptr)
+    return proc_->getRegions();
+  return {};
+}

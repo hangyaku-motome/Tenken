@@ -36,8 +36,10 @@ void HitList::rescan(const Scanner &ScannerObj, uint64_t index,
             static_cast<int64_t>(hits_[index].value.size()));
   }
   if (!hits_[index].previous_value.empty())
-    hits_[index].Status = tagEntryChange(
-        hits_[index].value, hits_[index].previous_value, TargetType);
+    hits_[index].Status = tagChange(
+        reinterpret_cast<const char *>(hits_[index].value.data()),
+        reinterpret_cast<const char *>(hits_[index].previous_value.data()),
+        TargetType, hits_[index].value.size());
 }
 
 void HitList::write(const Scanner &ScannerObj, uint64_t index,

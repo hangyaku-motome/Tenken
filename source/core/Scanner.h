@@ -14,10 +14,7 @@ public:
   bool writeAdr(uint64_t address, const std::vector<uint8_t> &value) const;
   std::vector<uint8_t> readAdr(uint64_t address, uint64_t readSize) const;
 
-  std::vector<MapInfoT> getMapRegions() const { return proc_->getRegions(); }
-
-  std::vector<HitInfoT> startScan(const std::vector<uint8_t> &targetval,
-                                  std::atomic<float> &progress) const;
+  std::vector<MapInfoT> getMapRegions() const;
 
   Snapshot StartUnknownValueScan(std::atomic<float> &progress) const;
 

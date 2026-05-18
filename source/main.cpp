@@ -3,6 +3,7 @@
 #include "HitList.h"
 #include "HitsW.h"
 #include "LogW.h"
+#include "MapPopUp.h"
 #include "Scanner.h"
 #include "SearchW.h"
 #include "display.h"
@@ -30,8 +31,10 @@ int main() {
 
   SearchW SearchWObj;
   HitsW HitWObj;
-  TargetPopUp TargetWObj;
   FavouriteW FavouriteWObj;
+
+  TargetPopUp TargetWObj;
+  MapsPopUp MapWObj;
 
   Scanner ScannerObj;
 
@@ -56,10 +59,15 @@ int main() {
     start_frame();
     SetDefaultDisplay();
 
-    MainMenuBarCycle(TargetWObj);
+    MainMenuBarCycle(TargetWObj, MapWObj);
 
     // Target popup.
     Actions.push_back(TargetWObj.CyclePUp());
+
+    // Region popup.
+    if (MapWObj.refresh_)
+      MapWObj.UpdateRegions(ScannerObj.getMapRegions());
+    MapWObj.CyclePUp();
 
     // Hits window.
     if (!State.IsScanning)
@@ -135,8 +143,7 @@ void ResolveActions(Scanner &ScannerObj,
             },
             [&](const Action::firstScan) {
               ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
-                auto hits = ScannerObj.startScan(State.TargetInfo.value,
-                                                 State.ScanProgress);
+                auto hits = ScanOp::startScan(ScannerObj, State);
                 Hit.assignNew(std::move(hits));
               });
               State.searchW = SessionState::SearchWStatus::SECOND;

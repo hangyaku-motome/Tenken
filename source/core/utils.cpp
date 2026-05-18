@@ -1,14 +1,18 @@
 #include "utils.h"
 #include "LogW.h"
+#include "types.h"
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <type_traits>
 
-RelativeStatus tagEntryChange(const std::vector<uint8_t> &new_value,
-                              const std::vector<uint8_t> &previous_value,
-                              const TargetTypeT TargetType) {
+RelativeStatus tagChange(const char *old_bytes, const char *new_bytes,
+                         const TargetTypeT TargetType, uint64_t compare_size) {
   if (TargetType == TargetTypeT::Invalid) {
     return RelativeStatus::UNSET;
   }
   if (TargetType == TargetTypeT::String) {
-    if (memcmp(new_value.data(), previous_value.data(), new_value.size()))
+    if (memcmp(new_bytes, old_bytes, compare_size))
       return RelativeStatus::CHANGED;
     else
       return RelativeStatus::UNCHANGED;
@@ -16,9 +20,8 @@ RelativeStatus tagEntryChange(const std::vector<uint8_t> &new_value,
 
   RelativeStatus return_type;
   dispatchType(TargetType, [&]<typename T>() {
-    return_type =
-        compareValues<T>(reinterpret_cast<const char *>(new_value.data()),
-                         reinterpret_cast<const char *>(previous_value.data()));
+    if constexpr (!std::is_same_v<std::string, T>)
+      return_type = compareValues<T>(new_bytes, old_bytes);
   });
   return return_type;
 }
@@ -35,8 +38,35 @@ std::vector<uint8_t> findBytesAround(const uint32_t offset,
   return bytes;
 }
 
-std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data,
-                                  const std::vector<uint8_t> &TargetData) {
+template <typename T>
+std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target,
+                                  float epsilon) {
+
+  static_assert(std::is_arithmetic_v<T>,
+                "SearchValue only works with numeric types");
+
+  std::vector<uint64_t> FoundOffsets;
+
+  T data_value;
+
+  for (uint32_t i = 0; i + sizeof(T) <= Data.size(); i += sizeof(T)) {
+    memcpy(&data_value, Data.data() + i, sizeof(T));
+    if constexpr (std::is_floating_point_v<T>) {
+      if (std::abs(data_value - Target) <= epsilon)
+        FoundOffsets.push_back(i);
+    } else {
+      if (data_value == Target)
+        FoundOffsets.push_back(i);
+    }
+  }
+  return FoundOffsets;
+}
+
+std::vector<uint64_t>
+searchRawValue(const std::vector<uint8_t> &Data,
+               const std::vector<uint8_t> &TargetData,
+               const std::vector<bool>
+                   &validBytes) { // validbytes for byte scanning later.
 
   std::vector<uint64_t> FoundOffsets;
   uint64_t TargetSize = TargetData.size();
@@ -142,3 +172,86 @@ template <typename T> T readAs(const std::vector<uint8_t> &buffer) {
 
   return This;
 }
+
+// this shouldn't really be called by itself. unsafe. Call tagChange instead.
+// (not that tagChange is super safe by the way.)
+template <typename T>
+RelativeStatus compareValues(const char *old_bytes, const char *new_bytes,
+                             float epsilon) {
+
+  static_assert(std::is_arithmetic_v<T>,
+                "CompareValues only works with numeric types");
+
+  T newval{};
+  T oldval{};
+
+  memcpy(&newval, old_bytes, sizeof(newval));
+  memcpy(&oldval, new_bytes, sizeof(oldval));
+
+  if constexpr (std::is_floating_point_v<T>) {
+    if (std::isnan(newval) || std::isnan(oldval))
+      return RelativeStatus::CHANGED;
+
+    float diff = newval - oldval;
+
+    if (std::abs(newval - oldval) <= epsilon)
+      return RelativeStatus::UNCHANGED;
+
+    if (diff > 0)
+      return RelativeStatus::INCREASED;
+
+    return RelativeStatus::DECREASED;
+  }
+  if (newval == oldval)
+    return RelativeStatus::UNCHANGED;
+  if (newval > oldval)
+    return RelativeStatus::INCREASED;
+
+  // NaN is not implemented.
+  return RelativeStatus::DECREASED;
+}
+
+//
+
+template std::vector<uint64_t>
+searchValue<uint8_t>(const std::vector<uint8_t> &, uint8_t, float);
+template std::vector<uint64_t>
+searchValue<uint16_t>(const std::vector<uint8_t> &, uint16_t, float);
+template std::vector<uint64_t>
+searchValue<uint32_t>(const std::vector<uint8_t> &, uint32_t, float);
+template std::vector<uint64_t>
+searchValue<uint64_t>(const std::vector<uint8_t> &, uint64_t, float);
+template std::vector<uint64_t> searchValue<int8_t>(const std::vector<uint8_t> &,
+                                                   int8_t, float);
+template std::vector<uint64_t>
+searchValue<int16_t>(const std::vector<uint8_t> &, int16_t, float);
+template std::vector<uint64_t>
+searchValue<int32_t>(const std::vector<uint8_t> &, int32_t, float);
+template std::vector<uint64_t>
+searchValue<int64_t>(const std::vector<uint8_t> &, int64_t, float);
+template std::vector<uint64_t> searchValue<float>(const std::vector<uint8_t> &,
+                                                  float, float);
+template std::vector<uint64_t> searchValue<double>(const std::vector<uint8_t> &,
+                                                   double, float);
+
+//
+
+template RelativeStatus compareValues<uint8_t>(const char *, const char *,
+                                               float);
+template RelativeStatus compareValues<uint16_t>(const char *, const char *,
+                                                float);
+template RelativeStatus compareValues<uint32_t>(const char *, const char *,
+                                                float);
+template RelativeStatus compareValues<uint64_t>(const char *, const char *,
+                                                float);
+template RelativeStatus compareValues<int8_t>(const char *, const char *,
+                                              float);
+template RelativeStatus compareValues<int16_t>(const char *, const char *,
+                                               float);
+template RelativeStatus compareValues<int32_t>(const char *, const char *,
+                                               float);
+template RelativeStatus compareValues<int64_t>(const char *, const char *,
+                                               float);
+template RelativeStatus compareValues<float>(const char *, const char *, float);
+template RelativeStatus compareValues<double>(const char *, const char *,
+                                              float);

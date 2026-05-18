@@ -6,10 +6,10 @@
 class TargetPopUp {
 private:
   std::vector<ProcessInfoT> Processes;
-  void Clicked();
+  void InitPopUp();
 
 public:
-  bool IsClicked = false;
+  bool clicked_ = false;
 
   PendingAction CyclePUp();
 };

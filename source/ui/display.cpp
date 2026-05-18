@@ -1,5 +1,6 @@
 #include "display.h"
 #include "LogW.h"
+#include "MapPopUp.h"
 #include "TargetPopUp.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -135,17 +136,25 @@ void SetDefaultDisplay() {
   ImGui::End();
 }
 
-void MainMenuBarCycle(TargetPopUp &TargetPUp) {
-  if (ImGui::BeginMainMenuBar()) {
-    if (ImGui::BeginMenu("File")) {
-      if (ImGui::MenuItem("New Target")) {
-        TargetPUp.IsClicked = true;
-      }
-      ImGui::EndMenu();
-    }
+void MainMenuBarCycle(TargetPopUp &TargetPUp, MapsPopUp &MapPup) {
+  if (!ImGui::BeginMainMenuBar())
+    return;
 
-    ImGui::EndMainMenuBar();
+  if (ImGui::BeginMenu("File")) {
+    if (ImGui::MenuItem("New Target"))
+      TargetPUp.clicked_ = true;
+    ImGui::EndMenu();
   }
+
+  if (ImGui::BeginMenu("Utils")) {
+    if (ImGui::MenuItem("View Regions")) {
+      MapPup.clicked_ = true;
+      printf("did this\n");
+    }
+    ImGui::EndMenu();
+  }
+
+  ImGui::EndMainMenuBar();
 }
 
 template <typename out, typename T>

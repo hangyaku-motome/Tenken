@@ -88,9 +88,11 @@ void FavouriteList::rescanNoLock(const Scanner &ScannerObj, uint64_t index,
             static_cast<int64_t>(favourites_[index].value.size()));
   }
   if (!favourites_[index].previous_value.empty())
-    favourites_[index].status =
-        tagEntryChange(favourites_[index].value,
-                       favourites_[index].previous_value, TargetType);
+    favourites_[index].status = tagChange(
+        reinterpret_cast<const char *>(favourites_[index].value.data()),
+        reinterpret_cast<const char *>(
+            favourites_[index].previous_value.data()),
+        TargetType, favourites_[index].value.size());
 }
 
 void FavouriteList::rescan(const Scanner &ScannerObj, uint64_t index,

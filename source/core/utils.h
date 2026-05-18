@@ -2,16 +2,18 @@
 #include "types.h"
 #include <stdexcept>
 
-RelativeStatus tagEntryChange(const std::vector<uint8_t> &new_value,
-                              const std::vector<uint8_t> &previous_value,
-                              TargetTypeT TargetType);
-template <typename T>
-RelativeStatus compareValues(const char *old_bytes, const char *new_bytes);
+RelativeStatus tagChange(const char *old_bytes, const char *new_bytes,
+                         TargetTypeT TargetType, uint64_t compare_size = 0);
 std::vector<uint8_t> findBytesAround(uint32_t offset,
                                      const std::vector<uint8_t> &data,
                                      uint32_t size);
-std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data,
-                                  const std::vector<uint8_t> &TargetData);
+
+template <typename T>
+std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target,
+                                  float epsilon = 0.1F);
+std::vector<uint64_t> searchRawValue(
+    const std::vector<uint8_t> &Data, const std::vector<uint8_t> &TargetData,
+    const std::vector<bool> &validBytes = {}); // byte scanning later.
 
 std::string TargetTypeToStr(TargetTypeT TargetType);
 std::string DataToStr(const std::vector<uint8_t> &Bytes,
@@ -42,27 +44,13 @@ template <typename Func> void dispatchType(TargetTypeT type, Func &&func) {
     return func.template operator()<float>();
   case TargetTypeT::Double:
     return func.template operator()<double>();
+  case TargetTypeT::String:
+    return func.template operator()<std::string>();
   default:
     throw std::runtime_error("invalid type");
   }
 }
 
 template <typename T>
-RelativeStatus compareValues(const char *old_bytes, const char *new_bytes) {
-  T newval{};
-  T oldval{};
-
-  static_assert(std::is_arithmetic_v<T>,
-                "CompareValues only works with numeric types");
-
-  memcpy(&newval, old_bytes, sizeof(newval));
-  memcpy(&oldval, new_bytes, sizeof(oldval));
-
-  if (newval == oldval)
-    return RelativeStatus::UNCHANGED;
-  if (newval > oldval)
-    return RelativeStatus::INCREASED;
-
-  // NaN is not implemented.
-  return RelativeStatus::DECREASED;
-}
+RelativeStatus compareValues(const char *old_bytes, const char *new_bytes,
+                             float epsilon = 0.1F);

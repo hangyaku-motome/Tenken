@@ -21,4 +21,6 @@ void RunOnScannerThread(std::thread &scannerThread, SessionState &State,
     State.IsScanning = false;
   });
 }
+
+std::vector<HitInfoT> startScan(const Scanner &ScannerObj, SessionState &State);
 }; // namespace ScanOp
