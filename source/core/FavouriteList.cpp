@@ -52,7 +52,7 @@ void FavouriteList::rescanNoLock(const Scanner &ScannerObj, uint64_t index,
     favourites_[index].value = ScannerObj.readAdr(
         favourites_[index].location, favourites_[index].value.size());
     if (favourites_[index].value.empty()) {
-      favourites_.erase(favourites_.begin() + index);
+      favourites_.erase(favourites_.begin() + static_cast<int64_t>(index));
       return;
     }
   } else {

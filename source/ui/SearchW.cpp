@@ -71,7 +71,12 @@ PendingAction SearchW::CycleFirstW(const TargetInfoT &TargetInfo) {
       InitValueGiven = UnknownValueScan;
     }
 
-  ImGui::BeginDisabled(!InitValueGiven);
+  if (UnknownValueScan && tempType == TargetTypeT::String) {
+    ImGui::Text("Unknown value scanning with type string\nis not supported.");
+    ImGui::BeginDisabled();
+  } else
+    ImGui::BeginDisabled(!InitValueGiven);
+
   bool PressedScan = ImGui::Button("Start First Scan!");
   ImGui::EndDisabled();
   EndW();

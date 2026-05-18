@@ -26,7 +26,7 @@ void HitList::rescan(const Scanner &ScannerObj, uint64_t index,
     hits_[index].value =
         ScannerObj.readAdr(hits_[index].location, hits_[index].value.size());
     if (hits_[index].value.empty()) {
-      hits_.erase(hits_.begin() + index);
+      hits_.erase(hits_.begin() + static_cast<int64_t>(index));
       return;
     }
   } else {

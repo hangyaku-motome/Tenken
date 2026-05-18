@@ -79,10 +79,6 @@ I would highly appreciate any forms of feedback, criticism, and bug reports. You
 
 Created and maintained by Hangyaku.
 
-### Known issues
-
-- String search does NOT work in version 0.2.0, do not try to use it.
-
 ### Other Remarks
 
 This is a personal project, align your expectations accordingly.
