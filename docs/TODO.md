@@ -2,7 +2,7 @@
 - [X] String scanning
 - [X] Float epsilon comparison
 - [ ] AOB/pattern scanning with wildcards
-- [ ] Scan undo (one level)
+- [X] Scan undo (one level)
 - [X] Region viewer window
 
 ## Medium term
