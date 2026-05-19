@@ -27,12 +27,11 @@ GLFWwindow *initalise_main() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-  float main_scale =
-      ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
+  float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
 
-  GLFWwindow *window = glfwCreateWindow(static_cast<int32_t>(1280 * main_scale),
-                                        static_cast<int32_t>(800 * main_scale),
-                                        "Tenken", nullptr, nullptr);
+  GLFWwindow *window =
+      glfwCreateWindow(static_cast<int32_t>(1280 * main_scale),
+                       static_cast<int32_t>(800 * main_scale), "Tenken", nullptr, nullptr);
   if (window == nullptr)
     exit(1);
 
@@ -73,8 +72,7 @@ void start_frame() {
   ImGui::NewFrame();
 }
 
-void end_frame(int display_w, int display_h, ImVec4 clear_color,
-               GLFWwindow *window) {
+void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow *window) {
   ImGui::Render();
   glViewport(0, 0, display_w, display_h);
   glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
@@ -85,12 +83,11 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color,
 }
 
 void SetDefaultDisplay() {
-  ImGuiWindowFlags flags =
-      ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
-      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-      ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
-      ImGuiWindowFlags_NoBackground;
+  ImGuiWindowFlags flags = ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+                           ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                           ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                           ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+                           ImGuiWindowFlags_NoBackground;
 
   ImGuiViewport *viewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(viewport->Pos);
@@ -104,25 +101,21 @@ void SetDefaultDisplay() {
   ImGui::PopStyleVar(3);
 
   ImGuiID dockspaceID = ImGui::GetID("DockSpace");
-  ImGui::DockSpace(dockspaceID, ImVec2(0, 0),
-                   ImGuiDockNodeFlags_PassthruCentralNode);
+  ImGui::DockSpace(dockspaceID, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
 
   static bool first_launch = true;
   if (first_launch) {
     ImGui::DockBuilderRemoveNode(dockspaceID);
-    ImGui::DockBuilderAddNode(dockspaceID,
-                              ImGuiDockNodeFlags_PassthruCentralNode |
-                                  ImGuiDockNodeFlags_DockSpace);
+    ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_PassthruCentralNode |
+                                               ImGuiDockNodeFlags_DockSpace);
     ImGui::DockBuilderSetNodeSize(dockspaceID, viewport->Size);
 
     ImGuiID main = dockspaceID;
-    ImGuiID bottom =
-        ImGui::DockBuilderSplitNode(main, ImGuiDir_Down, 0.3F, nullptr, &main);
-    ImGuiID top_right =
-        ImGui::DockBuilderSplitNode(main, ImGuiDir_Right, 0.3F, nullptr, &main);
+    ImGuiID bottom = ImGui::DockBuilderSplitNode(main, ImGuiDir_Down, 0.3F, nullptr, &main);
+    ImGuiID top_right = ImGui::DockBuilderSplitNode(main, ImGuiDir_Right, 0.3F, nullptr, &main);
 
-    ImGuiID bottom_right = ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Right,
-                                                       0.5F, nullptr, &bottom);
+    ImGuiID bottom_right =
+        ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Right, 0.5F, nullptr, &bottom);
 
     ImGui::DockBuilderDockWindow("Hits", main);
     ImGui::DockBuilderDockWindow("Log", bottom);
@@ -149,7 +142,6 @@ void MainMenuBarCycle(TargetPopUp &TargetPUp, MapsPopUp &MapPup) {
   if (ImGui::BeginMenu("Utils")) {
     if (ImGui::MenuItem("View Regions")) {
       MapPup.clicked_ = true;
-      printf("did this\n");
     }
     ImGui::EndMenu();
   }
@@ -157,20 +149,21 @@ void MainMenuBarCycle(TargetPopUp &TargetPUp, MapsPopUp &MapPup) {
   ImGui::EndMainMenuBar();
 }
 
-template <typename out, typename T>
-std::vector<uint8_t> ValtoData(const T &val) {
+template <typename out, typename T> std::vector<uint8_t> ValtoData(const T &val) {
   std::vector<uint8_t> data(sizeof(out));
   memcpy(data.data(), &val, sizeof(out));
   return data;
 }
 
-bool GetTargetValue(const TargetTypeT TargetType,
-                    std::vector<uint8_t> &write_to, ImGuiInputTextFlags flags) {
+bool GetTargetValue(const TargetTypeT TargetType, std::vector<uint8_t> &write_to,
+                    ImGuiInputTextFlags flags) {
 
   if (TargetType == TargetTypeT::Invalid)
     return false;
 
-  std::string tempbuf = DataToStr(write_to, TargetType);
+  std::string tempbuf;
+  dispatchType(TargetType, [&]<typename T> { tempbuf = dataToStr<T>(write_to); });
+
   if (!ImGui::InputText("##value", &tempbuf, flags)) {
     if (tempbuf.empty())
       write_to.clear();
@@ -180,12 +173,10 @@ bool GetTargetValue(const TargetTypeT TargetType,
   char *end;
 
   uint64_t u_val = strtoull(reinterpret_cast<char *>(tempbuf.data()), &end, 10);
-  bool uval_ok =
-      (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
+  bool uval_ok = (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
 
   int64_t s_val = strtoll(reinterpret_cast<char *>(tempbuf.data()), &end, 10);
-  bool sval_ok =
-      (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
+  bool sval_ok = (*end == '\0' || end == reinterpret_cast<char *>(tempbuf.back()));
 
   switch (TargetType) {
   case TargetTypeT::uInt8:
@@ -236,8 +227,7 @@ bool GetTargetValue(const TargetTypeT TargetType,
     return true;
   }
   case TargetTypeT::Double: {
-    double double_value =
-        strtof(reinterpret_cast<char *>(tempbuf.data()), &end);
+    double double_value = strtof(reinterpret_cast<char *>(tempbuf.data()), &end);
     if (*end != '\0' && end == reinterpret_cast<char *>(tempbuf.data()))
       break;
     write_to = ValtoData<double>(double_value);
@@ -245,8 +235,7 @@ bool GetTargetValue(const TargetTypeT TargetType,
   }
   case TargetTypeT::String: {
     auto null_ter = std::ranges::find(tempbuf, '\0');
-    write_to.resize(
-        static_cast<uint64_t>(std::distance(tempbuf.begin(), null_ter)));
+    write_to.resize(static_cast<uint64_t>(std::distance(tempbuf.begin(), null_ter)));
     memcpy(write_to.data(), tempbuf.data(), write_to.size());
     return true;
   }
@@ -259,4 +248,13 @@ bool GetTargetValue(const TargetTypeT TargetType,
   tempbuf.clear();
   write_to.clear();
   return false;
+}
+
+void printData(const std::vector<uint8_t> &data, TargetTypeT TargetType) {
+  if (data.empty() || TargetType == TargetTypeT::Invalid)
+    return;
+
+  std::string print_str =
+      dispatchType(TargetType, [&]<typename T>() { return dataToStr<T>(data); });
+  ImGui::TextUnformatted(print_str.c_str());
 }

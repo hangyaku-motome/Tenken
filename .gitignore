@@ -7,3 +7,4 @@ build-linux/
 build-win/
 words/
 imgui.ini
+.clang-format

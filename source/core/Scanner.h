@@ -18,7 +18,6 @@ public:
 
   Snapshot StartUnknownValueScan(std::atomic<float> &progress) const;
 
-  std::vector<HitInfoT> FilterSnapshots(const Snapshot &Old,
-                                        RelativeStatus KeepType,
+  std::vector<HitInfoT> FilterSnapshots(const Snapshot &Old, RelativeStatus KeepType,
                                         TargetTypeT TargetType) const;
 };

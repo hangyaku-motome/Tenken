@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <cstdint>
+#include <string>
 #include <variant>
 
 bool FavouriteW::InitW() { return ImGui::Begin("Favourite"); }
@@ -23,12 +24,10 @@ PendingAction FavouriteW::CycleW(const std::vector<FavouriteInfoT> &Favourites,
   auto TableAction = DrawFavouriteTable(Favourites);
 
   PendingAction ContextAction;
-  if (selected_row >= 0 &&
-      selected_row < static_cast<int64_t>(Favourites.size())) {
-    auto cta =
-        Context.CycleContext(static_cast<uint64_t>(selected_row),
-                             Favourites[static_cast<uint64_t>(selected_row)],
-                             State.favRefreshSeconds);
+  if (selected_row >= 0 && selected_row < static_cast<int64_t>(Favourites.size())) {
+    auto cta = Context.CycleContext(static_cast<uint64_t>(selected_row),
+                                    Favourites[static_cast<uint64_t>(selected_row)],
+                                    State.favRefreshSeconds);
     ContextAction = Context.ResolveContextIntent(cta, false);
   }
 
@@ -43,8 +42,7 @@ PendingAction FavouriteW::CycleW(const std::vector<FavouriteInfoT> &Favourites,
   return {};
 }
 
-PendingAction
-FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
+PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
 
   PendingAction ReturnAction;
   float avail = ImGui::GetContentRegionAvail().y;
@@ -52,8 +50,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
   if (!ImGui::BeginChild("favouritestable", {0, avail - context_height}))
     return {};
 
-  if (!ImGui::BeginTable("Favourites", 7,
-                         ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY))
+  if (!ImGui::BeginTable("Favourites", 7, ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY))
     return {};
 
   ImGui::TableSetupColumn("Desc");
@@ -71,8 +68,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
 
     ImGui::TableNextColumn();
 
-    if (ImGui::Selectable("##selectable_all",
-                          row == static_cast<uint64_t>(selected_row),
+    if (ImGui::Selectable("##selectable_all", row == static_cast<uint64_t>(selected_row),
                           ImGuiSelectableFlags_SpanAllColumns |
                               ImGuiSelectableFlags_AllowOverlap)) {
       AllColumnChosen = true;
@@ -111,8 +107,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
       if (ImGui::InputText("##Description", &strbuf,
                            ImGuiInputTextFlags_EnterReturnsTrue |
                                ImGuiSelectableFlags_AllowOverlap)) {
-        ReturnAction =
-            Action::descFavourite{static_cast<uint64_t>(selected_row), strbuf};
+        ReturnAction = Action::descFavourite{static_cast<uint64_t>(selected_row), strbuf};
         IsEditingDesc = false;
         CancelEdit = true;
       }
@@ -154,8 +149,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
       }
 
       std::vector<uint8_t> newval_buf(Favourites[row].value.size());
-      if (GetTargetValue(Favourites[row].type, newval_buf,
-                         ImGuiInputTextFlags_EnterReturnsTrue)) {
+      if (GetTargetValue(Favourites[row].type, newval_buf, ImGuiInputTextFlags_EnterReturnsTrue)) {
         ReturnAction = Action::writeFavourite(row, newval_buf);
         IsEditingVal = false;
         CancelEdit = true;
@@ -163,27 +157,21 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
       if (CancelEdit && !ImGui::IsItemActive()) {
         IsEditingVal = false;
       }
-    } else if (Favourites[row].type != TargetTypeT::Invalid)
-      ImGui::TextUnformatted(
-          DataToStr(Favourites[row].value, Favourites[row].type).c_str());
+    } else
+      printData(Favourites[row].value, Favourites[row].type);
     ImGui::PopStyleColor(3);
     ImGui::PopStyleVar();
 
     ImGui::TableNextColumn();
 
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(169, 169, 169, 255));
-    if (!Favourites[row].previous_value.empty())
-      ImGui::TextUnformatted(
-          DataToStr(Favourites[row].previous_value, Favourites[row].type)
-              .c_str());
+    printData(Favourites[row].previous_value, Favourites[row].type);
     ImGui::PopStyleColor();
 
     ImGui::TableNextColumn();
 
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(238, 75, 43, 255));
-    if (Favourites[row].status != RelativeStatus::UNSET)
-      ImGui::TextUnformatted(
-          RelativeStatusToStr(Favourites[row].status).c_str());
+    ImGui::TextUnformatted(relativeStatusToStr(Favourites[row].status).c_str());
     ImGui::PopStyleColor();
 
     ImGui::TableNextColumn();
@@ -198,7 +186,7 @@ FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
 
     ImGui::TableNextColumn();
 
-    ImGui::TextUnformatted(TargetTypeToStr(Favourites[row].type).c_str());
+    ImGui::TextUnformatted(targetTypeToStr(Favourites[row].type).c_str());
 
     if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) {
       AllColumnChosen = false;

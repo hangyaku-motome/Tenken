@@ -42,41 +42,37 @@ void FavouriteList::rescanNoLock(const Scanner &ScannerObj, uint64_t index,
   favourites_[index].bytes_around.resize(BYTES_BEFORE + BYTES_AFTER +
                                          favourites_[index].value.size());
 
-  favourites_[index].bytes_around =
-      ScannerObj.readAdr(favourites_[index].location - BYTES_BEFORE,
-                         favourites_[index].bytes_around.size());
+  favourites_[index].bytes_around = ScannerObj.readAdr(favourites_[index].location - BYTES_BEFORE,
+                                                       favourites_[index].bytes_around.size());
 
   if (favourites_[index].bytes_around.size() !=
       BYTES_BEFORE + BYTES_AFTER + favourites_[index].value.size()) {
     favourites_[index].bytes_around.clear();
-    favourites_[index].value = ScannerObj.readAdr(
-        favourites_[index].location, favourites_[index].value.size());
+    favourites_[index].value =
+        ScannerObj.readAdr(favourites_[index].location, favourites_[index].value.size());
     if (favourites_[index].value.empty()) {
       favourites_.erase(favourites_.begin() + static_cast<int64_t>(index));
       return;
     }
   } else {
-    favourites_[index].value.assign(
-        favourites_[index].bytes_around.begin() + BYTES_BEFORE,
-        favourites_[index].bytes_around.begin() + BYTES_BEFORE +
-            static_cast<int64_t>(favourites_[index].value.size()));
+    favourites_[index].value.assign(favourites_[index].bytes_around.begin() + BYTES_BEFORE,
+                                    favourites_[index].bytes_around.begin() + BYTES_BEFORE +
+                                        static_cast<int64_t>(favourites_[index].value.size()));
   }
+
   if (!favourites_[index].previous_value.empty())
-    favourites_[index].status = tagChange(
-        reinterpret_cast<const char *>(favourites_[index].value.data()),
-        reinterpret_cast<const char *>(
-            favourites_[index].previous_value.data()),
-        TargetType, favourites_[index].value.size());
+    dispatchType(TargetType, [&]<typename T> {
+      favourites_[index].status = tagChange(datatoType<T>(favourites_[index].value),
+                                            datatoType<T>(favourites_[index].previous_value));
+    });
 }
 
-void FavouriteList::rescan(const Scanner &ScannerObj, uint64_t index,
-                           TargetTypeT TargetType) {
+void FavouriteList::rescan(const Scanner &ScannerObj, uint64_t index, TargetTypeT TargetType) {
   std::scoped_lock<std::mutex> lock(mutex_);
   rescanNoLock(ScannerObj, index, TargetType);
 }
 
-void FavouriteList::rescanAll(const Scanner &ScannerObj,
-                              TargetTypeT TargetType) {
+void FavouriteList::rescanAll(const Scanner &ScannerObj, TargetTypeT TargetType) {
   std::scoped_lock<std::mutex> lock(mutex_);
 
   for (uint64_t i = 0; i < favourites_.size(); ++i)
@@ -92,8 +88,7 @@ void FavouriteList::write(const Scanner &ScannerObj, uint64_t index,
   setFreezeVal(index, value);
 }
 
-void FavouriteList::setFreezeVal(uint64_t index,
-                                 const std::vector<uint8_t> &setTo) {
+void FavouriteList::setFreezeVal(uint64_t index, const std::vector<uint8_t> &setTo) {
   std::scoped_lock<std::mutex> lock(mutex_);
   favourites_[index].frozen_value = setTo;
 }

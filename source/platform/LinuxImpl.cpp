@@ -76,11 +76,9 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     std::string name;
     std::string uneeded;
 
-    SplitMapsLine >> MemoryAddresses >> perms >> uneeded >> uneeded >>
-        uneeded >> name;
+    SplitMapsLine >> MemoryAddresses >> perms >> uneeded >> uneeded >> uneeded >> name;
 
-    if (perms[0] == '-' || perms[1] == '-' || perms[2] == 'x' ||
-        perms[3] == 's')
+    if (perms[0] == '-' || perms[1] == '-' || perms[2] == 'x' || perms[3] == 's')
       continue;
     if (name.find("/lib/") != std::string::npos)
       continue;
@@ -106,8 +104,7 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
   return MapRegions;
 };
 
-std::vector<uint8_t> LinuxImpl::read(const uint64_t address,
-                                     const uint64_t ReadSize) {
+std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t ReadSize) {
   std::vector<uint8_t> read_buf(ReadSize);
 
   struct iovec Receive{};
@@ -131,8 +128,7 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address,
   return read_buf;
 }
 
-bool LinuxImpl::write(const uint64_t address,
-                      const std::vector<uint8_t> &value) {
+bool LinuxImpl::write(const uint64_t address, const std::vector<uint8_t> &value) {
   struct iovec Receive{};
   struct iovec WriteTo{};
 
@@ -145,8 +141,7 @@ bool LinuxImpl::write(const uint64_t address,
 
   // checking -1 would be unncessary if we check for value size but we should be
   // explicit about that failure condition.
-  return write_amount != -1 &&
-         static_cast<uint64_t>(write_amount) == value.size();
+  return write_amount != -1 && static_cast<uint64_t>(write_amount) == value.size();
 }
 
 std::vector<int> ListPid() {
@@ -185,8 +180,7 @@ char *LinuxImpl::AllocMMapDisk(uint64_t size) {
 
   ftruncate(fd_, static_cast<int64_t>(fileoffset_));
 
-  char *ptr = static_cast<char *>(mmap(nullptr, size, PROT_READ | PROT_WRITE,
-                                       MAP_SHARED, fd_,
+  char *ptr = static_cast<char *>(mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_,
                                        static_cast<int64_t>(curr_offset)));
 
   if (ptr == MAP_FAILED) {
@@ -229,7 +223,5 @@ std::vector<ProcessInfoT> GetProcTargets() {
   }
   return Processes;
 };
-std::unique_ptr<IProcess> Attach(int pid) {
-  return std::make_unique<LinuxImpl>(pid);
-}
+std::unique_ptr<IProcess> Attach(int pid) { return std::make_unique<LinuxImpl>(pid); }
 } // namespace ActOS

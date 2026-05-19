@@ -13,8 +13,7 @@ class FavouriteList {
   std::thread freezeThread;
   std::atomic<bool> freezeRunning;
 
-  void rescanNoLock(const Scanner &ScannerObj, uint64_t index,
-                    TargetTypeT TargetType);
+  void rescanNoLock(const Scanner &ScannerObj, uint64_t index, TargetTypeT TargetType);
 
 public:
   void assignNew(const std::vector<FavouriteInfoT> &NewList);
@@ -27,12 +26,10 @@ public:
   void setFreeze(uint64_t index, bool setTo);
   void setDesc(uint64_t index, std::string setTo);
 
-  void rescan(const Scanner &ScannerObj, uint64_t index,
-              TargetTypeT TargetType);
+  void rescan(const Scanner &ScannerObj, uint64_t index, TargetTypeT TargetType);
   void rescanAll(const Scanner &ScannerObj, TargetTypeT TargetType);
 
-  void write(const Scanner &ScannerObj, uint64_t index,
-             const std::vector<uint8_t> &value);
+  void write(const Scanner &ScannerObj, uint64_t index, const std::vector<uint8_t> &value);
 
   const std::vector<FavouriteInfoT> &get() { return favourites_; }
 

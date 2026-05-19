@@ -17,10 +17,8 @@ struct regularRefresh {
 };
 } // namespace ContextIntent
 
-using ContextResult =
-    std::variant<std::monostate, ContextIntent::rescan,
-                 ContextIntent::rescanAll, ContextIntent::write,
-                 ContextIntent::regularRefresh>;
+using ContextResult = std::variant<std::monostate, ContextIntent::rescan, ContextIntent::rescanAll,
+                                   ContextIntent::write, ContextIntent::regularRefresh>;
 
 class ContextDisplay {
   float button_w = 150.0F;
@@ -35,8 +33,7 @@ class ContextDisplay {
   void AlignButtons();
 
   template <typename T> static void DrawContextMenu(const T Entry) {
-    if (Entry.bytes_around.size() !=
-        Entry.value.size() + BYTES_BEFORE + BYTES_AFTER) {
+    if (Entry.bytes_around.size() != Entry.value.size() + BYTES_BEFORE + BYTES_AFTER) {
       return;
     }
 
@@ -59,8 +56,7 @@ class ContextDisplay {
 
 public:
   template <typename T>
-  ContextResult CycleContext(const uint64_t selected_row, const T Entry,
-                             float refreshSeconds) {
+  ContextResult CycleContext(const uint64_t selected_row, const T Entry, float refreshSeconds) {
     if (refreshSeconds >= 0)
       IsRefresh = true;
     else

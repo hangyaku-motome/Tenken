@@ -16,6 +16,8 @@
 constexpr int8_t BYTES_BEFORE = 32;
 constexpr int8_t BYTES_AFTER = 32;
 
+constexpr float EPSILON = 0.1F;
+
 enum class TargetTypeT : int8_t {
   uInt8,
   uInt16,
@@ -28,23 +30,18 @@ enum class TargetTypeT : int8_t {
   Float,
   Double,
   String,
-  Invalid
+  Invalid,
+  AOB
 };
 
-enum class RelativeStatus : int8_t {
-  UNCHANGED,
-  CHANGED,
-  INCREASED,
-  DECREASED,
-  UNSET
-};
+enum class RelativeStatus : int8_t { UNCHANGED, CHANGED, INCREASED, DECREASED, UNSET };
 
 struct HitInfoT {
   uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
   std::vector<uint8_t> bytes_around;
-  RelativeStatus Status = RelativeStatus::UNSET;
+  RelativeStatus status = RelativeStatus::UNSET;
 };
 
 struct MapInfoT {
@@ -106,9 +103,7 @@ struct MappedRegion {
       munmap(ptr, size);
 #endif
   }
-  MappedRegion(MappedRegion &&o) noexcept : ptr(o.ptr), size(o.size) {
-    o.ptr = nullptr;
-  }
+  MappedRegion(MappedRegion &&o) noexcept : ptr(o.ptr), size(o.size) { o.ptr = nullptr; }
   MappedRegion &operator=(MappedRegion &&) = delete;
   MappedRegion(const MappedRegion &) = delete;
 };
@@ -234,15 +229,13 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 using PendingAction =
     std::variant<std::monostate, Action::TargetProcChosen, Action::firstScan,
-                 Action::startUnknownValueScan, Action::filterByValue,
-                 Action::filterByStatus, Action::writeHit, Action::addFavourite,
-                 Action::removeFavourite, Action::writeFavourite,
-                 Action::freezeValueFavourite, Action::isFreezeFavourite,
-                 Action::descFavourite, Action::restartScan,
-                 Action::regularRefreshHits, Action::regularRefreshFavourite,
-                 Action::rescanHit, Action::rescanAllHits,
-                 Action::rescanFavourite, Action::rescanAllFavourites,
-                 Action::setTargetInfo, Action::undoScan>;
+                 Action::startUnknownValueScan, Action::filterByValue, Action::filterByStatus,
+                 Action::writeHit, Action::addFavourite, Action::removeFavourite,
+                 Action::writeFavourite, Action::freezeValueFavourite, Action::isFreezeFavourite,
+                 Action::descFavourite, Action::restartScan, Action::regularRefreshHits,
+                 Action::regularRefreshFavourite, Action::rescanHit, Action::rescanAllHits,
+                 Action::rescanFavourite, Action::rescanAllFavourites, Action::setTargetInfo,
+                 Action::undoScan>;
 
 //
 // End of Action stuff.

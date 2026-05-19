@@ -15,11 +15,9 @@ class HitList {
 public:
   void assignNew(const std::vector<HitInfoT> &NewHits);
 
-  void rescan(const Scanner &ScannerObj, uint64_t index,
-              TargetTypeT TargetType);
+  void rescan(const Scanner &ScannerObj, uint64_t index, TargetTypeT TargetType);
 
-  void write(const Scanner &ScannerObj, uint64_t index,
-             const std::vector<uint8_t> &value);
+  void write(const Scanner &ScannerObj, uint64_t index, const std::vector<uint8_t> &value);
 
   void filter(RelativeStatus KeepType);
   void filter(const std::vector<uint8_t> &KeepValue);

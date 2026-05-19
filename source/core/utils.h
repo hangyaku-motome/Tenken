@@ -1,28 +1,24 @@
 #pragma once
 #include "types.h"
+#include <cstdint>
 #include <stdexcept>
 
-RelativeStatus tagChange(const char *old_bytes, const char *new_bytes,
-                         TargetTypeT TargetType, uint64_t compare_size = 0);
-std::vector<uint8_t> findBytesAround(uint32_t offset,
-                                     const std::vector<uint8_t> &data,
+template <typename T> RelativeStatus tagChange(T new_value, T old_value);
+
+std::vector<uint8_t> findBytesAround(uint32_t offset, const std::vector<uint8_t> &data,
                                      uint32_t size);
 
-template <typename T>
-std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target,
-                                  float epsilon = 0.1F);
-std::vector<uint64_t> searchRawValue(
-    const std::vector<uint8_t> &Data, const std::vector<uint8_t> &TargetData,
-    const std::vector<bool> &validBytes = {}); // byte scanning later.
+template <typename T> std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target);
 
-std::string TargetTypeToStr(TargetTypeT TargetType);
-std::string DataToStr(const std::vector<uint8_t> &Bytes,
-                      TargetTypeT TargetType);
-std::string RelativeStatusToStr(RelativeStatus Status);
+std::vector<uint64_t>
+searchRawValue(const std::vector<uint8_t> &Data, const std::vector<uint8_t> &TargetData,
+               const std::vector<bool> &validBytes = {}); // byte scanning later.
 
-template <typename T> T readAs(const std::vector<uint8_t> &buffer);
+std::string targetTypeToStr(TargetTypeT TargetType);
+template <typename T> std::string dataToStr(const std::vector<uint8_t> &Bytes);
+std::string relativeStatusToStr(RelativeStatus Status);
 
-template <typename Func> void dispatchType(TargetTypeT type, Func &&func) {
+template <typename Func> auto dispatchType(TargetTypeT type, Func &&func) {
   switch (type) {
   case TargetTypeT::uInt8:
     return func.template operator()<uint8_t>();
@@ -46,11 +42,11 @@ template <typename Func> void dispatchType(TargetTypeT type, Func &&func) {
     return func.template operator()<double>();
   case TargetTypeT::String:
     return func.template operator()<std::string>();
+  case TargetTypeT::AOB:
+    return func.template operator()<std::vector<uint8_t>>();
   default:
     throw std::runtime_error("invalid type");
   }
 }
 
-template <typename T>
-RelativeStatus compareValues(const char *old_bytes, const char *new_bytes,
-                             float epsilon = 0.1F);
+template <typename T> T datatoType(const std::vector<uint8_t> &data);

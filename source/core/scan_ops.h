@@ -7,12 +7,11 @@
 
 namespace ScanOp {
 
-void rescanAllHits(const Scanner &ScannerObj, HitList &Hit,
-                   std::atomic<float> &progress, TargetTypeT TargetType);
+void rescanAllHits(const Scanner &ScannerObj, HitList &Hit, std::atomic<float> &progress,
+                   TargetTypeT TargetType);
 
 template <typename F>
-void RunOnScannerThread(std::thread &scannerThread, SessionState &State,
-                        F &&task) {
+void RunOnScannerThread(std::thread &scannerThread, SessionState &State, F &&task) {
   if (scannerThread.joinable())
     scannerThread.join();
   State.IsScanning = true;

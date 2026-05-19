@@ -14,10 +14,9 @@
 #include <thread>
 #include <vector>
 
-void ResolveActions(Scanner &ScannerObj,
-                    const std::vector<PendingAction> &Actions,
-                    SessionState &State, std::thread &scannerThread,
-                    HitList &Hit, FavouriteList &Favourite);
+void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actions,
+                    SessionState &State, std::thread &scannerThread, HitList &Hit,
+                    FavouriteList &Favourite);
 
 int main() {
 
@@ -68,6 +67,7 @@ int main() {
     if (MapWObj.refresh_)
       MapWObj.UpdateRegions(ScannerObj.getMapRegions());
     MapWObj.CyclePUp();
+    // maybe move popups to a seperate place...inside a main menu bar class?
 
     // Hits window.
     if (!State.IsScanning)
@@ -76,8 +76,8 @@ int main() {
       Actions.push_back(HitWObj.CycleW({}, State));
 
     // Search window.
-    Actions.push_back(SearchWObj.CycleW(State.TargetInfo, State.searchW,
-                                        State.IsUnknownnValueScan));
+    Actions.push_back(
+        SearchWObj.CycleW(State.TargetInfo, State.searchW, State.IsUnknownnValueScan));
 
     // Favourite window.
     Actions.push_back(FavouriteWObj.CycleW(Favourite.get(), State));
@@ -85,8 +85,8 @@ int main() {
     // Log window.
     LogW::CycleW();
 
-    end_frame(static_cast<int32_t>(io.DisplaySize.x),
-              static_cast<int32_t>(io.DisplaySize.y), clear_color, window);
+    end_frame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y),
+              clear_color, window);
 
     // resolve actions.
     ResolveActions(ScannerObj, Actions, State, scannerThread, Hit, Favourite);
@@ -95,10 +95,8 @@ int main() {
     // regular refresh fav
     if (State.favRefreshSeconds >= 0.3) {
       auto favouriterefresh =
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              LoopTime - FavouriteRefreshTime);
-      if (favouriterefresh.count() >=
-          static_cast<int64_t>(State.favRefreshSeconds * 1000)) {
+          std::chrono::duration_cast<std::chrono::milliseconds>(LoopTime - FavouriteRefreshTime);
+      if (favouriterefresh.count() >= static_cast<int64_t>(State.favRefreshSeconds * 1000)) {
         Favourite.rescanAll(ScannerObj, State.TargetInfo.TargetType);
         FavouriteRefreshTime = LoopTime;
       }
@@ -106,13 +104,11 @@ int main() {
 
     // regular refresh hit
     if (State.hitRefreshSeconds >= 0.3) {
-      auto hitrefresh = std::chrono::duration_cast<std::chrono::milliseconds>(
-          LoopTime - HitRefreshTime);
-      if (hitrefresh.count() >=
-          static_cast<int64_t>(State.hitRefreshSeconds * 1000)) {
+      auto hitrefresh =
+          std::chrono::duration_cast<std::chrono::milliseconds>(LoopTime - HitRefreshTime);
+      if (hitrefresh.count() >= static_cast<int64_t>(State.hitRefreshSeconds * 1000)) {
         ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
-          ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
-                                State.TargetInfo.TargetType);
+          ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress, State.TargetInfo.TargetType);
         });
         HitRefreshTime = LoopTime;
       }
@@ -124,10 +120,9 @@ int main() {
     scannerThread.join();
 }
 
-void ResolveActions(Scanner &ScannerObj,
-                    const std::vector<PendingAction> &Actions,
-                    SessionState &State, std::thread &scannerThread,
-                    HitList &Hit, FavouriteList &Favourite) {
+void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actions,
+                    SessionState &State, std::thread &scannerThread, HitList &Hit,
+                    FavouriteList &Favourite) {
 
   for (auto &Pending : Actions) {
     std::visit(
@@ -151,36 +146,31 @@ void ResolveActions(Scanner &ScannerObj,
             [&](const Action::startUnknownValueScan) {
               State.IsUnknownnValueScan = true;
               ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
-                State.Snapshots =
-                    ScannerObj.StartUnknownValueScan(State.ScanProgress);
+                State.Snapshots = ScannerObj.StartUnknownValueScan(State.ScanProgress);
               });
               State.searchW = SessionState::SearchWStatus::SECOND;
             },
             [&](const Action::filterByValue &a) {
-              ScanOp::RunOnScannerThread(
-                  scannerThread, State, [&, value = a.value]() {
-                    ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
-                                          State.TargetInfo.TargetType);
-                    Hit.filter(value);
-                  });
+              ScanOp::RunOnScannerThread(scannerThread, State, [&, value = a.value]() {
+                ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
+                                      State.TargetInfo.TargetType);
+                Hit.filter(value);
+              });
             },
             [&](const Action::filterByStatus &a) {
               if (State.IsUnknownnValueScan) {
-                ScanOp::RunOnScannerThread(
-                    scannerThread, State, [&, status = a.status]() {
-                      Hit.assignNew(ScannerObj.FilterSnapshots(
-                          State.Snapshots, status,
-                          State.TargetInfo.TargetType));
-                      State.IsUnknownnValueScan = false;
-                      State.Snapshots = {};
-                    });
+                ScanOp::RunOnScannerThread(scannerThread, State, [&, status = a.status]() {
+                  Hit.assignNew(ScannerObj.FilterSnapshots(State.Snapshots, status,
+                                                           State.TargetInfo.TargetType));
+                  State.IsUnknownnValueScan = false;
+                  State.Snapshots = {};
+                });
               } else {
-                ScanOp::RunOnScannerThread(
-                    scannerThread, State, [&, status = a.status]() {
-                      ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
-                                            State.TargetInfo.TargetType);
-                      Hit.filter(status);
-                    });
+                ScanOp::RunOnScannerThread(scannerThread, State, [&, status = a.status]() {
+                  ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
+                                        State.TargetInfo.TargetType);
+                  Hit.filter(status);
+                });
               }
             },
             [&](const Action::writeHit &a) {
@@ -196,38 +186,25 @@ void ResolveActions(Scanner &ScannerObj,
                                       State.TargetInfo.TargetType);
               });
             },
-            [&](const Action::regularRefreshHits &a) {
-              State.hitRefreshSeconds = a.seconds;
-            },
+            [&](const Action::regularRefreshHits &a) { State.hitRefreshSeconds = a.seconds; },
             // start of favourite stuff.
             [&](const Action::addFavourite &a) {
-              Favourite.add(Hit.getIndex(a.hitIndex),
-                            State.TargetInfo.TargetType);
+              Favourite.add(Hit.getIndex(a.hitIndex), State.TargetInfo.TargetType);
             },
-            [&](const Action::removeFavourite &a) {
-              Favourite.remove(a.index);
-            },
+            [&](const Action::removeFavourite &a) { Favourite.remove(a.index); },
             [&](const Action::writeFavourite &a) {
               Favourite.write(ScannerObj, a.index, a.value);
-              Favourite.rescan(ScannerObj, a.index,
-                               State.TargetInfo.TargetType);
+              Favourite.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
             },
-            [&](const Action::isFreezeFavourite &a) {
-              Favourite.setFreeze(a.index, a.freeze);
-            },
+            [&](const Action::isFreezeFavourite &a) { Favourite.setFreeze(a.index, a.freeze); },
             [&](const Action::freezeValueFavourite &a) {
               Favourite.setFreezeVal(a.index, a.value);
             },
-            [&](const Action::descFavourite &a) {
-              Favourite.setDesc(a.index, a.value);
-            },
+            [&](const Action::descFavourite &a) { Favourite.setDesc(a.index, a.value); },
             [&](const Action::rescanFavourite &a) {
-              Favourite.rescan(ScannerObj, a.index,
-                               State.TargetInfo.TargetType);
+              Favourite.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
             },
-            [&](const Action::regularRefreshFavourite &a) {
-              State.favRefreshSeconds = a.seconds;
-            },
+            [&](const Action::regularRefreshFavourite &a) { State.favRefreshSeconds = a.seconds; },
             [&](const Action::rescanAllFavourites) {
               Favourite.rescanAll(ScannerObj, State.TargetInfo.TargetType);
             },
@@ -244,8 +221,7 @@ void ResolveActions(Scanner &ScannerObj,
               State.TargetInfo.TargetType = a.type;
               State.TargetInfo.value = a.value;
             },
-            [&](const Action::undoScan) { Hit.RestoreOldHits(); },
-            [&](const std::monostate &) {}},
+            [&](const Action::undoScan) { Hit.RestoreOldHits(); }, [&](const std::monostate &) {}},
         Pending);
   }
 }

@@ -15,8 +15,7 @@ bool HitsW::InitW() { return ImGui::Begin("Hits"); }
 
 void HitsW::EndW() { ImGui::End(); }
 
-PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits,
-                            SessionState &State) {
+PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits, SessionState &State) {
   if (!InitW()) {
     EndW();
     return {};
@@ -46,9 +45,9 @@ PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits,
 
   PendingAction ContextAction{};
   if (selected_row >= 0 && static_cast<uint64_t>(selected_row) <= Hits.size()) {
-    auto ctr = Context.CycleContext(static_cast<uint64_t>(selected_row),
-                                    Hits[static_cast<uint64_t>(selected_row)],
-                                    State.hitRefreshSeconds);
+    auto ctr =
+        Context.CycleContext(static_cast<uint64_t>(selected_row),
+                             Hits[static_cast<uint64_t>(selected_row)], State.hitRefreshSeconds);
     ContextAction = Context.ResolveContextIntent(ctr, true);
   }
   EndW();
@@ -107,8 +106,7 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
         if (ImGui::BeginPopupContextItem("hit_popup_menu")) {
           selected_row = row;
           if (ImGui::MenuItem("Add to Favourites")) {
-            ReturnAction =
-                Action::addFavourite{static_cast<uint64_t>(selected_row)};
+            ReturnAction = Action::addFavourite{static_cast<uint64_t>(selected_row)};
           }
           ImGui::EndPopup();
         }
@@ -131,8 +129,7 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
         ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-        if (GetTargetValue(TargetInfo.TargetType, tmpbuf,
-                           ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if (GetTargetValue(TargetInfo.TargetType, tmpbuf, ImGuiInputTextFlags_EnterReturnsTrue)) {
           ReturnAction = Action::writeHit{row, tmpbuf};
           IsEditing = false;
           CancelEdit = true;
@@ -143,9 +140,9 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
           IsEditing = false;
           selected_row = -1;
         }
-      } else if (TargetInfo.TargetType != TargetTypeT::Invalid)
-        ImGui::TextUnformatted(
-            DataToStr(Hits[row].value, TargetInfo.TargetType).c_str());
+      } else
+        printData(Hits[row].value, TargetInfo.TargetType);
+
       if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) {
         selected_row = -1;
       }
@@ -153,16 +150,13 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
         ImGui::TableNextColumn();
 
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(169, 169, 169, 255));
-        if (TargetInfo.TargetType != TargetTypeT::Invalid)
-          ImGui::TextUnformatted(
-              DataToStr(Hits[row].previous_value, TargetInfo.TargetType)
-                  .c_str());
+        printData(Hits[row].previous_value, TargetInfo.TargetType);
         ImGui::PopStyleColor();
 
         ImGui::TableNextColumn();
 
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(238, 75, 43, 255));
-        ImGui::TextUnformatted(RelativeStatusToStr(Hits[row].Status).c_str());
+        ImGui::TextUnformatted(relativeStatusToStr(Hits[row].status).c_str());
         ImGui::PopStyleColor();
       }
       ImGui::PopID();

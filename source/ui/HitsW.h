@@ -9,8 +9,7 @@ class HitsW {
 private:
   static bool InitW();
   static void EndW();
-  PendingAction DrawHitTable(const std::vector<HitInfoT> &Hits,
-                             const TargetInfoT &TargetInfo);
+  PendingAction DrawHitTable(const std::vector<HitInfoT> &Hits, const TargetInfoT &TargetInfo);
 
   bool IsEditing = false;
   bool JustStartedEditing = false;

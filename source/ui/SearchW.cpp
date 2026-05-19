@@ -22,7 +22,7 @@ bool SearchW::GetTargetType(TargetTypeT &newType) {
   if (ImGui::Combo("Type", &TempTargetType,
                    "int8\0int16\0int32\0int64\0float\0double\0string\0\0")) {
     newType = static_cast<TargetTypeT>(TempTargetType + 4);
-    Log::Info("Chosen target type:" + TargetTypeToStr(newType) + "\n");
+    Log::Info("Chosen target type:" + targetTypeToStr(newType) + "\n");
     Changed = true;
   }
 
@@ -89,34 +89,29 @@ PendingAction SearchW::CycleFirstW(const TargetInfoT &TargetInfo) {
   return ReturnAction;
 }
 
-PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo,
-                                    bool IsUnknownValueScan) {
+PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo, bool IsUnknownValueScan) {
   if (!InitW()) {
     EndW();
     return {};
   }
 
   if (!IsUnknownValueScan)
-    ImGui::Combo(
-        "Keep", &TempFilterType,
-        "unchanged\0changed\0increased\0decreased\0specific value\0\0");
-  else
     ImGui::Combo("Keep", &TempFilterType,
-                 "unchanged\0changed\0increased\0decreased\0\0");
+                 "unchanged\0changed\0increased\0decreased\0specific value\0\0");
+  else
+    ImGui::Combo("Keep", &TempFilterType, "unchanged\0changed\0increased\0decreased\0\0");
 
   if (TempFilterType == 4)
     GetTargetValue(TargetInfo.TargetType, tempbuf);
 
-  ImGui::BeginDisabled(TempFilterType == -1 ||
-                       (tempbuf.empty() && TempFilterType == 4));
+  ImGui::BeginDisabled(TempFilterType == -1 || (tempbuf.empty() && TempFilterType == 4));
   if (ImGui::Button("Rescan!")) {
     ImGui::EndDisabled();
     EndW();
     if (TempFilterType == 4)
       return Action::filterByValue{tempbuf};
     else {
-      return Action::filterByStatus(
-          static_cast<RelativeStatus>(TempFilterType));
+      return Action::filterByStatus(static_cast<RelativeStatus>(TempFilterType));
     }
   }
   ImGui::EndDisabled();

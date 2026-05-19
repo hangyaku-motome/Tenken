@@ -8,9 +8,7 @@
 void MapsPopUp::InitPopUp() {
   refresh_ = true;
   clicked_ = false;
-  printf("made it here\n");
   ImGui::OpenPopup("Regions List");
-  printf("ehwe\n");
 }
 
 void MapsPopUp::UpdateRegions(std::vector<MapInfoT> regions) {
@@ -44,8 +42,7 @@ void MapsPopUp::CyclePUp() {
     ImGui::Text("0x%" PRIX64, region.end);
 
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(region.name.data(),
-                           region.name.data() + region.name.size());
+    ImGui::TextUnformatted(region.name.data(), region.name.data() + region.name.size());
   }
 
   ImGui::EndTable();

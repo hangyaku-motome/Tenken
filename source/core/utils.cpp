@@ -1,37 +1,61 @@
 #include "utils.h"
-#include "LogW.h"
 #include "types.h"
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <type_traits>
+#include <vector>
 
-RelativeStatus tagChange(const char *old_bytes, const char *new_bytes,
-                         const TargetTypeT TargetType, uint64_t compare_size) {
-  if (TargetType == TargetTypeT::Invalid) {
-    return RelativeStatus::UNSET;
-  }
-  if (TargetType == TargetTypeT::String) {
-    if (memcmp(new_bytes, old_bytes, compare_size))
+template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
+  if constexpr (std::is_same_v<T, std::string>) {
+    if (old_value == new_value)
       return RelativeStatus::CHANGED;
     else
       return RelativeStatus::UNCHANGED;
+  } else if constexpr (std::is_floating_point_v<T>) {
+    if (std::isnan(old_value) || std::isnan(new_value))
+      return RelativeStatus::CHANGED;
+
+    float diff = old_value - new_value;
+    if (std::abs(diff) <= EPSILON)
+      return RelativeStatus::UNCHANGED;
+
+    if (diff > 0)
+      return RelativeStatus::INCREASED;
+
+    return RelativeStatus::DECREASED;
+  } else if constexpr (std::is_arithmetic_v<T>) {
+    if (old_value == new_value)
+      return RelativeStatus::UNCHANGED;
+    if (new_value > old_value)
+      return RelativeStatus::INCREASED;
+
+    return RelativeStatus::DECREASED;
   }
 
-  RelativeStatus return_type;
-  dispatchType(TargetType, [&]<typename T>() {
-    if constexpr (!std::is_same_v<std::string, T>)
-      return_type = compareValues<T>(new_bytes, old_bytes);
-  });
-  return return_type;
+  printf("how did we get here?\n");
+  return RelativeStatus::UNSET;
 }
+template RelativeStatus tagChange<uint8_t>(uint8_t, uint8_t);
+template RelativeStatus tagChange<uint16_t>(uint16_t, uint16_t);
+template RelativeStatus tagChange<uint32_t>(uint32_t, uint32_t);
+template RelativeStatus tagChange<uint64_t>(uint64_t, uint64_t);
+template RelativeStatus tagChange<int8_t>(int8_t, int8_t);
+template RelativeStatus tagChange<int16_t>(int16_t, int16_t);
+template RelativeStatus tagChange<int32_t>(int32_t, int32_t);
+template RelativeStatus tagChange<int64_t>(int64_t, int64_t);
+template RelativeStatus tagChange<float>(float, float);
+template RelativeStatus tagChange<double>(double, double);
+template RelativeStatus tagChange<std::string>(std::string, std::string);
+template RelativeStatus tagChange<std::vector<uint8_t>>(std::vector<uint8_t>, std::vector<uint8_t>);
 
-std::vector<uint8_t> findBytesAround(const uint32_t offset,
-                                     const std::vector<uint8_t> &data,
+//
+
+std::vector<uint8_t> findBytesAround(const uint32_t offset, const std::vector<uint8_t> &data,
                                      const uint32_t size) {
   uint64_t START = offset < 32 ? 0 : offset - 32;
-  uint64_t END =
-      offset + 32 + size > data.size() ? data.size() : offset + 32 + size;
+  uint64_t END = offset + 32 + size > data.size() ? data.size() : offset + 32 + size;
 
   std::vector<uint8_t> bytes(BYTES_BEFORE + BYTES_AFTER + size);
   memcpy(bytes.data(), &data[START], END - START);
@@ -39,11 +63,9 @@ std::vector<uint8_t> findBytesAround(const uint32_t offset,
 }
 
 template <typename T>
-std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target,
-                                  float epsilon) {
+std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target) {
 
-  static_assert(std::is_arithmetic_v<T>,
-                "SearchValue only works with numeric types");
+  static_assert(std::is_arithmetic_v<T>, "SearchValue only works with numeric types");
 
   std::vector<uint64_t> FoundOffsets;
 
@@ -52,7 +74,7 @@ std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target,
   for (uint32_t i = 0; i + sizeof(T) <= Data.size(); i += sizeof(T)) {
     memcpy(&data_value, Data.data() + i, sizeof(T));
     if constexpr (std::is_floating_point_v<T>) {
-      if (std::abs(data_value - Target) <= epsilon)
+      if (std::abs(data_value - Target) <= EPSILON)
         FoundOffsets.push_back(i);
     } else {
       if (data_value == Target)
@@ -61,12 +83,24 @@ std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target,
   }
   return FoundOffsets;
 }
+template std::vector<uint64_t> searchValue<uint8_t>(const std::vector<uint8_t> &, uint8_t);
+template std::vector<uint64_t> searchValue<uint16_t>(const std::vector<uint8_t> &, uint16_t);
+template std::vector<uint64_t> searchValue<uint32_t>(const std::vector<uint8_t> &, uint32_t);
+template std::vector<uint64_t> searchValue<uint64_t>(const std::vector<uint8_t> &, uint64_t);
+template std::vector<uint64_t> searchValue<int8_t>(const std::vector<uint8_t> &, int8_t);
+template std::vector<uint64_t> searchValue<int16_t>(const std::vector<uint8_t> &, int16_t);
+template std::vector<uint64_t> searchValue<int32_t>(const std::vector<uint8_t> &, int32_t);
+template std::vector<uint64_t> searchValue<int64_t>(const std::vector<uint8_t> &, int64_t);
+template std::vector<uint64_t> searchValue<float>(const std::vector<uint8_t> &, float);
+template std::vector<uint64_t> searchValue<double>(const std::vector<uint8_t> &, double);
+
+//
+
+// I might wanna merge searchRawValue and searchValue but not right now.
 
 std::vector<uint64_t>
-searchRawValue(const std::vector<uint8_t> &Data,
-               const std::vector<uint8_t> &TargetData,
-               const std::vector<bool>
-                   &validBytes) { // validbytes for byte scanning later.
+searchRawValue(const std::vector<uint8_t> &Data, const std::vector<uint8_t> &TargetData,
+               const std::vector<bool> &validBytes) { // validbytes for byte scanning later.
 
   std::vector<uint64_t> FoundOffsets;
   uint64_t TargetSize = TargetData.size();
@@ -79,43 +113,39 @@ searchRawValue(const std::vector<uint8_t> &Data,
   return FoundOffsets;
 }
 
-std::string DataToStr(const std::vector<uint8_t> &Bytes,
-                      const TargetTypeT TargetType) {
+// tostr stuff
+
+template <typename T> std::string dataToStr(const std::vector<uint8_t> &Bytes) {
 
   if (Bytes.empty())
     return "";
-  switch (TargetType) {
-  case TargetTypeT::uInt8:
-    return std::to_string(readAs<uint8_t>(Bytes));
-  case TargetTypeT::uInt16:
-    return std::to_string(readAs<uint16_t>(Bytes));
-  case TargetTypeT::uInt32:
-    return std::to_string(readAs<uint32_t>(Bytes));
-  case TargetTypeT::uInt64:
-    return std::to_string(readAs<uint64_t>(Bytes));
-  case TargetTypeT::Int8:
-    return std::to_string(readAs<int8_t>(Bytes));
-  case TargetTypeT::Int16:
-    return std::to_string(readAs<int16_t>(Bytes));
-  case TargetTypeT::Int32:
-    return std::to_string(readAs<int32_t>(Bytes));
-  case TargetTypeT::Int64:
-    return std::to_string(readAs<int64_t>(Bytes));
-  case TargetTypeT::Float:
-    return std::to_string(readAs<float>(Bytes));
-  case TargetTypeT::Double:
-    return std::to_string(readAs<double>(Bytes));
-  case TargetTypeT::String:
-    return std::string(reinterpret_cast<const char *>(Bytes.data()),
-                       Bytes.size());
-  default:
-    Log::Error("Why is TargetType undefined in HitValToStr?? (TargetType: " +
-               std::to_string(static_cast<int>(TargetType)));
-    return {};
+
+  if constexpr (std::is_same_v<T, std::string>) {
+    return std::string(reinterpret_cast<const char *>(Bytes.data()), Bytes.size());
+  } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+    return ""; // to be added.
+  } else {
+    T value;
+    memcpy(&value, Bytes.data(), sizeof(T));
+    return std::to_string(value);
   }
 }
+template std::string dataToStr<uint8_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<uint16_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<uint32_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<uint64_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<int8_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<int16_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<int32_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<int64_t>(const std::vector<uint8_t> &);
+template std::string dataToStr<float>(const std::vector<uint8_t> &);
+template std::string dataToStr<double>(const std::vector<uint8_t> &);
+template std::string dataToStr<std::string>(const std::vector<uint8_t> &);
+template std::string dataToStr<std::vector<uint8_t>>(const std::vector<uint8_t> &);
 
-std::string TargetTypeToStr(const TargetTypeT TargetType) {
+//
+
+std::string targetTypeToStr(const TargetTypeT TargetType) {
   switch (TargetType) {
   case TargetTypeT::uInt8:
     return "uint8";
@@ -145,7 +175,7 @@ std::string TargetTypeToStr(const TargetTypeT TargetType) {
   }
 }
 
-std::string RelativeStatusToStr(const RelativeStatus Status) {
+std::string relativeStatusToStr(const RelativeStatus Status) {
   switch (Status) {
   case RelativeStatus::INCREASED:
     return "Increased";
@@ -156,102 +186,36 @@ std::string RelativeStatusToStr(const RelativeStatus Status) {
   case RelativeStatus::CHANGED:
     return "Changed";
   case RelativeStatus::UNSET:
-    return "Unset...";
+    return "Unset";
   }
   return "";
 }
 
-template <typename T> T readAs(const std::vector<uint8_t> &buffer) {
-  T This{};
+// end of tostr stuff.
 
-  static_assert(std::is_arithmetic_v<T>,
-                "CompareValues only works with numeric types");
-
-  if (buffer.size() >= sizeof(T))
-    memcpy(&This, buffer.data(), sizeof(This));
-
-  return This;
-}
-
-// this shouldn't really be called by itself. unsafe. Call tagChange instead.
-// (not that tagChange is super safe by the way.)
-template <typename T>
-RelativeStatus compareValues(const char *old_bytes, const char *new_bytes,
-                             float epsilon) {
-
-  static_assert(std::is_arithmetic_v<T>,
-                "CompareValues only works with numeric types");
-
-  T newval{};
-  T oldval{};
-
-  memcpy(&newval, old_bytes, sizeof(newval));
-  memcpy(&oldval, new_bytes, sizeof(oldval));
-
-  if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(newval) || std::isnan(oldval))
-      return RelativeStatus::CHANGED;
-
-    float diff = newval - oldval;
-
-    if (std::abs(newval - oldval) <= epsilon)
-      return RelativeStatus::UNCHANGED;
-
-    if (diff > 0)
-      return RelativeStatus::INCREASED;
-
-    return RelativeStatus::DECREASED;
+// takes a typename T. takes data. casts it to that. returns that.
+template <typename T> T datatoType(const std::vector<uint8_t> &data) {
+  if constexpr (std::is_same_v<T, std::string>) {
+    return std::string(reinterpret_cast<const char *>(data.data()), data.size());
+  } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+    return data;
+  } else {
+    T returnVal;
+    memcpy(&returnVal, data.data(), sizeof(T));
+    return returnVal;
   }
-  if (newval == oldval)
-    return RelativeStatus::UNCHANGED;
-  if (newval > oldval)
-    return RelativeStatus::INCREASED;
-
-  // NaN is not implemented.
-  return RelativeStatus::DECREASED;
 }
+template uint8_t datatoType<uint8_t>(const std::vector<uint8_t> &);
+template uint16_t datatoType<uint16_t>(const std::vector<uint8_t> &);
+template uint32_t datatoType<uint32_t>(const std::vector<uint8_t> &);
+template uint64_t datatoType<uint64_t>(const std::vector<uint8_t> &);
+template int8_t datatoType<int8_t>(const std::vector<uint8_t> &);
+template int16_t datatoType<int16_t>(const std::vector<uint8_t> &);
+template int32_t datatoType<int32_t>(const std::vector<uint8_t> &);
+template int64_t datatoType<int64_t>(const std::vector<uint8_t> &);
+template float datatoType<float>(const std::vector<uint8_t> &);
+template double datatoType<double>(const std::vector<uint8_t> &);
+template std::vector<uint8_t> datatoType<std::vector<uint8_t>>(const std::vector<uint8_t> &);
+template std::string datatoType<std::string>(const std::vector<uint8_t> &);
 
 //
-
-template std::vector<uint64_t>
-searchValue<uint8_t>(const std::vector<uint8_t> &, uint8_t, float);
-template std::vector<uint64_t>
-searchValue<uint16_t>(const std::vector<uint8_t> &, uint16_t, float);
-template std::vector<uint64_t>
-searchValue<uint32_t>(const std::vector<uint8_t> &, uint32_t, float);
-template std::vector<uint64_t>
-searchValue<uint64_t>(const std::vector<uint8_t> &, uint64_t, float);
-template std::vector<uint64_t> searchValue<int8_t>(const std::vector<uint8_t> &,
-                                                   int8_t, float);
-template std::vector<uint64_t>
-searchValue<int16_t>(const std::vector<uint8_t> &, int16_t, float);
-template std::vector<uint64_t>
-searchValue<int32_t>(const std::vector<uint8_t> &, int32_t, float);
-template std::vector<uint64_t>
-searchValue<int64_t>(const std::vector<uint8_t> &, int64_t, float);
-template std::vector<uint64_t> searchValue<float>(const std::vector<uint8_t> &,
-                                                  float, float);
-template std::vector<uint64_t> searchValue<double>(const std::vector<uint8_t> &,
-                                                   double, float);
-
-//
-
-template RelativeStatus compareValues<uint8_t>(const char *, const char *,
-                                               float);
-template RelativeStatus compareValues<uint16_t>(const char *, const char *,
-                                                float);
-template RelativeStatus compareValues<uint32_t>(const char *, const char *,
-                                                float);
-template RelativeStatus compareValues<uint64_t>(const char *, const char *,
-                                                float);
-template RelativeStatus compareValues<int8_t>(const char *, const char *,
-                                              float);
-template RelativeStatus compareValues<int16_t>(const char *, const char *,
-                                               float);
-template RelativeStatus compareValues<int32_t>(const char *, const char *,
-                                               float);
-template RelativeStatus compareValues<int64_t>(const char *, const char *,
-                                               float);
-template RelativeStatus compareValues<float>(const char *, const char *, float);
-template RelativeStatus compareValues<double>(const char *, const char *,
-                                              float);

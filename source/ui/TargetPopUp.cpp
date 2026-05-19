@@ -43,11 +43,9 @@ PendingAction TargetPopUp::CyclePUp() {
     ImGui::TextUnformatted(Target.cmdline.c_str());
     ImGui::PushID(ImGui::TableGetRowIndex());
     ImGui::SameLine();
-    if (ImGui::Selectable("##selectable", false,
-                          ImGuiSelectableFlags_SpanAllColumns)) {
+    if (ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns)) {
       ReturnAction = Action::TargetProcChosen{Target};
-      Log::Info("...Chosen PID: " + std::to_string(Target.pid) +
-                "   Target name:" + Target.name +
+      Log::Info("...Chosen PID: " + std::to_string(Target.pid) + "   Target name:" + Target.name +
                 "   Target cmdline:" + Target.cmdline + "\n");
     }
     ImGui::PopID();
