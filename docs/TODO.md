@@ -4,7 +4,7 @@
 - [X] AOB/pattern scanning with wildcards
 - [X] Scan undo (one level)
 - [X] Region viewer window
-- [ ] Memory viewer/editor window.
+- [X] Memory viewer/editor window.
 
 ## Medium term
 - [ ] Pointer scanner
