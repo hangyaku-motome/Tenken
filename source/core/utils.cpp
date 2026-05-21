@@ -282,7 +282,6 @@ template std::string dataToType<std::string>(const std::vector<uint8_t> &);
 bool strToAOBInfo(std::vector<uint8_t> &bytes, std::vector<bool> &mask) {
 
   std::string tempbuf = dataToMaskedStr(bytes, mask);
-  std::cout << tempbuf << "\n";
   if (!ImGui::InputText("##value", &tempbuf)) {
     if (tempbuf.empty())
       bytes.clear();
