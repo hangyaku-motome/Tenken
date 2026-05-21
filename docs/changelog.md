@@ -23,4 +23,4 @@
 - Minor bug fixes and code cleanups.
 
 ## version 0.2.3
-- Hex viewver and editor added.
+- Hex viewer and editor added.
