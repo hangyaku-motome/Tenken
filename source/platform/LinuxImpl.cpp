@@ -124,6 +124,7 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t Read
     // Some sort of counter for unreadable.
     return {};
   }
+  read_buf.resize(read_amount);
 
   return read_buf;
 }

@@ -121,6 +121,7 @@ void SetDefaultDisplay() {
     ImGui::DockBuilderDockWindow("Log", bottom);
     ImGui::DockBuilderDockWindow("Search", top_right);
     ImGui::DockBuilderDockWindow("Favourite", bottom_right);
+    ImGui::DockBuilderDockWindow("Hex", bottom);
 
     ImGui::DockBuilderFinish(dockspaceID);
 
@@ -129,20 +130,26 @@ void SetDefaultDisplay() {
   ImGui::End();
 }
 
-void MainMenuBarCycle(TargetPopUp &TargetPUp, MapsPopUp &MapPup) {
+void MainMenuBarCycle(bool &TargetPUpClicked, bool &MapPupClicked, bool &LogWEnabled, bool &HexWEnabled) {
   if (!ImGui::BeginMainMenuBar())
     return;
 
   if (ImGui::BeginMenu("File")) {
     if (ImGui::MenuItem("New Target"))
-      TargetPUp.clicked_ = true;
+      TargetPUpClicked = true;
     ImGui::EndMenu();
   }
 
   if (ImGui::BeginMenu("Utils")) {
-    if (ImGui::MenuItem("View Regions")) {
-      MapPup.clicked_ = true;
-    }
+    if (ImGui::MenuItem("View Regions"))
+      MapPupClicked = true;
+
+    if (ImGui::MenuItem("Toggle Log window.", nullptr, LogWEnabled, true))
+      LogWEnabled = !LogWEnabled;
+
+    if (ImGui::MenuItem("Toggle Hex window.", nullptr, HexWEnabled, true))
+      HexWEnabled = !HexWEnabled;
+
     ImGui::EndMenu();
   }
 

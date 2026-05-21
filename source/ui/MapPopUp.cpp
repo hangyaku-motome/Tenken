@@ -40,6 +40,24 @@ void MapsPopUp::CyclePUp() {
     ImGui::TableNextColumn();
     ImGui::Text("0x%" PRIX64, region.end);
 
+    ImGui::PushID(region.start);
+    ImGui::SameLine();
+    ImGui::Selectable("##row", false, ImGuiSelectableFlags_SpanAllColumns);
+    if (ImGui::BeginPopupContextItem("map_popup_menu")) {
+      if (ImGui::MenuItem("Copy start address to clipboard")) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%016lx", region.start);
+        ImGui::SetClipboardText(buf);
+      }
+      if (ImGui::MenuItem("Copy end address to clipboard")) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%016lx", region.end);
+        ImGui::SetClipboardText(buf);
+      }
+      ImGui::EndPopup();
+    }
+    ImGui::PopID();
+
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(region.name.data(), region.name.data() + region.name.size());
   }

@@ -10,7 +10,8 @@ private:
   static void EndW();
 
 public:
-  static void CycleW();
+  bool enabled_ = false;
+  void CycleW();
 };
 
 namespace Log {

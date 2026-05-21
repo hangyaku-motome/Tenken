@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <variant>
 #include <vector>
@@ -104,6 +105,11 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits, const Targe
           selected_row = row;
           if (ImGui::MenuItem("Add to Favourites")) {
             ReturnAction = Action::addFavourite{static_cast<uint64_t>(selected_row)};
+          }
+          if (ImGui::MenuItem("Copy address to clipboard")) {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%016lx", Hits[selected_row].location);
+            ImGui::SetClipboardText(buf);
           }
           ImGui::EndPopup();
         }

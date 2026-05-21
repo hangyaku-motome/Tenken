@@ -9,6 +9,9 @@ bool LogW::InitW() { return ImGui::Begin("Log"); }
 void LogW::EndW() { ImGui::End(); }
 
 void LogW::CycleW() {
+  if (!enabled_)
+    return;
+
   if (!InitW()) {
     EndW();
     return;

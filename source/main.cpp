@@ -1,5 +1,6 @@
 #include "FavouriteList.h"
 #include "FavouriteW.h"
+#include "HexW.h"
 #include "HitList.h"
 #include "HitsW.h"
 #include "LogW.h"
@@ -30,6 +31,8 @@ int main() {
   SearchW SearchWObj;
   HitsW HitWObj;
   FavouriteW FavouriteWObj;
+  LogW LogWObj;
+  HexW HexWObj;
 
   TargetPopUp TargetWObj;
   MapsPopUp MapWObj;
@@ -57,7 +60,10 @@ int main() {
     start_frame();
     SetDefaultDisplay();
 
-    MainMenuBarCycle(TargetWObj, MapWObj);
+    MainMenuBarCycle(TargetWObj.clicked_, MapWObj.clicked_, LogWObj.enabled_, HexWObj.enabled_);
+
+    // frankly I'm not very pleased with the way windows and pop ups work. They're a bit...wonky, to say the
+    // least. Low priority todo: refine them.
 
     // Target popup.
     Actions.push_back(TargetWObj.CyclePUp());
@@ -66,7 +72,6 @@ int main() {
     if (MapWObj.refresh_)
       MapWObj.UpdateRegions(ScannerObj.getMapRegions());
     MapWObj.CyclePUp();
-    // maybe move popups to a seperate place...inside a main menu bar class?
 
     // Hits window.
     if (!State.IsScanning)
@@ -81,7 +86,10 @@ int main() {
     Actions.push_back(FavouriteWObj.CycleW(Favourite.get(), State));
 
     // Log window.
-    LogW::CycleW();
+    LogWObj.CycleW();
+
+    // Hex window (coming very soon.)
+    HexWObj.CycleW(ScannerObj);
 
     end_frame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y), clear_color,
               window);
@@ -178,6 +186,7 @@ void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actio
               });
             },
             [&](const Action::regularRefreshHits &a) { State.hitRefreshSeconds = a.seconds; },
+
             // start of favourite stuff.
             [&](const Action::addFavourite &a) {
               Favourite.add(Hit.getIndex(a.hitIndex), State.TargetInfo.TargetType);
@@ -198,6 +207,7 @@ void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actio
               Favourite.rescanAll(ScannerObj, State.TargetInfo.TargetType);
             },
             // end of favourite stuff.
+
             [&](const Action::restartScan) {
               Hit.reset();
               State.favRefreshSeconds = -1;

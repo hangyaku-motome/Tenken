@@ -12,13 +12,19 @@
 #include <vector>
 
 bool Scanner::writeAdr(uint64_t address, const std::vector<uint8_t> &value) const {
+  if (proc_ == nullptr)
+    return false;
   return proc_->write(address, value);
 };
 std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t readSize) const {
+  if (proc_ == nullptr)
+    return {};
   return proc_->read(address, readSize);
 };
 
 Snapshot Scanner::StartUnknownValueScan(std::atomic<float> &progress) const {
+  if (proc_ == nullptr)
+    std::runtime_error("start unk scan shouldn't be able to be called while scanner is not init.");
   std::vector<MapInfoT> Maps = proc_->getRegions();
   std::vector<MappedRegion> regs;
 
@@ -49,6 +55,7 @@ Snapshot Scanner::StartUnknownValueScan(std::atomic<float> &progress) const {
 
 std::vector<HitInfoT> Scanner::FilterSnapshots(const Snapshot &Old, RelativeStatus KeepType,
                                                TargetTypeT TargetType) const {
+
   std::vector<HitInfoT> Hits;
   RelativeStatus status;
 
