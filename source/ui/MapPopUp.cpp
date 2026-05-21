@@ -22,8 +22,7 @@ void MapsPopUp::CyclePUp() {
     InitPopUp();
 
   if (!ImGui::BeginPopupModal("Regions List", nullptr,
-                              ImGuiWindowFlags_AlwaysAutoResize |
-                                  ImGuiWindowFlags_AlwaysVerticalScrollbar |
+                              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar |
                                   ImGuiWindowFlags_HorizontalScrollbar))
     return;
 

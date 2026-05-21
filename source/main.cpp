@@ -14,9 +14,8 @@
 #include <thread>
 #include <vector>
 
-void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actions,
-                    SessionState &State, std::thread &scannerThread, HitList &Hit,
-                    FavouriteList &Favourite);
+void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actions, SessionState &State,
+                    std::thread &scannerThread, HitList &Hit, FavouriteList &Favourite);
 
 int main() {
 
@@ -76,8 +75,7 @@ int main() {
       Actions.push_back(HitWObj.CycleW({}, State));
 
     // Search window.
-    Actions.push_back(
-        SearchWObj.CycleW(State.TargetInfo, State.searchW, State.IsUnknownnValueScan));
+    Actions.push_back(SearchWObj.CycleW(State.TargetInfo, State.searchW, State.IsUnknownnValueScan));
 
     // Favourite window.
     Actions.push_back(FavouriteWObj.CycleW(Favourite.get(), State));
@@ -85,8 +83,8 @@ int main() {
     // Log window.
     LogW::CycleW();
 
-    end_frame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y),
-              clear_color, window);
+    end_frame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y), clear_color,
+              window);
 
     // resolve actions.
     ResolveActions(ScannerObj, Actions, State, scannerThread, Hit, Favourite);
@@ -104,8 +102,7 @@ int main() {
 
     // regular refresh hit
     if (State.hitRefreshSeconds >= 0.3) {
-      auto hitrefresh =
-          std::chrono::duration_cast<std::chrono::milliseconds>(LoopTime - HitRefreshTime);
+      auto hitrefresh = std::chrono::duration_cast<std::chrono::milliseconds>(LoopTime - HitRefreshTime);
       if (hitrefresh.count() >= static_cast<int64_t>(State.hitRefreshSeconds * 1000)) {
         ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
           ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress, State.TargetInfo.TargetType);
@@ -120,9 +117,8 @@ int main() {
     scannerThread.join();
 }
 
-void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actions,
-                    SessionState &State, std::thread &scannerThread, HitList &Hit,
-                    FavouriteList &Favourite) {
+void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actions, SessionState &State,
+                    std::thread &scannerThread, HitList &Hit, FavouriteList &Favourite) {
 
   for (auto &Pending : Actions) {
     std::visit(
@@ -152,23 +148,21 @@ void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actio
             },
             [&](const Action::filterByValue &a) {
               ScanOp::RunOnScannerThread(scannerThread, State, [&, value = a.value]() {
-                ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
-                                      State.TargetInfo.TargetType);
+                ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress, State.TargetInfo.TargetType);
                 Hit.filter(value);
               });
             },
             [&](const Action::filterByStatus &a) {
               if (State.IsUnknownnValueScan) {
                 ScanOp::RunOnScannerThread(scannerThread, State, [&, status = a.status]() {
-                  Hit.assignNew(ScannerObj.FilterSnapshots(State.Snapshots, status,
-                                                           State.TargetInfo.TargetType));
+                  Hit.assignNew(
+                      ScannerObj.FilterSnapshots(State.Snapshots, status, State.TargetInfo.TargetType));
                   State.IsUnknownnValueScan = false;
                   State.Snapshots = {};
                 });
               } else {
                 ScanOp::RunOnScannerThread(scannerThread, State, [&, status = a.status]() {
-                  ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
-                                        State.TargetInfo.TargetType);
+                  ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress, State.TargetInfo.TargetType);
                   Hit.filter(status);
                 });
               }
@@ -177,13 +171,10 @@ void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actio
               Hit.write(ScannerObj, a.index, a.value);
               Hit.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
             },
-            [&](const Action::rescanHit &a) {
-              Hit.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
-            },
+            [&](const Action::rescanHit &a) { Hit.rescan(ScannerObj, a.index, State.TargetInfo.TargetType); },
             [&](const Action::rescanAllHits) {
               ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
-                ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress,
-                                      State.TargetInfo.TargetType);
+                ScanOp::rescanAllHits(ScannerObj, Hit, State.ScanProgress, State.TargetInfo.TargetType);
               });
             },
             [&](const Action::regularRefreshHits &a) { State.hitRefreshSeconds = a.seconds; },
@@ -197,9 +188,7 @@ void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actio
               Favourite.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
             },
             [&](const Action::isFreezeFavourite &a) { Favourite.setFreeze(a.index, a.freeze); },
-            [&](const Action::freezeValueFavourite &a) {
-              Favourite.setFreezeVal(a.index, a.value);
-            },
+            [&](const Action::freezeValueFavourite &a) { Favourite.setFreezeVal(a.index, a.value); },
             [&](const Action::descFavourite &a) { Favourite.setDesc(a.index, a.value); },
             [&](const Action::rescanFavourite &a) {
               Favourite.rescan(ScannerObj, a.index, State.TargetInfo.TargetType);
@@ -220,6 +209,8 @@ void ResolveActions(Scanner &ScannerObj, const std::vector<PendingAction> &Actio
             [&](const Action::setTargetInfo &a) {
               State.TargetInfo.TargetType = a.type;
               State.TargetInfo.value = a.value;
+              if (a.mask.has_value())
+                State.TargetInfo.mask = a.mask;
             },
             [&](const Action::undoScan) { Hit.RestoreOldHits(); }, [&](const std::monostate &) {}},
         Pending);

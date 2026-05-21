@@ -180,8 +180,8 @@ char *LinuxImpl::AllocMMapDisk(uint64_t size) {
 
   ftruncate(fd_, static_cast<int64_t>(fileoffset_));
 
-  char *ptr = static_cast<char *>(mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_,
-                                       static_cast<int64_t>(curr_offset)));
+  char *ptr = static_cast<char *>(
+      mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, static_cast<int64_t>(curr_offset)));
 
   if (ptr == MAP_FAILED) {
     printf("mmap failed. %s\n", strerror(errno));

@@ -45,9 +45,8 @@ PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits, SessionState &Sta
 
   PendingAction ContextAction{};
   if (selected_row >= 0 && static_cast<uint64_t>(selected_row) <= Hits.size()) {
-    auto ctr =
-        Context.CycleContext(static_cast<uint64_t>(selected_row),
-                             Hits[static_cast<uint64_t>(selected_row)], State.hitRefreshSeconds);
+    auto ctr = Context.CycleContext(static_cast<uint64_t>(selected_row),
+                                    Hits[static_cast<uint64_t>(selected_row)], State.hitRefreshSeconds);
     ContextAction = Context.ResolveContextIntent(ctr, true);
   }
   EndW();
@@ -62,8 +61,7 @@ PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits, SessionState &Sta
   return {};
 }
 
-PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
-                                  const TargetInfoT &TargetInfo) {
+PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits, const TargetInfoT &TargetInfo) {
   PendingAction ReturnAction{};
 
   float avail = ImGui::GetContentRegionAvail().y;
@@ -95,8 +93,7 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits,
       ImGui::TableNextColumn();
 
       if (ImGui::Selectable("##selectable", selected_row == row,
-                            ImGuiSelectableFlags_SpanAllColumns |
-                                ImGuiSelectableFlags_AllowDoubleClick)) {
+                            ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
         selected_row = row;
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
           IsEditing = true;

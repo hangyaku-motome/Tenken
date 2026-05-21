@@ -5,14 +5,11 @@
 
 template <typename T> RelativeStatus tagChange(T new_value, T old_value);
 
-std::vector<uint8_t> findBytesAround(uint32_t offset, const std::vector<uint8_t> &data,
-                                     uint32_t size);
+std::vector<uint8_t> findBytesAround(uint32_t offset, const std::vector<uint8_t> &data, uint32_t size);
 
-template <typename T> std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, T Target);
-
-std::vector<uint64_t>
-searchRawValue(const std::vector<uint8_t> &Data, const std::vector<uint8_t> &TargetData,
-               const std::vector<bool> &validBytes = {}); // byte scanning later.
+template <typename T>
+std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, const T &Target,
+                                  const std::vector<bool> &mask = {});
 
 std::string targetTypeToStr(TargetTypeT TargetType);
 template <typename T> std::string dataToStr(const std::vector<uint8_t> &Bytes);
@@ -49,4 +46,10 @@ template <typename Func> auto dispatchType(TargetTypeT type, Func &&func) {
   }
 }
 
-template <typename T> T datatoType(const std::vector<uint8_t> &data);
+template <typename T> T dataToType(const std::vector<uint8_t> &data);
+
+bool strToAOBInfo(std::vector<uint8_t> &bytes, std::vector<bool> &mask);
+
+std::string hexToStr(const uint8_t byte);
+
+std::string dataToMaskedStr(const std::vector<uint8_t> &bytes, const std::vector<bool> &mask);

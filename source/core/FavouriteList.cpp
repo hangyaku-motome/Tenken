@@ -35,15 +35,13 @@ void FavouriteList::setDesc(uint64_t index, std::string setTo) {
   favourites_[index].desc = setTo;
 }
 
-void FavouriteList::rescanNoLock(const Scanner &ScannerObj, uint64_t index,
-                                 TargetTypeT TargetType) {
+void FavouriteList::rescanNoLock(const Scanner &ScannerObj, uint64_t index, TargetTypeT TargetType) {
   favourites_[index].previous_value = favourites_[index].value;
 
-  favourites_[index].bytes_around.resize(BYTES_BEFORE + BYTES_AFTER +
-                                         favourites_[index].value.size());
+  favourites_[index].bytes_around.resize(BYTES_BEFORE + BYTES_AFTER + favourites_[index].value.size());
 
-  favourites_[index].bytes_around = ScannerObj.readAdr(favourites_[index].location - BYTES_BEFORE,
-                                                       favourites_[index].bytes_around.size());
+  favourites_[index].bytes_around =
+      ScannerObj.readAdr(favourites_[index].location - BYTES_BEFORE, favourites_[index].bytes_around.size());
 
   if (favourites_[index].bytes_around.size() !=
       BYTES_BEFORE + BYTES_AFTER + favourites_[index].value.size()) {
@@ -62,8 +60,8 @@ void FavouriteList::rescanNoLock(const Scanner &ScannerObj, uint64_t index,
 
   if (!favourites_[index].previous_value.empty())
     dispatchType(TargetType, [&]<typename T> {
-      favourites_[index].status = tagChange(datatoType<T>(favourites_[index].value),
-                                            datatoType<T>(favourites_[index].previous_value));
+      favourites_[index].status = tagChange(dataToType<T>(favourites_[index].value),
+                                            dataToType<T>(favourites_[index].previous_value));
     });
 }
 
@@ -79,8 +77,7 @@ void FavouriteList::rescanAll(const Scanner &ScannerObj, TargetTypeT TargetType)
     rescanNoLock(ScannerObj, i, TargetType);
 }
 
-void FavouriteList::write(const Scanner &ScannerObj, uint64_t index,
-                          const std::vector<uint8_t> &value) {
+void FavouriteList::write(const Scanner &ScannerObj, uint64_t index, const std::vector<uint8_t> &value) {
   {
     std::scoped_lock<std::mutex> lock(mutex_);
     ScannerObj.writeAdr(favourites_[index].location, value);

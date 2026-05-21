@@ -33,7 +33,7 @@ void HitList::rescan(const Scanner &ScannerObj, uint64_t index, const TargetType
   if (!hits_[index].previous_value.empty())
     dispatchType(TargetType, [&]<typename T> {
       hits_[index].status =
-          tagChange(datatoType<T>(hits_[index].value), datatoType<T>(hits_[index].previous_value));
+          tagChange(dataToType<T>(hits_[index].value), dataToType<T>(hits_[index].previous_value));
     });
 }
 
@@ -61,8 +61,8 @@ void HitList::filter(RelativeStatus KeepType) {
                                       hit.status != KeepType3;
                              }),
               hits_.end());
-  Log::Info(std::to_string(hits_.size()) + " Hits left. (" +
-            std::to_string(init_amount - hits_.size()) + " filtered.)");
+  Log::Info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
+            " filtered.)");
 }
 
 void HitList::filter(const std::vector<uint8_t> &KeepValue) {
@@ -78,8 +78,8 @@ void HitList::filter(const std::vector<uint8_t> &KeepValue) {
                                ;
                              }),
               hits_.end());
-  Log::Info(std::to_string(hits_.size()) + " Hits left. (" +
-            std::to_string(init_amount - hits_.size()) + " filtered.)");
+  Log::Info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
+            " filtered.)");
 }
 
 uint64_t HitList::count() {

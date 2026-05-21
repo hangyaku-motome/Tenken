@@ -4,6 +4,8 @@
 #include "Scanner.h"
 #include "types.h"
 #include "utils.h"
+#include <cstdint>
+#include <type_traits>
 
 void ScanOp::rescanAllHits(const Scanner &ScannerObj, HitList &Hit, std::atomic<float> &progress,
                            const TargetTypeT TargetType) {
@@ -33,30 +35,37 @@ std::vector<HitInfoT> ScanOp::startScan(const Scanner &ScannerObj, SessionState 
       continue;
     }
 
-    // for strings, and raw bytes scanning.
-    //  function(targetval, rawbytes, std::vector<bool>validTargetBytes = {})
-    //  last arg for XX in byte scan.
     dispatchType(State.TargetInfo.TargetType, [&]<typename T> {
-      if constexpr (std::is_same_v<T, std::string> ||
-                    std::is_same_v<T, std::vector<uint8_t>>) { // string OR byte.
-        for (const auto RelativeOffset : searchRawValue(Data, State.TargetInfo.value)) {
-          ReturnHits.push_back(
-              {.location = Maps[i].start + RelativeOffset,
-               .value = State.TargetInfo.value,
-               .previous_value = {},
-               .bytes_around = findBytesAround(
-                   RelativeOffset, Data, static_cast<uint32_t>(State.TargetInfo.value.size()))});
+      if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+        for (const auto RelativeOffset :
+             searchValue(Data, State.TargetInfo.value, State.TargetInfo.mask.value())) {
+          HitInfoT PushHit;
+          PushHit.location = Maps[i].start + RelativeOffset;
+          PushHit.bytes_around =
+              findBytesAround(RelativeOffset, Data, static_cast<uint32_t>(State.TargetInfo.value.size()));
+          std::vector<uint8_t> value(PushHit.bytes_around.begin() + BYTES_BEFORE,
+                                     PushHit.bytes_around.begin() + BYTES_BEFORE +
+                                         State.TargetInfo.value.size());
+          PushHit.value = value;
+          ReturnHits.push_back(PushHit);
         }
-      } else { // for const types.
+      } else {
         T target;
-        memcpy(&target, State.TargetInfo.value.data(), sizeof(T));
+        if constexpr (std::is_same_v<T, std::string>) {
+          target.resize(State.TargetInfo.value.size());
+          memcpy(target.data(), State.TargetInfo.value.data(), target.size());
+        } else
+          memcpy(&target, State.TargetInfo.value.data(), sizeof(T));
         for (const auto RelativeOffset : searchValue(Data, target)) {
-          ReturnHits.push_back(
-              {.location = Maps[i].start + RelativeOffset,
-               .value = State.TargetInfo.value,
-               .previous_value = {},
-               .bytes_around = findBytesAround(
-                   RelativeOffset, Data, static_cast<uint32_t>(State.TargetInfo.value.size()))});
+          HitInfoT PushHit;
+          PushHit.location = Maps[i].start + RelativeOffset;
+          PushHit.bytes_around =
+              findBytesAround(RelativeOffset, Data, static_cast<uint32_t>(State.TargetInfo.value.size()));
+          std::vector<uint8_t> value(PushHit.bytes_around.begin() + BYTES_BEFORE,
+                                     PushHit.bytes_around.begin() + BYTES_BEFORE +
+                                         State.TargetInfo.value.size());
+          PushHit.value = value;
+          ReturnHits.push_back(PushHit);
         }
       }
     });

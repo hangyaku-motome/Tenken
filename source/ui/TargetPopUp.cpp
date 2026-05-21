@@ -19,8 +19,7 @@ PendingAction TargetPopUp::CyclePUp() {
   PendingAction ReturnAction{};
 
   if (!ImGui::BeginPopupModal("Target List", nullptr,
-                              ImGuiWindowFlags_AlwaysAutoResize |
-                                  ImGuiWindowFlags_AlwaysVerticalScrollbar |
+                              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar |
                                   ImGuiWindowFlags_HorizontalScrollbar))
     return {};
 

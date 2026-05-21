@@ -2,8 +2,10 @@
 #include "LogW.h"
 #include "display.h"
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include "types.h"
 #include "utils.h"
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -11,16 +13,11 @@ bool SearchW::InitW() { return ImGui::Begin("Search"); }
 
 void SearchW::EndW() { ImGui::End(); }
 
-// For combo add a way so that TargetType and the output string buffer are
-// directly connected?
-// I do not know what the comment above is supposed to mean.
-// Okay I do now. The problem is we are arbitarily writing the options and then
-// seperately wiring it back to the enums. It's a bit fragile, isn't it?
 bool SearchW::GetTargetType(TargetTypeT &newType) {
   bool Changed = false;
 
   if (ImGui::Combo("Type", &TempTargetType,
-                   "int8\0int16\0int32\0int64\0float\0double\0string\0\0")) {
+                   "int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0")) {
     newType = static_cast<TargetTypeT>(TempTargetType + 4);
     Log::Info("Chosen target type:" + targetTypeToStr(newType) + "\n");
     Changed = true;
@@ -58,13 +55,23 @@ PendingAction SearchW::CycleFirstW(const TargetInfoT &TargetInfo) {
   if (GetTargetType(tempType))
     ReturnAction = Action::setTargetInfo{tempType, {}};
 
-  if (GetTargetValue(TargetInfo.TargetType, tempval)) {
+  if (TargetInfo.TargetType == TargetTypeT::AOB) {
+    std::vector<uint8_t> bytes = TargetInfo.value;
+    std::vector<bool> mask;
+    if (TargetInfo.mask.has_value())
+      mask = TargetInfo.mask.value();
+    if (strToAOBInfo(bytes, mask)) {
+      ReturnAction = Action::setTargetInfo{TargetInfo.TargetType, bytes, mask};
+      InitValueGiven = true;
+    }
+
+    if (TargetInfo.value.empty() && !UnknownValueScan)
+      InitValueGiven = false;
+
+  } else if (GetTargetValue(TargetInfo.TargetType, tempval)) {
     ReturnAction = Action::setTargetInfo{TargetInfo.TargetType, tempval};
     InitValueGiven = true;
   }
-
-  if (tempval.empty() && !UnknownValueScan)
-    InitValueGiven = false;
 
   if (TargetInfo.TargetType != TargetTypeT::Invalid)
     if (ImGui::Checkbox("Unknown inital value.", &UnknownValueScan)) {
@@ -96,8 +103,7 @@ PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo, bool IsUnknow
   }
 
   if (!IsUnknownValueScan)
-    ImGui::Combo("Keep", &TempFilterType,
-                 "unchanged\0changed\0increased\0decreased\0specific value\0\0");
+    ImGui::Combo("Keep", &TempFilterType, "unchanged\0changed\0increased\0decreased\0specific value\0\0");
   else
     ImGui::Combo("Keep", &TempFilterType, "unchanged\0changed\0increased\0decreased\0\0");
 
@@ -123,8 +129,7 @@ PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo, bool IsUnknow
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
   }
 
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
-                       ((ImGui::GetContentRegionAvail().x - button_w) / 2));
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ((ImGui::GetContentRegionAvail().x - button_w) / 2));
 
   if (ImGui::Button("Undo scan.")) {
     EndW();
