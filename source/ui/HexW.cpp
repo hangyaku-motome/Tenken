@@ -58,8 +58,10 @@ void HexW::drawHexTable(const Scanner &ScannerObj) {
   if (!ImGui::BeginChild("hextable", {0, avail - context_height}))
     return;
 
-  if (!ImGui::BeginTable("Hex View", 18, ImGuiTableFlags_ScrollY))
+  if (!ImGui::BeginTable("Hex View", 18, ImGuiTableFlags_ScrollY)) {
+    ImGui::EndChild();
     return;
+  }
 
   ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 120.0F);
   for (uint32_t k = 0; k < BYTES_PER_ROW; ++k)

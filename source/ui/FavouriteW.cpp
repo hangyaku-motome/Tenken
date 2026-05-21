@@ -48,9 +48,10 @@ PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &
   if (!ImGui::BeginChild("favouritestable", {0, avail - context_height}))
     return {};
 
-  if (!ImGui::BeginTable("Favourites", 7, ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY))
+  if (!ImGui::BeginTable("Favourites", 7, ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY)) {
+    ImGui::EndChild();
     return {};
-
+  }
   ImGui::TableSetupColumn("Desc");
   ImGui::TableSetupColumn("Address");
   ImGui::TableSetupColumn("Value");

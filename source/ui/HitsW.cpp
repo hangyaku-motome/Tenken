@@ -69,8 +69,10 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits, const Targe
   float context_height = std::clamp(avail * 0.1F, 100.0F, 250.0F);
   if (!ImGui::BeginChild("hitstable", {0, avail - context_height}))
     return {};
-  if (!ImGui::BeginTable("Hit Table", 6, ImGuiTableFlags_ScrollY))
+  if (!ImGui::BeginTable("Hit Table", 6, ImGuiTableFlags_ScrollY)) {
+    ImGui::EndChild();
     return {};
+  }
 
   ImGui::TableSetupColumn("##");
   ImGui::TableSetupColumn("Address");
