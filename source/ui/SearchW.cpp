@@ -73,7 +73,7 @@ PendingAction SearchW::CycleFirstW(const TargetInfoT &TargetInfo) {
     InitValueGiven = true;
   }
 
-  if (TargetInfo.TargetType != TargetTypeT::Invalid)
+  if (TargetInfo.TargetType != TargetTypeT::Invalid && TargetInfo.TargetType != TargetTypeT::AOB)
     if (ImGui::Checkbox("Unknown inital value.", &UnknownValueScan)) {
       InitValueGiven = UnknownValueScan;
     }
