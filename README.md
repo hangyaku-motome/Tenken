@@ -70,6 +70,7 @@ Note: Windows Defender will probably flag the executable as malware. This happen
 
 ## License
 
+Tenken, program memory viewer & editor.
 Copyright (C) 2026 Hangyaku
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
