@@ -9,6 +9,7 @@ A memory scanner made in C++ with Dear ImGui that is cross-platform (Linux and W
 - Filter those hits based on relative change (higher, lower, changed, unchanged) or by certain value.
 - Edit the value of said hits.
 - A favourite section to pin addresses of interest, plus give them descriptions; and "freeze" them at certain values.
+- A hex viewer, where you can view and edit the bytes around an address in a detailed fashion (you can copy the address of a hit by right clicking, or you can copy the address of a region from Utils -> View Regions).
 
 ![screenshot](docs/screenshot.png)
 
