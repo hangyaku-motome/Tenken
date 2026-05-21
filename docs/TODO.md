@@ -1,9 +1,10 @@
 ## Short term
 - [X] String scanning
 - [X] Float epsilon comparison
-- [ ] AOB/pattern scanning with wildcards
+- [X] AOB/pattern scanning with wildcards
 - [X] Scan undo (one level)
 - [X] Region viewer window
+- [ ] Memory viewer/editor window.
 
 ## Medium term
 - [ ] Pointer scanner
