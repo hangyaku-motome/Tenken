@@ -5,6 +5,8 @@
 - [X] Scan undo (one level)
 - [X] Region viewer window
 - [X] Memory viewer/editor window.
+- [ ] Data Inspector.
+- [ ] Save/Load Sessions.
 
 ## Medium term
 - [ ] Pointer scanner
