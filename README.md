@@ -70,7 +70,9 @@ Note: Windows Defender will probably flag the executable as malware. This happen
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE.txt](LICENSE.txt).
+Copyright (C) 2026 Hangyaku
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 ## Contributing
 
