@@ -5,7 +5,7 @@ A memory scanner made in C++ with Dear ImGui that is cross-platform (Linux and W
 **Heavily work in progress and unstable as of now.**
 
 ## Main Features
-- Search for values in primitive types (int8-64, float, double) or in strings, which returns "hits".
+- Search for values in primitive types (int8-64, float, double), in strings, or in AOB with wildcards, which returns "hits".
 - Filter those hits based on relative change (higher, lower, changed, unchanged) or by certain value.
 - Edit the value of said hits.
 - A favourite section to pin addresses of interest, plus give them descriptions; and "freeze" them at certain values.
