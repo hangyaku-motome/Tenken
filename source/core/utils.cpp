@@ -1,6 +1,5 @@
 #include "utils.h"
-#include "misc/cpp/imgui_stdlib.h"
-#include "types.h"
+
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -10,6 +9,9 @@
 #include <type_traits>
 #include <vector>
 
+#include "misc/cpp/imgui_stdlib.h"
+#include "types.h"
+
 template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
   if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<uint8_t>>) {
     if (old_value != new_value)
@@ -17,22 +19,17 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
     else
       return RelativeStatus::UNCHANGED;
   } else if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(old_value) || std::isnan(new_value))
-      return RelativeStatus::CHANGED;
+    if (std::isnan(old_value) || std::isnan(new_value)) return RelativeStatus::CHANGED;
 
     float diff = old_value - new_value;
-    if (std::abs(diff) <= EPSILON)
-      return RelativeStatus::UNCHANGED;
+    if (std::abs(diff) <= EPSILON) return RelativeStatus::UNCHANGED;
 
-    if (diff > 0)
-      return RelativeStatus::INCREASED;
+    if (diff > 0) return RelativeStatus::INCREASED;
 
     return RelativeStatus::DECREASED;
   } else if constexpr (std::is_arithmetic_v<T>) {
-    if (old_value == new_value)
-      return RelativeStatus::UNCHANGED;
-    if (new_value > old_value)
-      return RelativeStatus::INCREASED;
+    if (old_value == new_value) return RelativeStatus::UNCHANGED;
+    if (new_value > old_value) return RelativeStatus::INCREASED;
 
     return RelativeStatus::DECREASED;
   }
@@ -40,6 +37,7 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
   printf("how did we get here?\n");
   return RelativeStatus::UNSET;
 }
+
 template RelativeStatus tagChange<uint8_t>(uint8_t, uint8_t);
 template RelativeStatus tagChange<uint16_t>(uint16_t, uint16_t);
 template RelativeStatus tagChange<uint32_t>(uint32_t, uint32_t);
@@ -55,8 +53,7 @@ template RelativeStatus tagChange<std::vector<uint8_t>>(std::vector<uint8_t>, st
 
 //
 
-std::vector<uint8_t> findBytesAround(const uint32_t offset, const std::vector<uint8_t> &data,
-                                     const uint32_t size) {
+std::vector<uint8_t> findBytesAround(const uint32_t offset, const std::vector<uint8_t>& data, const uint32_t size) {
   uint64_t START = offset < 32 ? 0 : offset - 32;
   uint64_t END = offset + 32 + size > data.size() ? data.size() : offset + 32 + size;
 
@@ -67,19 +64,16 @@ std::vector<uint8_t> findBytesAround(const uint32_t offset, const std::vector<ui
 
 // I could simplfy this my merging string path and primitive, as the only difference is size.
 template <typename T>
-std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, const T &Target,
-                                  const std::vector<bool> &mask) {
+std::vector<uint64_t> searchValue(const std::vector<uint8_t>& Data, const T& Target, const std::vector<bool>& mask) {
   std::vector<uint64_t> FoundOffsets;
 
   T data_value;
 
   if constexpr (std::is_same_v<std::string, T>) {
     for (uint32_t i = 0; i + Target.size() <= Data.size(); ++i)
-      if (memcmp(&Data[i], Target.data(), Target.size()) == 0)
-        FoundOffsets.push_back(i);
+      if (memcmp(&Data[i], Target.data(), Target.size()) == 0) FoundOffsets.push_back(i);
 
   } else if constexpr (std::is_same_v<std::vector<uint8_t>, T>) {
-
     for (uint32_t i = 0; i + Target.size() <= Data.size(); ++i) {
       bool push = true;
       for (uint32_t k = 0; k < Target.size(); ++k)
@@ -88,55 +82,52 @@ std::vector<uint64_t> searchValue(const std::vector<uint8_t> &Data, const T &Tar
           break;
         }
 
-      if (push)
-        FoundOffsets.push_back(i);
+      if (push) FoundOffsets.push_back(i);
     }
   } else {
     for (uint32_t i = 0; i + sizeof(T) <= Data.size(); i += sizeof(T)) {
       memcpy(&data_value, Data.data() + i, sizeof(T));
       if constexpr (std::is_floating_point_v<T>) {
-        if (std::abs(data_value - Target) <= EPSILON)
-          FoundOffsets.push_back(i);
+        if (std::abs(data_value - Target) <= EPSILON) FoundOffsets.push_back(i);
       } else {
-        if (data_value == Target)
-          FoundOffsets.push_back(i);
+        if (data_value == Target) FoundOffsets.push_back(i);
       }
     }
   }
   return FoundOffsets;
 }
-template std::vector<uint64_t> searchValue<uint8_t>(const std::vector<uint8_t> &, const uint8_t &,
-                                                    const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<uint16_t>(const std::vector<uint8_t> &, const uint16_t &,
-                                                     const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<uint32_t>(const std::vector<uint8_t> &, const uint32_t &,
-                                                     const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<uint64_t>(const std::vector<uint8_t> &, const uint64_t &,
-                                                     const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<int8_t>(const std::vector<uint8_t> &, const int8_t &,
-                                                   const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<int16_t>(const std::vector<uint8_t> &, const int16_t &,
-                                                    const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<int32_t>(const std::vector<uint8_t> &, const int32_t &,
-                                                    const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<int64_t>(const std::vector<uint8_t> &, const int64_t &,
-                                                    const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<float>(const std::vector<uint8_t> &, const float &,
-                                                  const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<double>(const std::vector<uint8_t> &, const double &,
-                                                   const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<std::string>(const std::vector<uint8_t> &, const std::string &,
-                                                        const std::vector<bool> &);
-template std::vector<uint64_t> searchValue<std::vector<uint8_t>>(const std::vector<uint8_t> &,
-                                                                 const std::vector<uint8_t> &,
-                                                                 const std::vector<bool> &);
+
+template std::vector<uint64_t>
+searchValue<uint8_t>(const std::vector<uint8_t>&, const uint8_t&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<uint16_t>(const std::vector<uint8_t>&, const uint16_t&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<uint32_t>(const std::vector<uint8_t>&, const uint32_t&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<uint64_t>(const std::vector<uint8_t>&, const uint64_t&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<int8_t>(const std::vector<uint8_t>&, const int8_t&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<int16_t>(const std::vector<uint8_t>&, const int16_t&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<int32_t>(const std::vector<uint8_t>&, const int32_t&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<int64_t>(const std::vector<uint8_t>&, const int64_t&, const std::vector<bool>&);
+template std::vector<uint64_t> searchValue<float>(const std::vector<uint8_t>&, const float&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<double>(const std::vector<uint8_t>&, const double&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<std::string>(const std::vector<uint8_t>&, const std::string&, const std::vector<bool>&);
+template std::vector<uint64_t>
+searchValue<std::vector<uint8_t>>(const std::vector<uint8_t>&, const std::vector<uint8_t>&, const std::vector<bool>&);
 
 //
 
 // I might wanna merge searchRawValue and searchValue but not right now.
 
-std::vector<uint64_t> searchRawValue(const std::vector<uint8_t> &Data, const std::vector<uint8_t> &TargetData,
-                                     const std::vector<bool> &mask) { // validbytes for byte scanning later.
+std::vector<uint64_t> searchRawValue(const std::vector<uint8_t>& Data,
+                                     const std::vector<uint8_t>& TargetData,
+                                     const std::vector<bool>& mask) {  // validbytes for byte scanning later.
 
   std::vector<uint64_t> FoundOffsets;
   uint64_t TargetSize = TargetData.size();
@@ -152,11 +143,10 @@ std::vector<uint64_t> searchRawValue(const std::vector<uint8_t> &Data, const std
 // a function that takes no mask just returns a normal string for vector.
 // a wrapper function that swtiches the bytes to ?? as neeeded:
 
-std::string dataToMaskedStr(const std::vector<uint8_t> &bytes, const std::vector<bool> &mask) {
+std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector<bool>& mask) {
   std::string returnstring;
   for (uint64_t i = 0; i < bytes.size(); ++i) {
-    if (i != 0)
-      returnstring += " ";
+    if (i != 0) returnstring += " ";
     if (mask[i] == false) {
       returnstring += "??";
       continue;
@@ -166,18 +156,15 @@ std::string dataToMaskedStr(const std::vector<uint8_t> &bytes, const std::vector
   return returnstring;
 }
 
-template <typename T> std::string dataToStr(const std::vector<uint8_t> &bytes) {
-
-  if (bytes.empty())
-    return "";
+template <typename T> std::string dataToStr(const std::vector<uint8_t>& bytes) {
+  if (bytes.empty()) return "";
 
   if constexpr (std::is_same_v<T, std::string>) {
-    return std::string(reinterpret_cast<const char *>(bytes.data()), bytes.size());
+    return std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
   } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
     std::string returnstring;
     for (uint64_t i = 0; i < bytes.size(); ++i) {
-      if (i != 0)
-        returnstring += " ";
+      if (i != 0) returnstring += " ";
       returnstring += hexToStr(bytes[i]);
     }
     return returnstring;
@@ -188,64 +175,64 @@ template <typename T> std::string dataToStr(const std::vector<uint8_t> &bytes) {
   }
 }
 
-template std::string dataToStr<uint8_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<uint16_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<uint32_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<uint64_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<int8_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<int16_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<int32_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<int64_t>(const std::vector<uint8_t> &);
-template std::string dataToStr<float>(const std::vector<uint8_t> &);
-template std::string dataToStr<double>(const std::vector<uint8_t> &);
-template std::string dataToStr<std::string>(const std::vector<uint8_t> &);
-template std::string dataToStr<std::vector<uint8_t>>(const std::vector<uint8_t> &);
+template std::string dataToStr<uint8_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<uint16_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<uint32_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<uint64_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<int8_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<int16_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<int32_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<int64_t>(const std::vector<uint8_t>&);
+template std::string dataToStr<float>(const std::vector<uint8_t>&);
+template std::string dataToStr<double>(const std::vector<uint8_t>&);
+template std::string dataToStr<std::string>(const std::vector<uint8_t>&);
+template std::string dataToStr<std::vector<uint8_t>>(const std::vector<uint8_t>&);
 
 //
 
 std::string targetTypeToStr(const TargetTypeT TargetType) {
   switch (TargetType) {
-  case TargetTypeT::uInt8:
-    return "uint8";
-  case TargetTypeT::uInt16:
-    return "uint16";
-  case TargetTypeT::uInt32:
-    return "uint32";
-  case TargetTypeT::uInt64:
-    return "uint64";
-  case TargetTypeT::Int8:
-    return "int8";
-  case TargetTypeT::Int16:
-    return "int16";
-  case TargetTypeT::Int32:
-    return "int32";
-  case TargetTypeT::Int64:
-    return "int64";
-  case TargetTypeT::Float:
-    return "float";
-  case TargetTypeT::Double:
-    return "double";
-  case TargetTypeT::String:
-    return "string";
-  case TargetTypeT::Invalid:
-    return "invalid";
-  case TargetTypeT::AOB:
-    return "AOB";
+    case TargetTypeT::uInt8:
+      return "uint8";
+    case TargetTypeT::uInt16:
+      return "uint16";
+    case TargetTypeT::uInt32:
+      return "uint32";
+    case TargetTypeT::uInt64:
+      return "uint64";
+    case TargetTypeT::Int8:
+      return "int8";
+    case TargetTypeT::Int16:
+      return "int16";
+    case TargetTypeT::Int32:
+      return "int32";
+    case TargetTypeT::Int64:
+      return "int64";
+    case TargetTypeT::Float:
+      return "float";
+    case TargetTypeT::Double:
+      return "double";
+    case TargetTypeT::String:
+      return "string";
+    case TargetTypeT::Invalid:
+      return "invalid";
+    case TargetTypeT::AOB:
+      return "AOB";
   }
 }
 
 std::string relativeStatusToStr(const RelativeStatus Status) {
   switch (Status) {
-  case RelativeStatus::INCREASED:
-    return "Increased";
-  case RelativeStatus::DECREASED:
-    return "Decreased";
-  case RelativeStatus::UNCHANGED:
-    return "Unchanged";
-  case RelativeStatus::CHANGED:
-    return "Changed";
-  case RelativeStatus::UNSET:
-    return "Unset";
+    case RelativeStatus::INCREASED:
+      return "Increased";
+    case RelativeStatus::DECREASED:
+      return "Decreased";
+    case RelativeStatus::UNCHANGED:
+      return "Unchanged";
+    case RelativeStatus::CHANGED:
+      return "Changed";
+    case RelativeStatus::UNSET:
+      return "Unset";
   }
   return "";
 }
@@ -253,9 +240,9 @@ std::string relativeStatusToStr(const RelativeStatus Status) {
 // end of tostr stuff.
 
 // takes a typename T. takes data. casts it to that. returns that.
-template <typename T> T dataToType(const std::vector<uint8_t> &data) {
+template <typename T> T dataToType(const std::vector<uint8_t>& data) {
   if constexpr (std::is_same_v<T, std::string>) {
-    return std::string(reinterpret_cast<const char *>(data.data()), data.size());
+    return std::string(reinterpret_cast<const char*>(data.data()), data.size());
   } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
     return data;
   } else {
@@ -264,27 +251,26 @@ template <typename T> T dataToType(const std::vector<uint8_t> &data) {
     return returnVal;
   }
 }
-template uint8_t dataToType<uint8_t>(const std::vector<uint8_t> &);
-template uint16_t dataToType<uint16_t>(const std::vector<uint8_t> &);
-template uint32_t dataToType<uint32_t>(const std::vector<uint8_t> &);
-template uint64_t dataToType<uint64_t>(const std::vector<uint8_t> &);
-template int8_t dataToType<int8_t>(const std::vector<uint8_t> &);
-template int16_t dataToType<int16_t>(const std::vector<uint8_t> &);
-template int32_t dataToType<int32_t>(const std::vector<uint8_t> &);
-template int64_t dataToType<int64_t>(const std::vector<uint8_t> &);
-template float dataToType<float>(const std::vector<uint8_t> &);
-template double dataToType<double>(const std::vector<uint8_t> &);
-template std::vector<uint8_t> dataToType<std::vector<uint8_t>>(const std::vector<uint8_t> &);
-template std::string dataToType<std::string>(const std::vector<uint8_t> &);
+
+template uint8_t dataToType<uint8_t>(const std::vector<uint8_t>&);
+template uint16_t dataToType<uint16_t>(const std::vector<uint8_t>&);
+template uint32_t dataToType<uint32_t>(const std::vector<uint8_t>&);
+template uint64_t dataToType<uint64_t>(const std::vector<uint8_t>&);
+template int8_t dataToType<int8_t>(const std::vector<uint8_t>&);
+template int16_t dataToType<int16_t>(const std::vector<uint8_t>&);
+template int32_t dataToType<int32_t>(const std::vector<uint8_t>&);
+template int64_t dataToType<int64_t>(const std::vector<uint8_t>&);
+template float dataToType<float>(const std::vector<uint8_t>&);
+template double dataToType<double>(const std::vector<uint8_t>&);
+template std::vector<uint8_t> dataToType<std::vector<uint8_t>>(const std::vector<uint8_t>&);
+template std::string dataToType<std::string>(const std::vector<uint8_t>&);
 
 //
 
-bool strToAOBInfo(std::vector<uint8_t> &bytes, std::vector<bool> &mask) {
-
+bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask) {
   std::string tempbuf = dataToMaskedStr(bytes, mask);
   if (!ImGui::InputText("##value", &tempbuf)) {
-    if (tempbuf.empty())
-      bytes.clear();
+    if (tempbuf.empty()) bytes.clear();
     return false;
   }
 
@@ -309,8 +295,7 @@ bool strToAOBInfo(std::vector<uint8_t> &bytes, std::vector<bool> &mask) {
     }
   }
 
-  if (new_mask.empty() || new_bytes.empty())
-    return false;
+  if (new_mask.empty() || new_bytes.empty()) return false;
 
   bytes = new_bytes;
   mask = new_mask;

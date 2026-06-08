@@ -1,7 +1,8 @@
 #pragma once
 
-#include "types.h"
 #include <vector>
+
+#include "types.h"
 
 class TargetPopUp {
 private:

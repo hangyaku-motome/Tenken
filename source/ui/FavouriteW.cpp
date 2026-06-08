@@ -1,21 +1,22 @@
 #include "FavouriteW.h"
-#include "display.h"
-#include "imgui.h"
-#include "misc/cpp/imgui_stdlib.h"
-#include "types.h"
-#include "utils.h"
+
 #include <algorithm>
 #include <cinttypes>
 #include <cstdint>
 #include <string>
 #include <variant>
 
+#include "display.h"
+#include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
+#include "types.h"
+#include "utils.h"
+
 bool FavouriteW::InitW() { return ImGui::Begin("Favourite"); }
 
 void FavouriteW::EndW() { ImGui::End(); }
 
-PendingAction FavouriteW::CycleW(const std::vector<FavouriteInfoT> &Favourites, SessionState &State) {
-
+PendingAction FavouriteW::CycleW(const std::vector<FavouriteInfoT>& Favourites, SessionState& State) {
   if (!InitW()) {
     EndW();
     return {};
@@ -24,29 +25,25 @@ PendingAction FavouriteW::CycleW(const std::vector<FavouriteInfoT> &Favourites, 
 
   PendingAction ContextAction;
   if (selected_row >= 0 && selected_row < static_cast<int64_t>(Favourites.size())) {
-    auto cta = Context.CycleContext(static_cast<uint64_t>(selected_row),
-                                    Favourites[static_cast<uint64_t>(selected_row)], State.favRefreshSeconds);
+    auto cta = Context.CycleContext(
+        static_cast<uint64_t>(selected_row), Favourites[static_cast<uint64_t>(selected_row)], State.favRefreshSeconds);
     ContextAction = Context.ResolveContextIntent(cta, false);
   }
 
   EndW();
 
-  if (!std::holds_alternative<std::monostate>(TableAction))
-    return TableAction;
+  if (!std::holds_alternative<std::monostate>(TableAction)) return TableAction;
 
-  if (!std::holds_alternative<std::monostate>(ContextAction))
-    return ContextAction;
+  if (!std::holds_alternative<std::monostate>(ContextAction)) return ContextAction;
 
   return {};
 }
 
-PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites) {
-
+PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT>& Favourites) {
   PendingAction ReturnAction;
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1F, 100.0F, 250.0F);
-  if (!ImGui::BeginChild("favouritestable", {0, avail - context_height}))
-    return {};
+  if (!ImGui::BeginChild("favouritestable", {0, avail - context_height})) return {};
 
   if (!ImGui::BeginTable("Favourites", 7, ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY)) {
     ImGui::EndChild();
@@ -59,7 +56,6 @@ PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &
   ImGui::TableSetupColumn("Status");
   ImGui::TableSetupColumn("Frozen");
   ImGui::TableSetupColumn("Type");
-  ImGui::TableHeadersRow();
 
   for (uint64_t row = 0; row < Favourites.size(); row++) {
     ImGui::TableNextRow();
@@ -67,18 +63,19 @@ PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &
 
     ImGui::TableNextColumn();
 
-    if (ImGui::Selectable("##selectable_all", row == static_cast<uint64_t>(selected_row),
+    if (ImGui::Selectable("##selectable_all",
+                          row == static_cast<uint64_t>(selected_row),
                           ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap)) {
       AllColumnChosen = true;
       selected_row = static_cast<int64_t>(row);
     } else if (ImGui::BeginPopupContextItem("favourite_menu")) {
       selected_row = static_cast<int64_t>(row);
-      if (ImGui::MenuItem("Remove from Favourites"))
-        ReturnAction = Action::removeFavourite{row};
+      if (ImGui::MenuItem("Remove from Favourites")) ReturnAction = Action::removeFavourite{row};
       ImGui::EndPopup();
     }
     ImGui::SameLine();
-    if (ImGui::Selectable("##selectable_desc", IsEditingDesc,
+    if (ImGui::Selectable("##selectable_desc",
+                          IsEditingDesc,
                           ImGuiSelectableFlags_AllowDoubleClick | ImGuiSelectableFlags_AllowOverlap)) {
       selected_row = static_cast<int64_t>(row);
       IsEditingDesc = true;
@@ -101,8 +98,8 @@ PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT> &
       }
 
       std::string strbuf;
-      if (ImGui::InputText("##Description", &strbuf,
-                           ImGuiInputTextFlags_EnterReturnsTrue | ImGuiSelectableFlags_AllowOverlap)) {
+      if (ImGui::InputText(
+              "##Description", &strbuf, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiSelectableFlags_AllowOverlap)) {
         ReturnAction = Action::descFavourite{static_cast<uint64_t>(selected_row), strbuf};
         IsEditingDesc = false;
         CancelEdit = true;

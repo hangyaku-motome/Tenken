@@ -1,6 +1,5 @@
 #pragma once
 
-#include "imgui.h"
 #include <atomic>
 #include <cstdint>
 #include <optional>
@@ -8,10 +7,12 @@
 #include <variant>
 #include <vector>
 
+#include "imgui.h"
+
 #ifdef _WIN32
-#include <windows.h>
+  #include <windows.h>
 #else
-#include <sys/mman.h>
+  #include <sys/mman.h>
 #endif
 
 constexpr int8_t BYTES_BEFORE = 32;
@@ -53,6 +54,7 @@ struct MapInfoT {
   std::string name;
 };
 
+// these next two might be unncessesary atp.
 struct WindowInfoT {
   float H;
   float W;
@@ -90,15 +92,19 @@ struct FavouriteInfoT {
 
   bool frozen = false;
   std::vector<uint8_t> frozen_value;
-  float freeze_duration = -1; // could merge frozen and freeze_duration but meh.
+  float freeze_duration = -1;  // could merge frozen and freeze_duration but meh.
 };
 
 struct MappedRegion {
-  char *ptr = nullptr;
+  char* ptr = nullptr;
   uint64_t size = 0;
 
   MappedRegion() = default;
-  MappedRegion(char *p, uint64_t s) : ptr(p), size(s) {}
+
+  MappedRegion(char* p, uint64_t s)
+      : ptr(p),
+        size(s) {}
+
   ~MappedRegion() {
     if (ptr)
 #ifdef _WIN32
@@ -107,9 +113,15 @@ struct MappedRegion {
       munmap(ptr, size);
 #endif
   }
-  MappedRegion(MappedRegion &&o) noexcept : ptr(o.ptr), size(o.size) { o.ptr = nullptr; }
-  MappedRegion &operator=(MappedRegion &&) = delete;
-  MappedRegion(const MappedRegion &) = delete;
+
+  MappedRegion(MappedRegion&& o) noexcept
+      : ptr(o.ptr),
+        size(o.size) {
+    o.ptr = nullptr;
+  }
+
+  MappedRegion& operator=(MappedRegion&&) = delete;
+  MappedRegion(const MappedRegion&) = delete;
 };
 
 struct Snapshot {
@@ -123,13 +135,13 @@ struct SessionState {
   bool TargetChosen = false;
   std::atomic<bool> IsScanning = false;
   std::atomic<float> ScanProgress;
-  float hitRefreshSeconds = -1; // -1 disabled. 0 enabled icon. >= 0.3 active.
-  float favRefreshSeconds = -1; // -1 disabled. 0 enabled icon. >= 0.3 active.
-  enum class SearchWStatus : int8_t {
+  float hitRefreshSeconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
+  float favRefreshSeconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
+  enum class SearchWStatusT : int8_t {
     DISABLED,
     FIRST,
     SECOND,
-  } searchW = SessionState::SearchWStatus::DISABLED;
+  } SearchWStatus = SessionState::SearchWStatusT::DISABLED;
 
   std::atomic<bool> IsUnknownnValueScan = false;
   Snapshot Snapshots;
@@ -225,21 +237,35 @@ struct setTargetInfo {
 
 struct undoScan {};
 
-}; // namespace Action
+};  // namespace Action
 
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-using PendingAction =
-    std::variant<std::monostate, Action::TargetProcChosen, Action::firstScan, Action::startUnknownValueScan,
-                 Action::filterByValue, Action::filterByStatus, Action::writeHit, Action::addFavourite,
-                 Action::removeFavourite, Action::writeFavourite, Action::freezeValueFavourite,
-                 Action::isFreezeFavourite, Action::descFavourite, Action::restartScan,
-                 Action::regularRefreshHits, Action::regularRefreshFavourite, Action::rescanHit,
-                 Action::rescanAllHits, Action::rescanFavourite, Action::rescanAllFavourites,
-                 Action::setTargetInfo, Action::undoScan>;
+using PendingAction = std::variant<std::monostate,
+                                   Action::TargetProcChosen,
+                                   Action::firstScan,
+                                   Action::startUnknownValueScan,
+                                   Action::filterByValue,
+                                   Action::filterByStatus,
+                                   Action::writeHit,
+                                   Action::addFavourite,
+                                   Action::removeFavourite,
+                                   Action::writeFavourite,
+                                   Action::freezeValueFavourite,
+                                   Action::isFreezeFavourite,
+                                   Action::descFavourite,
+                                   Action::restartScan,
+                                   Action::regularRefreshHits,
+                                   Action::regularRefreshFavourite,
+                                   Action::rescanHit,
+                                   Action::rescanAllHits,
+                                   Action::rescanFavourite,
+                                   Action::rescanAllFavourites,
+                                   Action::setTargetInfo,
+                                   Action::undoScan>;
 
 //
 // End of Action stuff.

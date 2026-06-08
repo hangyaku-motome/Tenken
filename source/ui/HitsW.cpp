@@ -1,9 +1,5 @@
 #include "HitsW.h"
-#include "ContextDisplay.h"
-#include "display.h"
-#include "imgui.h"
-#include "types.h"
-#include "utils.h"
+
 #include <algorithm>
 #include <cinttypes>
 #include <cstdint>
@@ -12,11 +8,17 @@
 #include <variant>
 #include <vector>
 
+#include "ContextDisplay.h"
+#include "display.h"
+#include "imgui.h"
+#include "types.h"
+#include "utils.h"
+
 bool HitsW::InitW() { return ImGui::Begin("Hits"); }
 
 void HitsW::EndW() { ImGui::End(); }
 
-PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits, SessionState &State) {
+PendingAction HitsW::CycleW(const std::vector<HitInfoT>& Hits, SessionState& State) {
   if (!InitW()) {
     EndW();
     return {};
@@ -46,8 +48,8 @@ PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits, SessionState &Sta
 
   PendingAction ContextAction{};
   if (selected_row >= 0 && static_cast<uint64_t>(selected_row) <= Hits.size()) {
-    auto ctr = Context.CycleContext(static_cast<uint64_t>(selected_row),
-                                    Hits[static_cast<uint64_t>(selected_row)], State.hitRefreshSeconds);
+    auto ctr = Context.CycleContext(
+        static_cast<uint64_t>(selected_row), Hits[static_cast<uint64_t>(selected_row)], State.hitRefreshSeconds);
     ContextAction = Context.ResolveContextIntent(ctr, true);
   }
   EndW();
@@ -56,19 +58,17 @@ PendingAction HitsW::CycleW(const std::vector<HitInfoT> &Hits, SessionState &Sta
     return HitTableAction;
   }
 
-  if (!std::holds_alternative<std::monostate>(ContextAction))
-    return ContextAction;
+  if (!std::holds_alternative<std::monostate>(ContextAction)) return ContextAction;
 
   return {};
 }
 
-PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits, const TargetInfoT &TargetInfo) {
+PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT>& Hits, const TargetInfoT& TargetInfo) {
   PendingAction ReturnAction{};
 
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1F, 100.0F, 250.0F);
-  if (!ImGui::BeginChild("hitstable", {0, avail - context_height}))
-    return {};
+  if (!ImGui::BeginChild("hitstable", {0, avail - context_height})) return {};
   if (!ImGui::BeginTable("Hit Table", 6, ImGuiTableFlags_ScrollY)) {
     ImGui::EndChild();
     return {};
@@ -85,7 +85,8 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits, const Targe
   ListClipper.Begin(static_cast<int32_t>(Hits.size()));
   while (ListClipper.Step()) {
     for (uint32_t row = static_cast<uint32_t>(ListClipper.DisplayStart);
-         row < static_cast<uint32_t>(ListClipper.DisplayEnd); ++row) {
+         row < static_cast<uint32_t>(ListClipper.DisplayEnd);
+         ++row) {
       ImGui::TableNextRow();
       ImGui::PushID(static_cast<int32_t>(row));
 
@@ -95,7 +96,8 @@ PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT> &Hits, const Targe
 
       ImGui::TableNextColumn();
 
-      if (ImGui::Selectable("##selectable", selected_row == row,
+      if (ImGui::Selectable("##selectable",
+                            selected_row == row,
                             ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
         selected_row = row;
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {

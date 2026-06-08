@@ -1,53 +1,54 @@
 #include "display.h"
-#include "MapPopUp.h"
-#include "TargetPopUp.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include "imgui_internal.h"
-#include "misc/cpp/imgui_stdlib.h"
-#include "types.h"
-#include "utils.h"
+
 #include <GLFW/glfw3.h>
+#include <sys/types.h>
+
 #include <cstdint>
 #include <cstdlib>
 #include <sstream>
 #include <string>
-#include <sys/types.h>
 #include <type_traits>
 
-static void glfw_error_callback(int error, const char *description) {
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include "imgui_internal.h"
+#include "MapPopUp.h"
+#include "misc/cpp/imgui_stdlib.h"
+#include "TargetPopUp.h"
+#include "types.h"
+#include "utils.h"
+
+static void glfw_error_callback(int error, const char* description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow *initalise_main() {
+GLFWwindow* initalise_main() {
   glfwSetErrorCallback(glfw_error_callback);
 
-  if (glfwInit() == 0)
-    exit(1);
+  if (glfwInit() == 0) exit(1);
 
-  const char *glsl_version = "#version 130";
+  const char* glsl_version = "#version 130";
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
   float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
 
-  GLFWwindow *window = glfwCreateWindow(static_cast<int32_t>(1280 * main_scale),
-                                        static_cast<int32_t>(800 * main_scale), "Tenken", nullptr, nullptr);
-  if (window == nullptr)
-    exit(1);
+  GLFWwindow* window = glfwCreateWindow(
+      static_cast<int32_t>(1280 * main_scale), static_cast<int32_t>(800 * main_scale), "Tenken", nullptr, nullptr);
+  if (window == nullptr) exit(1);
 
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  ImGuiIO &io = ImGui::GetIO();
+  ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
   ImGui::StyleColorsDark();
 
-  ImGuiStyle &style = ImGui::GetStyle();
+  ImGuiStyle& style = ImGui::GetStyle();
   style.ScaleAllSizes(main_scale);
   style.FontScaleDpi = main_scale;
 
@@ -58,7 +59,7 @@ GLFWwindow *initalise_main() {
   return window;
 }
 
-void exit_main(GLFWwindow *window) {
+void exit_main(GLFWwindow* window) {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
@@ -74,11 +75,11 @@ void start_frame() {
   ImGui::NewFrame();
 }
 
-void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow *window) {
+void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window) {
   ImGui::Render();
   glViewport(0, 0, display_w, display_h);
-  glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w,
-               clear_color.w);
+  glClearColor(
+      clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
   glClear(GL_COLOR_BUFFER_BIT);
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   glfwSwapBuffers(window);
@@ -86,11 +87,11 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow *win
 
 void SetDefaultDisplay() {
   ImGuiWindowFlags flags = ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
-                           ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-                           ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar |
-                           ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground;
+                           ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+                           ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+                           ImGuiWindowFlags_NoBackground;
 
-  ImGuiViewport *viewport = ImGui::GetMainViewport();
+  ImGuiViewport* viewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(viewport->Pos);
   ImGui::SetNextWindowSize(viewport->Size);
   ImGui::SetNextWindowViewport(viewport->ID);
@@ -107,8 +108,7 @@ void SetDefaultDisplay() {
   static bool first_launch = true;
   if (first_launch) {
     ImGui::DockBuilderRemoveNode(dockspaceID);
-    ImGui::DockBuilderAddNode(dockspaceID,
-                              ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
+    ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
     ImGui::DockBuilderSetNodeSize(dockspaceID, viewport->Size);
 
     ImGuiID main = dockspaceID;
@@ -130,25 +130,20 @@ void SetDefaultDisplay() {
   ImGui::End();
 }
 
-void MainMenuBarCycle(bool &TargetPUpClicked, bool &MapPupClicked, bool &LogWEnabled, bool &HexWEnabled) {
-  if (!ImGui::BeginMainMenuBar())
-    return;
+void MainMenuBarCycle(bool& TargetPUpClicked, bool& MapPupClicked, bool& LogWEnabled, bool& HexWEnabled) {
+  if (!ImGui::BeginMainMenuBar()) return;
 
   if (ImGui::BeginMenu("File")) {
-    if (ImGui::MenuItem("New Target"))
-      TargetPUpClicked = true;
+    if (ImGui::MenuItem("New Target")) TargetPUpClicked = true;
     ImGui::EndMenu();
   }
 
   if (ImGui::BeginMenu("Utils")) {
-    if (ImGui::MenuItem("View Regions"))
-      MapPupClicked = true;
+    if (ImGui::MenuItem("View Regions")) MapPupClicked = true;
 
-    if (ImGui::MenuItem("Toggle Log window.", nullptr, LogWEnabled, true))
-      LogWEnabled = !LogWEnabled;
+    if (ImGui::MenuItem("Toggle Log window.", nullptr, LogWEnabled, true)) LogWEnabled = !LogWEnabled;
 
-    if (ImGui::MenuItem("Toggle Hex window.", nullptr, HexWEnabled, true))
-      HexWEnabled = !HexWEnabled;
+    if (ImGui::MenuItem("Toggle Hex window.", nullptr, HexWEnabled, true)) HexWEnabled = !HexWEnabled;
 
     ImGui::EndMenu();
   }
@@ -156,25 +151,22 @@ void MainMenuBarCycle(bool &TargetPUpClicked, bool &MapPupClicked, bool &LogWEna
   ImGui::EndMainMenuBar();
 }
 
-template <typename out, typename T> std::vector<uint8_t> ValtoData(const T &val) {
+template <typename out, typename T> std::vector<uint8_t> ValtoData(const T& val) {
   std::vector<uint8_t> data(sizeof(out));
   memcpy(data.data(), &val, sizeof(out));
   return data;
 }
 
 // this is a mess. I should rewrite this.
-bool GetTargetValue(const TargetTypeT TargetType, std::vector<uint8_t> &write_to, ImGuiInputTextFlags flags) {
-
-  if (TargetType == TargetTypeT::Invalid)
-    return false;
+bool GetTargetValue(const TargetTypeT TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags) {
+  if (TargetType == TargetTypeT::Invalid) return false;
 
   std::string tempbuf;
   return dispatchType(TargetType, [&]<typename T>() -> bool {
     tempbuf = dataToStr<T>(write_to);
 
     if (!ImGui::InputText("##value", &tempbuf, flags)) {
-      if (tempbuf.empty())
-        write_to.clear();
+      if (tempbuf.empty()) write_to.clear();
       return false;
     }
 
@@ -221,9 +213,8 @@ bool GetTargetValue(const TargetTypeT TargetType, std::vector<uint8_t> &write_to
   });
 }
 
-void printData(const std::vector<uint8_t> &data, TargetTypeT TargetType) {
-  if (data.empty() || TargetType == TargetTypeT::Invalid)
-    return;
+void printData(const std::vector<uint8_t>& data, TargetTypeT TargetType) {
+  if (data.empty() || TargetType == TargetTypeT::Invalid) return;
 
   std::string print_str = dispatchType(TargetType, [&]<typename T>() { return dataToStr<T>(data); });
   ImGui::TextUnformatted(print_str.c_str());

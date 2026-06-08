@@ -1,6 +1,3 @@
-#include "ActOS.h"
-#include "types.h"
-#include <cstdint>
 #include <handleapi.h>
 #include <memoryapi.h>
 #include <minwindef.h>
@@ -8,9 +5,14 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <tlhelp32.h>
-#include <vector>
 #include <windows.h>
 #include <winnt.h>
+
+#include <cstdint>
+#include <vector>
+
+#include "ActOS.h"
+#include "types.h"
 
 namespace ActOS {
 std::vector<ProcessInfoT> GetProcTargets();
@@ -22,26 +24,25 @@ class WindowsImpl : public IProcess {
 
 public:
   WindowsImpl(int32_t pid) {
-    handle_ =
-        OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION,
-                    FALSE, static_cast<uint32_t>(pid));
+    handle_ = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION,
+                          FALSE,
+                          static_cast<uint32_t>(pid));
   }
 
   ~WindowsImpl() {
-    if (handle_)
-      CloseHandle(handle_);
+    if (handle_) CloseHandle(handle_);
   }
 
   std::vector<MapInfoT> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
-  bool write(uint64_t address, const std::vector<uint8_t> &value) override;
-  char *AllocMMapDisk(uint64_t size) override;
+  bool write(uint64_t address, const std::vector<uint8_t>& value) override;
+  char* AllocMMapDisk(uint64_t size) override;
   void UnAllocMMapDisk(uint64_t address, uint64_t size) override;
 
-}; // namespace WindowsImpl IProcess
+};  // namespace WindowsImpl IProcess
 
 void WindowsImpl::UnAllocMMapDisk(uint64_t address, uint64_t size) {
-  VirtualFree(reinterpret_cast<void *>(address), 0, MEM_RELEASE);
+  VirtualFree(reinterpret_cast<void*>(address), 0, MEM_RELEASE);
 }
 
 std::vector<MapInfoT> WindowsImpl::getRegions() {
@@ -50,9 +51,7 @@ std::vector<MapInfoT> WindowsImpl::getRegions() {
 
   std::vector<MapInfoT> Maps;
   while (VirtualQueryEx(handle_, address, &regioninfo, sizeof(regioninfo))) {
-
-    if (regioninfo.State == MEM_COMMIT && !(regioninfo.Protect & PAGE_NOACCESS) &&
-        !(regioninfo.Protect & PAGE_GUARD)) {
+    if (regioninfo.State == MEM_COMMIT && !(regioninfo.Protect & PAGE_NOACCESS) && !(regioninfo.Protect & PAGE_GUARD)) {
       MapInfoT PushMap;
       PushMap.start = reinterpret_cast<uint64_t>(regioninfo.BaseAddress);
       PushMap.end = regioninfo.RegionSize + PushMap.start;
@@ -66,8 +65,7 @@ std::vector<MapInfoT> WindowsImpl::getRegions() {
       Maps.push_back(PushMap);
     }
 
-    address =
-        reinterpret_cast<LPVOID>(reinterpret_cast<uint64_t>(regioninfo.BaseAddress) + regioninfo.RegionSize);
+    address = reinterpret_cast<LPVOID>(reinterpret_cast<uint64_t>(regioninfo.BaseAddress) + regioninfo.RegionSize);
   }
 
   return Maps;
@@ -76,7 +74,7 @@ std::vector<MapInfoT> WindowsImpl::getRegions() {
 std::vector<uint8_t> WindowsImpl::read(uint64_t address, uint64_t ReadSize) {
   std::vector<uint8_t> readBytes(ReadSize);
 
-  bool res = ReadProcessMemory(handle_, reinterpret_cast<void *>(address), readBytes.data(), ReadSize, NULL);
+  bool res = ReadProcessMemory(handle_, reinterpret_cast<void*>(address), readBytes.data(), ReadSize, NULL);
 
   if (res == 0) {
     printf("couldn't read\n");
@@ -85,21 +83,17 @@ std::vector<uint8_t> WindowsImpl::read(uint64_t address, uint64_t ReadSize) {
   return readBytes;
 }
 
-bool WindowsImpl::write(uint64_t address, const std::vector<uint8_t> &value) {
-
+bool WindowsImpl::write(uint64_t address, const std::vector<uint8_t>& value) {
   uint64_t bytes_written;
-  bool res = WriteProcessMemory(handle_, reinterpret_cast<void *>(address), value.data(), value.size(),
-                                &bytes_written);
+  bool res = WriteProcessMemory(handle_, reinterpret_cast<void*>(address), value.data(), value.size(), &bytes_written);
 
-  if (res == 0)
-    printf("write failed\n");
+  if (res == 0) printf("write failed\n");
 
   return res && bytes_written == value.size();
 }
 
-char *WindowsImpl::AllocMMapDisk(uint64_t size) {
-
-  char *ret = static_cast<char *>(VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+char* WindowsImpl::AllocMMapDisk(uint64_t size) {
+  char* ret = static_cast<char*>(VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
 
   if (ret == NULL) {
     printf("alloc failed.·\n");
@@ -108,7 +102,7 @@ char *WindowsImpl::AllocMMapDisk(uint64_t size) {
   return ret;
 }
 
-}; // namespace
+};  // namespace
 
 std::vector<ProcessInfoT> GetProcTargets() {
   HANDLE hProcessSnap;
@@ -119,7 +113,7 @@ std::vector<ProcessInfoT> GetProcTargets() {
 
   if (!Process32First(hProcessSnap, &pe32)) {
     printf("failed to get processes\n");
-    CloseHandle(hProcessSnap); // clean the snapshot object
+    CloseHandle(hProcessSnap);  // clean the snapshot object
     return {};
   }
 
@@ -134,4 +128,4 @@ std::vector<ProcessInfoT> GetProcTargets() {
 
 std::unique_ptr<IProcess> Attach(int pid) { return std::make_unique<WindowsImpl>(pid); }
 
-} // namespace ActOS
+}  // namespace ActOS

@@ -1,16 +1,19 @@
 #include "HexW.h"
-#include "misc/cpp/imgui_stdlib.h"
-#include "utils.h"
+
+#include <fcntl.h>
+#include <imgui.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cinttypes>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <fcntl.h>
-#include <imgui.h>
 #include <string>
 #include <vector>
+
+#include "misc/cpp/imgui_stdlib.h"
+#include "utils.h"
 
 constexpr int32_t CONTEXT_BYTES_BEFORE = 256;
 constexpr int32_t CONTEXT_BYTES_AFTER = 256;
@@ -21,9 +24,8 @@ bool HexW::InitW() { return ImGui::Begin("Hex"); }
 
 void HexW::EndW() { ImGui::End(); }
 
-void HexW::CycleW(const Scanner &ScannerObj) {
-  if (!enabled_)
-    return;
+void HexW::CycleW() {
+  if (!enabled_) return;
   if (!InitW()) {
     EndW();
     return;
@@ -32,7 +34,7 @@ void HexW::CycleW(const Scanner &ScannerObj) {
   ImGui::InputScalar("Go to:", ImGuiDataType_U64, &searchAddress_, nullptr, nullptr, "%016lx");
   ImGui::SameLine();
   if (ImGui::Button("Go")) {
-    shownBytes_ = readAround(ScannerObj, searchAddress_);
+    shownBytes_ = readAround(searchAddress_);
     if (shownBytes_.size() != CONTEXT_BYTES_AFTER + CONTEXT_BYTES_BEFORE) {
       printf("truncated!!\n");
     }
@@ -40,23 +42,21 @@ void HexW::CycleW(const Scanner &ScannerObj) {
   }
   ImGui::SameLine();
   if (ImGui::Button("Refresh")) {
-    shownBytes_ = readAround(ScannerObj, currentAddress_);
+    shownBytes_ = readAround(currentAddress_);
     if (shownBytes_.size() != CONTEXT_BYTES_AFTER + CONTEXT_BYTES_BEFORE) {
       printf("truncated!!\n");
     }
   }
-  if (!shownBytes_.empty())
-    drawHexTable(ScannerObj);
+  if (!shownBytes_.empty()) drawHexTable();
 
   EndW();
 }
 
-void HexW::drawHexTable(const Scanner &ScannerObj) {
+void HexW::drawHexTable() {
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1F, 50.0F, 150.0F);
 
-  if (!ImGui::BeginChild("hextable", {0, avail - context_height}))
-    return;
+  if (!ImGui::BeginChild("hextable", {0, avail - context_height})) return;
 
   if (!ImGui::BeginTable("Hex View", 18, ImGuiTableFlags_ScrollY)) {
     ImGui::EndChild();
@@ -64,8 +64,7 @@ void HexW::drawHexTable(const Scanner &ScannerObj) {
   }
 
   ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 120.0F);
-  for (uint32_t k = 0; k < BYTES_PER_ROW; ++k)
-    ImGui::TableSetupColumn("00", ImGuiTableColumnFlags_WidthFixed, 25.0F);
+  for (uint32_t k = 0; k < BYTES_PER_ROW; ++k) ImGui::TableSetupColumn("00", ImGuiTableColumnFlags_WidthFixed, 25.0F);
 
   ImGui::TableSetupColumn("ASCII", ImGuiTableColumnFlags_WidthFixed, 130.0F);
 
@@ -78,11 +77,9 @@ void HexW::drawHexTable(const Scanner &ScannerObj) {
                                  ? (row * BYTES_PER_ROW)
                                  : currentAddress_ - CONTEXT_BYTES_BEFORE + (row * BYTES_PER_ROW);
 
-    if (rowAbsAddress == searchAddress_)
-      ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
+    if (rowAbsAddress == searchAddress_) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
     ImGui::Text("0x%" PRIX64, rowAbsAddress);
-    if (rowAbsAddress == searchAddress_)
-      ImGui::PopStyleColor();
+    if (rowAbsAddress == searchAddress_) ImGui::PopStyleColor();
 
     for (int32_t hex_column = 0; hex_column < BYTES_PER_ROW; ++hex_column) {
       ImGui::TableNextColumn();
@@ -91,21 +88,19 @@ void HexW::drawHexTable(const Scanner &ScannerObj) {
         std::string shown_str = hexToStr(shownBytes_[hex_index]);
         ImGui::SetNextItemWidth(25.0F);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-        if (ImGui::InputText("##edit", &shown_str,
-                             ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if (ImGui::InputText(
+                "##edit", &shown_str, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue)) {
           std::vector<uint8_t> write_value{static_cast<uint8_t>(strtoull(shown_str.c_str(), nullptr, 16))};
-          ScannerObj.writeAdr(rowAbsAddress + hex_column, write_value);
-          std::vector<uint8_t> read_byte = ScannerObj.readAdr(rowAbsAddress + hex_column, 1);
+          scanner_->writeAdr(rowAbsAddress + hex_column, write_value);
+          std::vector<uint8_t> read_byte = scanner_->readAdr(rowAbsAddress + hex_column, 1);
           shownBytes_[hex_index] = read_byte[0];
         }
-        if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered())
-          editing_index = -1;
+        if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) editing_index = -1;
         ImGui::PopStyleVar();
       } else {
         char label[16];
         snprintf(label, sizeof(label), "%02X##%d", shownBytes_[hex_index], hex_index);
-        if (ImGui::Selectable(label, false, ImGuiSelectableFlags_AllowDoubleClick))
-          editing_index = hex_index;
+        if (ImGui::Selectable(label, false, ImGuiSelectableFlags_AllowDoubleClick)) editing_index = hex_index;
       }
     }
 
@@ -125,7 +120,9 @@ void HexW::drawHexTable(const Scanner &ScannerObj) {
   ImGui::EndChild();
 }
 
-std::vector<uint8_t> HexW::readAround(const Scanner &ScannerObj, const uint64_t adr) {
+// I do have something similar in DataInspector. probably might want to make it a function in scanner.
+
+std::vector<uint8_t> HexW::readAround(const uint64_t adr) {
   uint64_t search_start = adr - CONTEXT_BYTES_BEFORE < 0 ? 0 : adr - CONTEXT_BYTES_BEFORE;
-  return ScannerObj.readAdr(search_start, CONTEXT_BYTES_AFTER + CONTEXT_BYTES_BEFORE);
+  return scanner_->readAdr(search_start, CONTEXT_BYTES_AFTER + CONTEXT_BYTES_BEFORE);
 }

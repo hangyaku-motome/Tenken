@@ -1,15 +1,16 @@
 #pragma once
 
-#include "ContextDisplay.h"
-#include "types.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
+
+#include "ContextDisplay.h"
+#include "types.h"
 
 class HitsW {
 private:
   static bool InitW();
   static void EndW();
-  PendingAction DrawHitTable(const std::vector<HitInfoT> &Hits, const TargetInfoT &TargetInfo);
+  PendingAction DrawHitTable(const std::vector<HitInfoT>& Hits, const TargetInfoT& TargetInfo);
 
   bool IsEditing = false;
   bool JustStartedEditing = false;
@@ -18,5 +19,5 @@ private:
   ContextDisplay Context;
 
 public:
-  PendingAction CycleW(const std::vector<HitInfoT> &Hits, SessionState &State);
+  PendingAction CycleW(const std::vector<HitInfoT>& Hits, SessionState& State);
 };

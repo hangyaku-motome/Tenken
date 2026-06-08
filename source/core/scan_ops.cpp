@@ -1,13 +1,17 @@
 #include "scan_ops.h"
+
+#include <cstdint>
+#include <type_traits>
+
 #include "HitList.h"
 #include "LogW.h"
 #include "Scanner.h"
 #include "types.h"
 #include "utils.h"
-#include <cstdint>
-#include <type_traits>
 
-void ScanOp::rescanAllHits(const Scanner &ScannerObj, HitList &Hit, std::atomic<float> &progress,
+void ScanOp::rescanAllHits(const Scanner& ScannerObj,
+                           HitList& Hit,
+                           std::atomic<float>& progress,
                            const TargetTypeT TargetType) {
   auto hit_count = Hit.count();
 
@@ -18,10 +22,9 @@ void ScanOp::rescanAllHits(const Scanner &ScannerObj, HitList &Hit, std::atomic<
   }
 }
 
-std::vector<HitInfoT> ScanOp::startScan(const Scanner &ScannerObj, SessionState &State) {
+std::vector<HitInfoT> ScanOp::startScan(const Scanner& ScannerObj, SessionState& State) {
   std::vector<MapInfoT> Maps = ScannerObj.getMapRegions();
-  if (Maps.empty())
-    return {};
+  if (Maps.empty()) return {};
 
   Log::Info(std::to_string(Maps.size()) + " map regions found.");
 
@@ -37,15 +40,13 @@ std::vector<HitInfoT> ScanOp::startScan(const Scanner &ScannerObj, SessionState 
 
     dispatchType(State.TargetInfo.TargetType, [&]<typename T> {
       if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
-        for (const auto RelativeOffset :
-             searchValue(Data, State.TargetInfo.value, State.TargetInfo.mask.value())) {
+        for (const auto RelativeOffset : searchValue(Data, State.TargetInfo.value, State.TargetInfo.mask.value())) {
           HitInfoT PushHit;
           PushHit.location = Maps[i].start + RelativeOffset;
           PushHit.bytes_around =
               findBytesAround(RelativeOffset, Data, static_cast<uint32_t>(State.TargetInfo.value.size()));
           std::vector<uint8_t> value(PushHit.bytes_around.begin() + BYTES_BEFORE,
-                                     PushHit.bytes_around.begin() + BYTES_BEFORE +
-                                         State.TargetInfo.value.size());
+                                     PushHit.bytes_around.begin() + BYTES_BEFORE + State.TargetInfo.value.size());
           PushHit.value = value;
           ReturnHits.push_back(PushHit);
         }
@@ -62,8 +63,7 @@ std::vector<HitInfoT> ScanOp::startScan(const Scanner &ScannerObj, SessionState 
           PushHit.bytes_around =
               findBytesAround(RelativeOffset, Data, static_cast<uint32_t>(State.TargetInfo.value.size()));
           std::vector<uint8_t> value(PushHit.bytes_around.begin() + BYTES_BEFORE,
-                                     PushHit.bytes_around.begin() + BYTES_BEFORE +
-                                         State.TargetInfo.value.size());
+                                     PushHit.bytes_around.begin() + BYTES_BEFORE + State.TargetInfo.value.size());
           PushHit.value = value;
           ReturnHits.push_back(PushHit);
         }

@@ -1,24 +1,31 @@
 #pragma once
 
-#include "types.h"
 #include <cstdint>
 #include <variant>
+
+#include "types.h"
 
 namespace ContextIntent {
 struct rescan {
   uint64_t index;
 };
+
 struct rescanAll {};
+
 struct write {
   uint64_t index;
 };
+
 struct regularRefresh {
   float seconds;
 };
-} // namespace ContextIntent
+}  // namespace ContextIntent
 
-using ContextResult = std::variant<std::monostate, ContextIntent::rescan, ContextIntent::rescanAll,
-                                   ContextIntent::write, ContextIntent::regularRefresh>;
+using ContextResult = std::variant<std::monostate,
+                                   ContextIntent::rescan,
+                                   ContextIntent::rescanAll,
+                                   ContextIntent::write,
+                                   ContextIntent::regularRefresh>;
 
 class ContextDisplay {
   float button_w = 150.0F;
@@ -55,8 +62,7 @@ class ContextDisplay {
   }
 
 public:
-  template <typename T>
-  ContextResult CycleContext(const uint64_t selected_row, const T Entry, float refreshSeconds) {
+  template <typename T> ContextResult CycleContext(const uint64_t selected_row, const T Entry, float refreshSeconds) {
     if (refreshSeconds >= 0)
       IsRefresh = true;
     else
@@ -78,36 +84,34 @@ public:
     ImGui::SameLine();
     auto RefreshAll = DrawRefreshAllButton();
 
-    if (RefreshContext)
-      return ContextIntent::rescan{selected_row};
-    if (RefreshAll)
-      return ContextIntent::rescanAll{};
+    if (RefreshContext) return ContextIntent::rescan{selected_row};
+    if (RefreshAll) return ContextIntent::rescanAll{};
 
     return ReturnAction;
   }
 
-  PendingAction ResolveContextIntent(ContextResult &cont, bool IsHitWindow) {
+  PendingAction ResolveContextIntent(ContextResult& cont, bool IsHitWindow) {
     PendingAction result{};
     std::visit(overloaded{
-                   [&](ContextIntent::rescan &c) -> void {
+                   [&](ContextIntent::rescan& c) -> void {
                      if (IsHitWindow)
                        result = Action::rescanHit{c.index};
                      else
                        result = Action::rescanFavourite{c.index};
                    },
-                   [&](ContextIntent::rescanAll &) -> void {
+                   [&](ContextIntent::rescanAll&) -> void {
                      if (IsHitWindow)
                        result = Action::rescanAllHits{};
                      else
                        result = Action::rescanAllFavourites{};
                    },
-                   [&](ContextIntent::regularRefresh &c) -> void {
+                   [&](ContextIntent::regularRefresh& c) -> void {
                      if (IsHitWindow)
                        result = Action::regularRefreshHits{c.seconds};
                      else
                        result = Action::regularRefreshFavourite{c.seconds};
                    },
-                   [&](auto &) {},
+                   [&](auto&) {},
                },
                cont);
     return result;

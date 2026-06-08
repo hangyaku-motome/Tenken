@@ -1,23 +1,24 @@
 #include "SearchW.h"
-#include "LogW.h"
-#include "display.h"
-#include "imgui.h"
-#include "misc/cpp/imgui_stdlib.h"
-#include "types.h"
-#include "utils.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include "display.h"
+#include "imgui.h"
+#include "LogW.h"
+#include "misc/cpp/imgui_stdlib.h"
+#include "types.h"
+#include "utils.h"
 
 bool SearchW::InitW() { return ImGui::Begin("Search"); }
 
 void SearchW::EndW() { ImGui::End(); }
 
-bool SearchW::GetTargetType(TargetTypeT &newType) {
+bool SearchW::GetTargetType(TargetTypeT& newType) {
   bool Changed = false;
 
-  if (ImGui::Combo("Type", &TempTargetType,
-                   "int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0")) {
+  if (ImGui::Combo("Type", &TempTargetType, "int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0")) {
     newType = static_cast<TargetTypeT>(TempTargetType + 4);
     Log::Info("Chosen target type:" + targetTypeToStr(newType) + "\n");
     Changed = true;
@@ -25,8 +26,7 @@ bool SearchW::GetTargetType(TargetTypeT &newType) {
 
   bool IsInt = (static_cast<int>(newType) <= 7);
   ImGui::BeginDisabled(!IsInt);
-  if (!IsInt)
-    IsUnsigned = false;
+  if (!IsInt) IsUnsigned = false;
 
   bool temp_IsUnsigned = IsUnsigned;
   ImGui::Checkbox("Unsigned", &IsUnsigned);
@@ -46,27 +46,24 @@ bool SearchW::GetTargetType(TargetTypeT &newType) {
   return Changed;
 }
 
-PendingAction SearchW::CycleFirstW(const TargetInfoT &TargetInfo) {
+PendingAction SearchW::CycleFirstW(const TargetInfoT& TargetInfo) {
   InitW();
 
   PendingAction ReturnAction{};
 
   TargetTypeT tempType = TargetInfo.TargetType;
-  if (GetTargetType(tempType))
-    ReturnAction = Action::setTargetInfo{tempType, {}};
+  if (GetTargetType(tempType)) ReturnAction = Action::setTargetInfo{tempType, {}};
 
   if (TargetInfo.TargetType == TargetTypeT::AOB) {
     std::vector<uint8_t> bytes = TargetInfo.value;
     std::vector<bool> mask;
-    if (TargetInfo.mask.has_value())
-      mask = TargetInfo.mask.value();
+    if (TargetInfo.mask.has_value()) mask = TargetInfo.mask.value();
     if (strToAOBInfo(bytes, mask)) {
       ReturnAction = Action::setTargetInfo{TargetInfo.TargetType, bytes, mask};
       InitValueGiven = true;
     }
 
-    if (TargetInfo.value.empty() && !UnknownValueScan)
-      InitValueGiven = false;
+    if (TargetInfo.value.empty() && !UnknownValueScan) InitValueGiven = false;
 
   } else if (GetTargetValue(TargetInfo.TargetType, tempval)) {
     ReturnAction = Action::setTargetInfo{TargetInfo.TargetType, tempval};
@@ -89,14 +86,13 @@ PendingAction SearchW::CycleFirstW(const TargetInfoT &TargetInfo) {
   EndW();
 
   if (PressedScan) {
-    if (UnknownValueScan)
-      return Action::startUnknownValueScan{};
+    if (UnknownValueScan) return Action::startUnknownValueScan{};
     return Action::firstScan{.targetInfo = TargetInfo};
   }
   return ReturnAction;
 }
 
-PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo, bool IsUnknownValueScan) {
+PendingAction SearchW::CycleSecondW(const TargetInfoT& TargetInfo, bool IsUnknownValueScan) {
   if (!InitW()) {
     EndW();
     return {};
@@ -107,8 +103,7 @@ PendingAction SearchW::CycleSecondW(const TargetInfoT &TargetInfo, bool IsUnknow
   else
     ImGui::Combo("Keep", &TempFilterType, "unchanged\0changed\0increased\0decreased\0\0");
 
-  if (TempFilterType == 4)
-    GetTargetValue(TargetInfo.TargetType, tempbuf);
+  if (TempFilterType == 4) GetTargetValue(TargetInfo.TargetType, tempbuf);
 
   ImGui::BeginDisabled(TempFilterType == -1 || (tempbuf.empty() && TempFilterType == 4));
   if (ImGui::Button("Rescan!")) {

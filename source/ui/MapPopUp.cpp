@@ -1,9 +1,12 @@
 #include "MapPopUp.h"
+
+#include <imgui.h>
+
+#include <cinttypes>
+#include <string>
+
 #include "LogW.h"
 #include "types.h"
-#include <cinttypes>
-#include <imgui.h>
-#include <string>
 
 void MapsPopUp::InitPopUp() {
   refresh_ = true;
@@ -18,20 +21,19 @@ void MapsPopUp::UpdateRegions(std::vector<MapInfoT> regions) {
 }
 
 void MapsPopUp::CyclePUp() {
-  if (clicked_)
-    InitPopUp();
+  if (clicked_) InitPopUp();
 
-  if (!ImGui::BeginPopupModal("Regions List", nullptr,
+  if (!ImGui::BeginPopupModal("Regions List",
+                              nullptr,
                               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar |
                                   ImGuiWindowFlags_HorizontalScrollbar))
     return;
 
   ImGui::TextUnformatted("List regions here:");
 
-  if (!ImGui::BeginTable("Regions", 3))
-    return;
+  if (!ImGui::BeginTable("Regions", 3)) return;
 
-  for (auto const &region : regions_) {
+  for (auto const& region : regions_) {
     ImGui::TableNextRow();
 
     ImGui::TableNextColumn();

@@ -14,13 +14,13 @@ class FavouriteW {
   bool JustStartedEditingVal = false;
   bool AllColumnChosen = false;
 
-  PendingAction DrawFavouriteTable(const std::vector<FavouriteInfoT> &Favourites);
+  PendingAction DrawFavouriteTable(const std::vector<FavouriteInfoT>& Favourites);
   bool DrawRefreshContextButton();
   void AlignButtons();
-  void DrawContextMenu(const FavouriteInfoT &Favourite);
+  void DrawContextMenu(const FavouriteInfoT& Favourite);
 
   ContextDisplay Context;
 
 public:
-  PendingAction CycleW(const std::vector<FavouriteInfoT> &Favourites, SessionState &State);
+  PendingAction CycleW(const std::vector<FavouriteInfoT>& Favourites, SessionState& State);
 };

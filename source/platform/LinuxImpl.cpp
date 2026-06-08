@@ -1,28 +1,29 @@
-#include "ActOS.h"
-#include "LogW.h"
-#include "types.h"
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/uio.h>
+#include <unistd.h>
+
 #include <cerrno>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <sys/mman.h>
-#include <unistd.h>
 
-#include <sys/uio.h>
+#include "ActOS.h"
+#include "LogW.h"
+#include "types.h"
 
 namespace ActOS {
 std::vector<ProcessInfoT> GetTargetProc();
 
 namespace {
 std::vector<int> ListPid();
-std::string ReadFileString(const std::string &path);
+std::string ReadFileString(const std::string& path);
 
 class LinuxImpl : public IProcess {
   int pid_;
@@ -30,28 +31,26 @@ class LinuxImpl : public IProcess {
   uint64_t fileoffset_ = 0;
 
 public:
-  LinuxImpl(int pid) : pid_(pid) {
+  LinuxImpl(int pid)
+      : pid_(pid) {
     pid_ = pid;
     std::string path = "/tmp/tenken_mmap_" + std::to_string(getpid());
     fd_ = open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0600);
   }
 
   ~LinuxImpl() {
-    if (fd_)
-      close(fd_);
+    if (fd_) close(fd_);
   }
 
   std::vector<MapInfoT> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
-  bool write(uint64_t address, const std::vector<uint8_t> &value) override;
-  char *AllocMMapDisk(uint64_t size) override;
+  bool write(uint64_t address, const std::vector<uint8_t>& value) override;
+  char* AllocMMapDisk(uint64_t size) override;
   void UnAllocMMapDisk(uint64_t address, uint64_t size) override;
 
-}; // namespace LinuxImpl IProcess
+};  // namespace LinuxImpl IProcess
 
-void LinuxImpl::UnAllocMMapDisk(uint64_t address, uint64_t size) {
-  munmap(reinterpret_cast<void *>(address), size);
-}
+void LinuxImpl::UnAllocMMapDisk(uint64_t address, uint64_t size) { munmap(reinterpret_cast<void*>(address), size); }
 
 std::vector<MapInfoT> LinuxImpl::getRegions() {
   std::ifstream maps;
@@ -78,13 +77,10 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
 
     SplitMapsLine >> MemoryAddresses >> perms >> uneeded >> uneeded >> uneeded >> name;
 
-    if (perms[0] == '-' || perms[1] == '-' || perms[2] == 'x' || perms[3] == 's')
-      continue;
-    if (name.find("/lib/") != std::string::npos)
-      continue;
+    if (perms[0] == '-' || perms[1] == '-' || perms[2] == 'x' || perms[3] == 's') continue;
+    if (name.find("/lib/") != std::string::npos) continue;
 
-    if (name.empty())
-      name = "UNNAMED_REGION";
+    if (name.empty()) name = "UNNAMED_REGION";
 
     if (MemoryAddresses.find('-') == std::string::npos) {
       printf("couldn't find \"-\" in maps. Something is really wrong.\n");
@@ -113,7 +109,7 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t Read
   Receive.iov_base = read_buf.data();
   Receive.iov_len = ReadSize;
 
-  WriteTo.iov_base = reinterpret_cast<void *>(address);
+  WriteTo.iov_base = reinterpret_cast<void*>(address);
   WriteTo.iov_len = ReadSize;
 
   int64_t read_amount = process_vm_readv(pid_, &Receive, 1, &WriteTo, 1, 0);
@@ -129,14 +125,14 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t Read
   return read_buf;
 }
 
-bool LinuxImpl::write(const uint64_t address, const std::vector<uint8_t> &value) {
+bool LinuxImpl::write(const uint64_t address, const std::vector<uint8_t>& value) {
   struct iovec Receive{};
   struct iovec WriteTo{};
 
-  Receive.iov_base = const_cast<unsigned char *>(value.data());
+  Receive.iov_base = const_cast<unsigned char*>(value.data());
   Receive.iov_len = value.size();
 
-  WriteTo.iov_base = reinterpret_cast<void *>(address);
+  WriteTo.iov_base = reinterpret_cast<void*>(address);
   WriteTo.iov_len = value.size();
   int64_t write_amount = process_vm_writev(pid_, &Receive, 1, &WriteTo, 1, 0);
 
@@ -148,13 +144,11 @@ bool LinuxImpl::write(const uint64_t address, const std::vector<uint8_t> &value)
 std::vector<int> ListPid() {
   std::vector<int> pidList;
 
-  for (const auto &field : std::filesystem::directory_iterator("/proc")) {
-    if (!field.is_directory())
-      continue;
+  for (const auto& field : std::filesystem::directory_iterator("/proc")) {
+    if (!field.is_directory()) continue;
 
     int pid = atoi(field.path().filename().c_str());
-    if (pid == 0)
-      continue;
+    if (pid == 0) continue;
 
     pidList.push_back(pid);
   }
@@ -162,16 +156,15 @@ std::vector<int> ListPid() {
   return pidList;
 }
 
-std::string ReadFileString(const std::string &path) {
+std::string ReadFileString(const std::string& path) {
   std::ifstream PathStream(path);
-  if (!PathStream)
-    return "";
+  if (!PathStream) return "";
   std::stringstream readString;
   readString << PathStream.rdbuf();
   return readString.str();
 }
 
-char *LinuxImpl::AllocMMapDisk(uint64_t size) {
+char* LinuxImpl::AllocMMapDisk(uint64_t size) {
   uint64_t pagesize = sysconf(_SC_PAGESIZE);
 
   uint64_t alignedsize = (size + pagesize - 1) & ~(pagesize - 1);
@@ -181,7 +174,7 @@ char *LinuxImpl::AllocMMapDisk(uint64_t size) {
 
   ftruncate(fd_, static_cast<int64_t>(fileoffset_));
 
-  char *ptr = static_cast<char *>(
+  char* ptr = static_cast<char*>(
       mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, static_cast<int64_t>(curr_offset)));
 
   if (ptr == MAP_FAILED) {
@@ -191,7 +184,8 @@ char *LinuxImpl::AllocMMapDisk(uint64_t size) {
   return ptr;
 }
 
-}; // namespace
+};  // namespace
+
 std::vector<ProcessInfoT> GetProcTargets() {
   std::vector<ProcessInfoT> Processes;
 
@@ -202,8 +196,7 @@ std::vector<ProcessInfoT> GetProcTargets() {
     std::string path = "/proc/" + std::to_string(pid) + "/";
 
     name = ReadFileString(path + "comm");
-    if (name.empty())
-      continue;
+    if (name.empty()) continue;
     name.erase(name.find('\n'));
     cmdline = ReadFileString(path + "cmdline");
     if (cmdline.empty()) {
@@ -224,5 +217,6 @@ std::vector<ProcessInfoT> GetProcTargets() {
   }
   return Processes;
 };
+
 std::unique_ptr<IProcess> Attach(int pid) { return std::make_unique<LinuxImpl>(pid); }
-} // namespace ActOS
+}  // namespace ActOS

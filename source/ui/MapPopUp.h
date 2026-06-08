@@ -1,9 +1,10 @@
 #pragma once
 
-#include "types.h"
 #include <vector>
-class MapsPopUp {
 
+#include "types.h"
+
+class MapsPopUp {
   std::vector<MapInfoT> regions_;
   void InitPopUp();
 

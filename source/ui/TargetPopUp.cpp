@@ -1,10 +1,16 @@
 #include "TargetPopUp.h"
-#include "LogW.h"
+
+#include <string>
+
 #include "imgui.h"
+#include "LogW.h"
 #include "misc/cpp/imgui_stdlib.cpp"
 #include "platform/ActOS.h"
 #include "types.h"
-#include <string>
+
+static constexpr auto flags =
+    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
+
 void TargetPopUp::InitPopUp() {
   processes_ = ActOS::GetProcTargets();
   Log::Info("Found PID count: " + std::to_string(processes_.size()) + "\n");
@@ -13,26 +19,20 @@ void TargetPopUp::InitPopUp() {
 }
 
 PendingAction TargetPopUp::CyclePUp() {
-  if (clicked_)
-    InitPopUp();
+  if (clicked_) InitPopUp();
 
   PendingAction ReturnAction{};
 
-  if (!ImGui::BeginPopupModal("Target List", nullptr,
-                              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar |
-                                  ImGuiWindowFlags_HorizontalScrollbar))
-    return {};
+  if (!ImGui::BeginPopupModal("Target List", nullptr, flags)) return {};
 
   ImGui::TextUnformatted("List targets here:");
 
   ImGui::InputText("Filter name:", &search_);
 
-  if (!ImGui::BeginTable("Targets", 3))
-    return {};
+  if (!ImGui::BeginTable("Targets", 3)) return {};
 
-  for (const auto &Target : processes_) {
-    if (!search_.empty() && Target.name.find(search_) == std::string::npos)
-      continue;
+  for (const auto& Target : processes_) {
+    if (!search_.empty() && Target.name.find(search_) == std::string::npos) continue;
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(std::to_string(Target.pid).c_str());
