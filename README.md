@@ -31,14 +31,6 @@ cd Tenken
 ./build.sh
 ```
 
-Other build modes:
-
-```bash
-./build.sh debug
-./build.sh san     # address + undefined sanitizer
-./build.sh tsan    # thread sanitizer
-```
-
 ### Windows (cross-compiled from Linux)
 
 ```bash
