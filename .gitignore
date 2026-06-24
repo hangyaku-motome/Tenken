@@ -6,3 +6,4 @@ build-linux/
 build-win/
 words/
 .clang-format
+DUMMY
