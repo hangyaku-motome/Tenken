@@ -56,6 +56,7 @@ PendingAction FavouriteW::DrawFavouriteTable(const std::vector<FavouriteInfoT>& 
   ImGui::TableSetupColumn("Status");
   ImGui::TableSetupColumn("Frozen");
   ImGui::TableSetupColumn("Type");
+  ImGui::TableHeadersRow();
 
   for (uint64_t row = 0; row < Favourites.size(); row++) {
     ImGui::TableNextRow();
