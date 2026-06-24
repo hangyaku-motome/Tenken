@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 
+#include "TargetPopUp.h"
 #include "display.h"
 #include "FavouriteList.h"
 #include "FavouriteW.h"
@@ -16,6 +17,7 @@
 #include "Scanner.h"
 #include "SearchW.h"
 #include "types.h"
+#include "DataInspectorW.h"
 
 void ResolveActions(Scanner& ScannerObj,
                     const std::vector<PendingAction>& Actions,
@@ -37,8 +39,10 @@ int main() {
 
   SearchW SearchWObj;
   HitsW HitWObj;
-  FavouriteW FavouriteWObj; LogW LogWObj;
+  FavouriteW FavouriteWObj;
+  LogW LogWObj;
   HexW HexWObj(ScannerObj);
+  DataInspectorW DataInspectorWObj(ScannerObj);
 
   TargetPopUp TargetWObj;
   MapsPopUp MapWObj;
@@ -64,10 +68,7 @@ int main() {
     start_frame();
     SetDefaultDisplay();
 
-    MainMenuBarCycle(TargetWObj.clicked_, MapWObj.clicked_, LogWObj.enabled_, HexWObj.enabled_);
-
-    // frankly I'm not very pleased with the way windows and pop ups work. They're a bit...wonky, to say the
-    // least. Low priority todo: refine them.
+    MainMenuBarCycle(TargetWObj.clicked_, MapWObj.clicked_, LogWObj.enabled_, HexWObj.enabled_, DataInspectorWObj.enabled_);
 
     // Target popup.
     Actions.push_back(TargetWObj.CyclePUp());
@@ -92,7 +93,9 @@ int main() {
     LogWObj.CycleW();
 
     // Hex window
-    HexWObj.CycleW(ScannerObj);
+    HexWObj.CycleW();
+
+    DataInspectorWObj.CycleW();
 
     end_frame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y), clear_color, window);
 
@@ -139,7 +142,7 @@ void ResolveActions(Scanner& ScannerObj,
               Favourite.reset();
               ScannerObj.init(a.chosenProc.pid);
               State.TargetProcInfo = a.chosenProc;
-              State.SearchWStatus = SessionState::SearchWStatus::FIRST;
+              State.SearchWStatus = SessionState::SearchWStatusT::FIRST;
               State.TargetChosen = true;
               Favourite.startFreezeThread(ScannerObj);
             },
@@ -148,14 +151,14 @@ void ResolveActions(Scanner& ScannerObj,
                 auto hits = ScanOp::startScan(ScannerObj, State);
                 Hit.assignNew(std::move(hits));
               });
-              State.SearchWStatus = SessionState::SearchWStatus::SECOND;
+              State.SearchWStatus = SessionState::SearchWStatusT::SECOND;
             },
             [&](const Action::startUnknownValueScan) {
               State.IsUnknownnValueScan = true;
               ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
                 State.Snapshots = ScannerObj.StartUnknownValueScan(State.ScanProgress);
               });
-              State.SearchWStatus = SessionState::SearchWStatus::SECOND;
+              State.SearchWStatus = SessionState::SearchWStatusT::SECOND;
             },
             [&](const Action::filterByValue& a) {
               ScanOp::RunOnScannerThread(scannerThread, State, [&, value = a.value]() {
@@ -214,7 +217,7 @@ void ResolveActions(Scanner& ScannerObj,
               State.hitRefreshSeconds = -1;
               State.TargetInfo.TargetType = TargetTypeT::Invalid;
               State.TargetInfo.value = {};
-              State.SearchWStatus = SessionState::SearchWStatus::FIRST;
+              State.SearchWStatus = SessionState::SearchWStatusT::FIRST;
             },
             [&](const Action::setTargetInfo& a) {
               State.TargetInfo.TargetType = a.type;
