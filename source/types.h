@@ -22,6 +22,9 @@ constexpr float EPSILON = 0.1F;
 
 constexpr char hex[] = "0123456789ABCDEF";
 
+static constexpr auto popup_flags =
+    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
+
 enum class TargetTypeT : int8_t {
   uInt8,
   uInt16,

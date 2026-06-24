@@ -8,8 +8,6 @@
 #include "platform/ActOS.h"
 #include "types.h"
 
-static constexpr auto flags =
-    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
 
 void TargetPopUp::InitPopUp() {
   processes_ = ActOS::GetProcTargets();
@@ -23,7 +21,7 @@ PendingAction TargetPopUp::CyclePUp() {
 
   PendingAction ReturnAction{};
 
-  if (!ImGui::BeginPopupModal("Target List", nullptr, flags)) return {};
+  if (!ImGui::BeginPopupModal("Target List", nullptr, popup_flags)) return {};
 
   ImGui::TextUnformatted("List targets here:");
 
