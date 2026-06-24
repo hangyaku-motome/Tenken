@@ -171,7 +171,15 @@ template <typename T> std::string dataToStr(const std::vector<uint8_t>& bytes) {
   } else {
     T value;
     memcpy(&value, bytes.data(), sizeof(T));
-    return std::to_string(value);
+    std::string returnstring = std::to_string(value);
+
+    if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "%.6g", value);
+      return std::string(buf);
+    }
+
+    return returnstring;
   }
 }
 
