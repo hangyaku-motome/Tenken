@@ -122,6 +122,7 @@ void SetDefaultDisplay() {
     ImGui::DockBuilderDockWindow("Search", top_right);
     ImGui::DockBuilderDockWindow("Favourite", bottom_right);
     ImGui::DockBuilderDockWindow("Hex", bottom);
+    ImGui::DockBuilderDockWindow("Inspector", top_right);
 
     ImGui::DockBuilderFinish(dockspaceID);
 
@@ -130,7 +131,7 @@ void SetDefaultDisplay() {
   ImGui::End();
 }
 
-void MainMenuBarCycle(bool& TargetPUpClicked, bool& MapPupClicked, bool& LogWEnabled, bool& HexWEnabled) {
+void MainMenuBarCycle(bool& TargetPUpClicked, bool& MapPupClicked, bool& LogWEnabled, bool& HexWEnabled, bool& DataInspectorWEnabled) {
   if (!ImGui::BeginMainMenuBar()) return;
 
   if (ImGui::BeginMenu("File")) {
@@ -144,6 +145,8 @@ void MainMenuBarCycle(bool& TargetPUpClicked, bool& MapPupClicked, bool& LogWEna
     if (ImGui::MenuItem("Toggle Log window.", nullptr, LogWEnabled, true)) LogWEnabled = !LogWEnabled;
 
     if (ImGui::MenuItem("Toggle Hex window.", nullptr, HexWEnabled, true)) HexWEnabled = !HexWEnabled;
+
+    if (ImGui::MenuItem("Toggle Data Inspector window.", nullptr, DataInspectorWEnabled, true)) DataInspectorWEnabled = !DataInspectorWEnabled;
 
     ImGui::EndMenu();
   }
