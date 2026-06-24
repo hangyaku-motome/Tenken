@@ -47,6 +47,8 @@ class DataInspectorW {
 
   EnabledTypes types_;
 
+  bool popupclicked_ = false;
+
 public:
   explicit DataInspectorW(const Scanner& scanner)
       : scanner_(&scanner) {}
