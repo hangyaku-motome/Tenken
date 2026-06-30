@@ -57,21 +57,6 @@ struct MapInfoT {
   std::string name;
 };
 
-// these next two might be unncessesary atp.
-struct WindowInfoT {
-  float H;
-  float W;
-  int XPos;
-  int YPos;
-  ImGuiWindowFlags flags;
-};
-
-struct DisplayInfoT {
-  int display_w = 0;
-  int display_h = 0;
-  float TopMenuHeight = 0;
-};
-
 struct ProcessInfoT {
   int pid = 0;
   std::string name;
