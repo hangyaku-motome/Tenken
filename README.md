@@ -8,8 +8,10 @@ A memory scanner made in C++ with Dear ImGui that is cross-platform (Linux and W
 - Search for values in primitive types (int8-64, float, double), in strings, or in AOB with wildcards, which returns "hits".
 - Filter those hits based on relative change (higher, lower, changed, unchanged) or by certain value.
 - Edit the value of said hits.
+- Unknown value scanning. Takes a snapshot and marks hits based on changed or unchanged across the entire program.
 - A favourite section to pin addresses of interest, plus give them descriptions; and "freeze" them at certain values.
 - A hex viewer, where you can view and edit the bytes around an address in a detailed fashion (you can copy the address of a hit by right clicking, or you can copy the address of a region from Utils -> View Regions).
+- A Data inspector, where you can see bytes around an address interpreted as different data types on each offset.
 
 ![screenshot](docs/screenshot.png)
 
@@ -33,32 +35,29 @@ cd Tenken
 
 ### Windows (cross-compiled from Linux)
 
-```bash
-# Fedora
-sudo dnf install mingw64-gcc mingw64-gcc-c++
+Install the MinGW-w64 cross-compiler toolchain and run:
 
+```bash
 ./build.sh win
 ```
 
 ## Running
 
-#### **Linux:** Requires root or a relaxed `ptrace_scope` setting to read other processes' memory.
+**Linux:** Requires you to set `cap_sys_ptrace` for the binary, root, or a relaxed `ptrace_scope` setting to read other processes' memory.
 
-Recommended:
-
-```bash
-sudo ./build-linux/Tenken
-```
-Otherwise:
+The first option is recommended:
 
 ```bash
-echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+sudo setcap cap_sys_ptrace+ep ./build-linux/Tenken
 ```
+Now you can run without sudo.
+
+Otherwise, `sudo ./build-linux/Tenken` to run with root. Or, `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope` then run normally.
 
 
-#### **Windows:** Run as administrator.
+**Windows:** Run as administrator.
 
-Note: Windows Defender will probably flag the executable as malware. This happens because the program uses calls that malware may use (like ReadProcessMemory and WriteProcessMemory). You'll need to add an exception for it from Windows Defender.
+Note: Windows Defender will probably flag the executable as malware. This happens because the program uses calls that malware may use (like `ReadProcessMemory` and `WriteProcessMemory`). You'll need to add an exception for it from Windows Defender.
 
 ## License
 
@@ -75,7 +74,13 @@ I would highly appreciate any forms of feedback, criticism, and bug reports. You
 
 Created and maintained by Hangyaku.
 
-### Other Remarks
+## Third-party
+
+- [Dear ImGui](https://github.com/ocornut/imgui) — MIT
+- [GLFW](https://www.glfw.org/) — Zlib
+- [nlohmann/json](https://github.com/nlohmann/json) — MIT
+
+## Other Remarks
 
 This is a personal project, align your expectations accordingly.
 
