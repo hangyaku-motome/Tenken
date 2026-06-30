@@ -90,8 +90,8 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     std::string StartStr = MemoryAddresses.substr(0, MemoryAddresses.find('-'));
     std::string EndStr = MemoryAddresses.substr(MemoryAddresses.find('-') + 1);
 
-    uint64_t start = stoul(StartStr, nullptr, 16);
-    uint64_t end = stoul(EndStr, nullptr, 16);
+    uint64_t start = stoull(StartStr, nullptr, 16);
+    uint64_t end = stoull(EndStr, nullptr, 16);
 
     MapInfoT TempMapReg = {start, end, name};
 
