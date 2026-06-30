@@ -11,3 +11,8 @@
 ## Medium term
 - [ ] Pointer scanner
 - [ ] Structure dissector
+
+
+## Continuous medium term goals
+- Improve UX
+- Bug testing (on both platforms, but especially on Windows)
