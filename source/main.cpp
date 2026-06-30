@@ -1,10 +1,18 @@
+#include <imgui.h>
 #include <imgui_impl_glfw.h>
+#include <pwd.h>
+#include <sys/types.h>
 
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <ios>
+#include <iostream>
+#include <nlohmann/json.hpp>
 #include <thread>
 #include <vector>
 
-#include "TargetPopUp.h"
+#include "DataInspectorW.h"
 #include "display.h"
 #include "FavouriteList.h"
 #include "FavouriteW.h"
@@ -16,8 +24,11 @@
 #include "scan_ops.h"
 #include "Scanner.h"
 #include "SearchW.h"
+#include "TargetPopUp.h"
 #include "types.h"
-#include "DataInspectorW.h"
+#include "utils.h"
+
+using nlohmann::json;
 
 void ResolveActions(Scanner& ScannerObj,
                     const std::vector<PendingAction>& Actions,
@@ -26,12 +37,43 @@ void ResolveActions(Scanner& ScannerObj,
                     HitList& Hit,
                     FavouriteList& Favourite);
 
+// TODO: Implement or import a file location chooser.
+
+// TODO: The search window is incredibly wonky. Fix it. A variable for it in state? really? also many UI problems.
+//
+// WARNING: The windows version will definitely fail as of this latest version. I'm gonna have to get around to fixing
+// it...At some point. For now (hopefully) that ugly ifndef ifdef piece keeps windows working.
+
+// Hard coded save location for now.
+int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites);
+int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites);
+
+// 0 invalid. 1 normal user. 2 sudo.
+int checkPermission();
+
+std::filesystem::path getHome(int32_t userMode);
+
 int main() {
+  #ifndef _WIN32
+  int userMode = checkPermission();
+  if (!userMode) return 1;
+
+  std::filesystem::path home = getHome(userMode);
+  if (home.empty()) return 1;
+
   // Start up Dear ImGui.
-  GLFWwindow* window = initalise_main();
-  ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
+  std::filesystem::path ImGuiInitPath = home / ".local" / "state" / "Tenken" / "imgui.ini";
+  GLFWwindow* window = initalise_main(ImGuiInitPath);
+#endif
+  #ifdef _WIN32
+  GLFWwindow* window = initalise_main("");
+#endif
+
   ImGuiIO& io = ImGui::GetIO();
-  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
+
+  // Start up Tenken.
+  std::filesystem::path savePath = home / ".local" / "share" / "Tenken" / "tenkenSave.json";
 
   SessionState State;
 
@@ -44,13 +86,11 @@ int main() {
   HexW HexWObj(ScannerObj);
   DataInspectorW DataInspectorWObj(ScannerObj);
 
-  TargetPopUp TargetWObj;
-  MapsPopUp MapWObj;
+  TargetPopUp TargetPUpObj;
+  MapsPopUp MapPUpObj;
 
   HitList Hit;
   FavouriteList Favourite;
-
-  std::vector<PendingAction> Actions;
 
   std::thread scannerThread;
 
@@ -68,14 +108,28 @@ int main() {
     start_frame();
     SetDefaultDisplay();
 
-    MainMenuBarCycle(TargetWObj.clicked_, MapWObj.clicked_, LogWObj.enabled_, HexWObj.enabled_, DataInspectorWObj.enabled_);
+    std::vector<PendingAction> Actions;
+
+    std::string menuBarAction = MainMenuBarCycle(
+        TargetPUpObj.clicked_, MapPUpObj.clicked_, LogWObj.enabled_, HexWObj.enabled_, DataInspectorWObj.enabled_);
+
+    if (menuBarAction == "Save") {
+      if (!saveTenken(savePath, Favourite.get())) Log::Info("Save successful.");
+    }
+    if (menuBarAction == "Load") {
+      std::vector<FavouriteInfoT> newFavourites;
+      if (!loadTenken(savePath, newFavourites))
+        Favourite.assignNew(newFavourites);
+      else
+        Log::Error("Load failed\n");
+    }
 
     // Target popup.
-    Actions.push_back(TargetWObj.CyclePUp());
+    Actions.push_back(TargetPUpObj.CyclePUp());
 
     // Region popup.
-    if (MapWObj.refresh_) MapWObj.UpdateRegions(ScannerObj.getMapRegions());
-    MapWObj.CyclePUp();
+    if (MapPUpObj.refresh_) MapPUpObj.UpdateRegions(ScannerObj.getMapRegions());
+    MapPUpObj.CyclePUp();
 
     // Hits window.
     if (!State.IsScanning)
@@ -92,9 +146,10 @@ int main() {
     // Log window.
     LogWObj.CycleW();
 
-    // Hex window
+    // Hex window.
     HexWObj.CycleW();
 
+    // Data Inspector window.
     DataInspectorWObj.CycleW();
 
     end_frame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y), clear_color, window);
@@ -228,4 +283,117 @@ void ResolveActions(Scanner& ScannerObj,
             [&](const std::monostate&) {}},
         Pending);
   }
+}
+
+int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites) {
+  try {
+    json savedState;
+    savedState["favourites"] = json::array();
+    for (const auto& favourite : favourites) {
+      json item;
+
+      std::stringstream locationStream;
+
+      locationStream << std::hex << std::showbase << favourite.location;
+      item["location"] = locationStream.str();
+      item["value"] = favourite.value;  // raw bytes for now. should be fine.
+      item["desc"] = favourite.desc;
+      item["type"] = targetTypeToStr(favourite.type);
+
+      savedState["favourites"].push_back(item);
+    }
+    savedState["version"] = 1;
+
+    std::filesystem::create_directories(savePath.parent_path());
+    std::ofstream saveFile(savePath);
+    std::cout << savePath << "\n";
+    saveFile << savedState.dump(2);
+
+  } catch (...) {
+    printf("failed to save state.\n");
+    return 1;
+  }
+  return 0;
+}
+
+int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites) {
+  std::cout << savePath << " in load\n";
+  try {
+    json loadedState;
+
+    std::ifstream loadFile(savePath);
+
+    if (!loadFile) {
+      Log::Error("Failed to open save from path. Are you sure it exists?");
+      return 1;
+    }
+
+    loadedState = json::parse(loadFile);
+
+    if (loadedState.value("version", 0) != 1) {
+      Log::Error(
+          "Expected version and current version do not match for save file. Are you on a newer/older version than "
+          "when "
+          "you saved? If not...Yeah IDK what happened something is wrong clearly. Here is the supposed version" +
+          std::to_string(loadedState.value("version", 0)) +
+          " . And the only reason this log file is so unnecessarily long is because I felt like it. Anyways good "
+          "luck "
+          "with this problem someone who is probably me.");
+      return 1;
+    }
+
+    std::vector<FavouriteInfoT> newFavourites;
+    for (const auto& item : loadedState.at("favourites")) {
+      FavouriteInfoT favourite;
+
+      favourite.desc = item.at("desc").get<std::string>();
+      favourite.location = std::stoull(item.at("location").get<std::string>(), nullptr, 16);
+
+      std::vector<uint8_t> value;
+      for (const auto& byte : item.at("value")) {
+        value.push_back(byte);
+      }
+      favourite.value = value;
+      favourite.type = strToTargetType(item["type"].get<std::string>());
+
+      newFavourites.push_back(favourite);
+    }
+    favourites = std::move(newFavourites);
+  } catch (...) {
+    Log::Error("Failed to load. idk why.");
+    return 1;
+  }
+  return 0;
+}
+
+int checkPermission() {
+  const char* sudo_user = getenv("SUDO_USER");
+  if (sudo_user) return 2;
+
+  printf("you are not root\n");
+
+  std::ifstream ptrace_permission("/proc/sys/kernel/yama/ptrace_scope");
+  int32_t ptrace_value;
+  if (!(ptrace_permission >> ptrace_value)) return 1;
+
+  if (ptrace_value != 0) {
+    printf("You are not running as root. Which is fine. However it means you NEED to set "
+           "/proc/sys/kernel/yama/ptrace_scope to 0 for this program to work. Exiting.\n");
+    return 0;
+  }
+
+  return 1;
+}
+
+std::filesystem::path getHome(int32_t userMode) {
+  if (userMode == 0) return "";
+
+  if (userMode == 1) return std::filesystem::path(getenv("HOME"));
+
+  printf("also not root in gethome\n");
+
+  const char* sudo_user = getenv("SUDO_USER");
+  struct passwd* user_pw = getpwnam(sudo_user);
+
+  return std::filesystem::path(user_pw->pw_dir);
 }
