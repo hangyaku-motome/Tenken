@@ -45,8 +45,10 @@ GLFWwindow* initalise_main(const std::filesystem::path& ImGuiInitPath) {
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-  std::filesystem::create_directories(ImGuiInitPath.parent_path());
-  io.IniFilename = ImGuiInitPath.c_str();
+  if (!ImGuiInitPath.empty()) {
+    std::filesystem::create_directories(ImGuiInitPath.parent_path());
+    io.IniFilename = ImGuiInitPath.c_str();
+  }
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
   ImGui::StyleColorsDark();
