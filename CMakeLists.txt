@@ -39,7 +39,6 @@ target_include_directories(imgui SYSTEM PUBLIC
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 
-
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -69,9 +68,8 @@ target_include_directories(Tenken PRIVATE
     source/platform
     source/ui
     source/core
+    ${CMAKE_SOURCE_DIR}/third_party
 )
-
-
 
 if(WIN32)
     target_sources(Tenken PRIVATE source/platform/WindowsImpl.cpp)
