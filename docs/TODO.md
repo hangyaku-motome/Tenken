@@ -6,7 +6,7 @@
 - [X] Region viewer window
 - [X] Memory viewer/editor window.
 - [X] Data Inspector.
-- [ ] Save/Load Sessions.
+- [X] Save/Load Sessions.
 
 ## Medium term
 - [ ] Pointer scanner
