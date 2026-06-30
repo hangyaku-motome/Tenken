@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
-project(Tenken CXX)
+project(Tenken VERSION 0.2.4 LANGUAGES CXX)
+configure_file(version.h.in version.h @ONLY)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 20)
@@ -13,9 +14,10 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
 )
-set(GLFW_BUILD_DOCS OFF)
-set(GLFW_BUILD_TESTS OFF)
-set(GLFW_BUILD_EXAMPLES OFF)
+
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 
 find_package(OpenGL REQUIRED)
@@ -69,16 +71,16 @@ target_include_directories(Tenken PRIVATE
     source/ui
     source/core
     ${CMAKE_SOURCE_DIR}/third_party
+    ${CMAKE_BINARY_DIR}
 )
 
+target_link_libraries(Tenken PRIVATE imgui)
 if(WIN32)
     target_sources(Tenken PRIVATE source/platform/WindowsImpl.cpp)
-    target_link_libraries(Tenken PRIVATE imgui)
     target_link_options(Tenken PRIVATE -static)
 
 else()
     target_sources(Tenken PRIVATE source/platform/LinuxImpl.cpp)
-    target_link_libraries(Tenken PRIVATE imgui)
 endif()
 
 
