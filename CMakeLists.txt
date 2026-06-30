@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(Tenken VERSION 0.2.4 LANGUAGES CXX)
+project(Tenken VERSION 0.2.5 LANGUAGES CXX)
 configure_file(version.h.in version.h @ONLY)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
