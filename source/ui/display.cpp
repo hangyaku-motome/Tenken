@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -13,9 +14,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
-#include "MapPopUp.h"
 #include "misc/cpp/imgui_stdlib.h"
-#include "TargetPopUp.h"
 #include "types.h"
 #include "utils.h"
 
@@ -23,7 +22,7 @@ static void glfw_error_callback(int error, const char* description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow* initalise_main() {
+GLFWwindow* initalise_main(const std::filesystem::path& ImGuiInitPath) {
   glfwSetErrorCallback(glfw_error_callback);
 
   if (glfwInit() == 0) exit(1);
@@ -45,6 +44,10 @@ GLFWwindow* initalise_main() {
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+  std::filesystem::create_directories(ImGuiInitPath.parent_path());
+  io.IniFilename = ImGuiInitPath.c_str();
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
   ImGui::StyleColorsDark();
 
@@ -103,11 +106,9 @@ void SetDefaultDisplay() {
   ImGui::PopStyleVar(3);
 
   ImGuiID dockspaceID = ImGui::GetID("DockSpace");
-  ImGui::DockSpace(dockspaceID, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
 
-  static bool first_launch = true;
-  if (first_launch) {
-    ImGui::DockBuilderRemoveNode(dockspaceID);
+  if (ImGui::DockBuilderGetNode(dockspaceID) == nullptr) {
+    printf("it is null\n");
     ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
     ImGui::DockBuilderSetNodeSize(dockspaceID, viewport->Size);
 
@@ -125,33 +126,43 @@ void SetDefaultDisplay() {
     ImGui::DockBuilderDockWindow("Inspector", top_right);
 
     ImGui::DockBuilderFinish(dockspaceID);
-
-    first_launch = false;
   }
+  ImGui::DockSpace(dockspaceID, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+
   ImGui::End();
 }
 
-void MainMenuBarCycle(bool& TargetPUpClicked, bool& MapPupClicked, bool& LogWEnabled, bool& HexWEnabled, bool& DataInspectorWEnabled) {
-  if (!ImGui::BeginMainMenuBar()) return;
+std::string MainMenuBarCycle(
+    bool& TargetPUpClicked, bool& MapPUpClicked, bool& LogWEnabled, bool& HexWEnabled, bool& DataInspectorWEnabled) {
+  if (!ImGui::BeginMainMenuBar()) return "";
+
+  std::string doAction;
 
   if (ImGui::BeginMenu("File")) {
     if (ImGui::MenuItem("New Target")) TargetPUpClicked = true;
+
+    if (ImGui::MenuItem("Save")) doAction = "Save";
+    if (ImGui::MenuItem("Load")) doAction = "Load";
+
     ImGui::EndMenu();
   }
 
   if (ImGui::BeginMenu("Utils")) {
-    if (ImGui::MenuItem("View Regions")) MapPupClicked = true;
+    if (ImGui::MenuItem("View Regions")) MapPUpClicked = true;
 
     if (ImGui::MenuItem("Toggle Log window.", nullptr, LogWEnabled, true)) LogWEnabled = !LogWEnabled;
 
     if (ImGui::MenuItem("Toggle Hex window.", nullptr, HexWEnabled, true)) HexWEnabled = !HexWEnabled;
 
-    if (ImGui::MenuItem("Toggle Data Inspector window.", nullptr, DataInspectorWEnabled, true)) DataInspectorWEnabled = !DataInspectorWEnabled;
+    if (ImGui::MenuItem("Toggle Data Inspector window.", nullptr, DataInspectorWEnabled, true))
+      DataInspectorWEnabled = !DataInspectorWEnabled;
 
     ImGui::EndMenu();
   }
 
   ImGui::EndMainMenuBar();
+
+  return doAction;
 }
 
 template <typename out, typename T> std::vector<uint8_t> ValtoData(const T& val) {
