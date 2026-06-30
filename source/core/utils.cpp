@@ -198,35 +198,48 @@ template std::string dataToStr<std::vector<uint8_t>>(const std::vector<uint8_t>&
 
 //
 
-std::string targetTypeToStr(const TargetTypeT TargetType) {
-  switch (TargetType) {
+std::string targetTypeToStr(const TargetTypeT targetType) {
+  switch (targetType) {
     case TargetTypeT::uInt8:
-      return "uint8";
+      return "uInt8";
     case TargetTypeT::uInt16:
-      return "uint16";
+      return "uInt16";
     case TargetTypeT::uInt32:
-      return "uint32";
+      return "uInt32";
     case TargetTypeT::uInt64:
-      return "uint64";
+      return "uInt64";
     case TargetTypeT::Int8:
-      return "int8";
+      return "Int8";
     case TargetTypeT::Int16:
-      return "int16";
+      return "Int16";
     case TargetTypeT::Int32:
-      return "int32";
+      return "Int32";
     case TargetTypeT::Int64:
-      return "int64";
+      return "Int64";
     case TargetTypeT::Float:
-      return "float";
+      return "Float";
     case TargetTypeT::Double:
-      return "double";
+      return "Double";
     case TargetTypeT::String:
-      return "string";
+      return "String";
     case TargetTypeT::Invalid:
-      return "invalid";
+      return "Invalid";
     case TargetTypeT::AOB:
       return "AOB";
   }
+}
+
+TargetTypeT strToTargetType(const std::string &string) {
+  if(string == "uInt8") return TargetTypeT::uInt8;
+  if(string == "uInt16") return TargetTypeT::uInt16;
+  if(string == "uInt32") return TargetTypeT::uInt32;
+  if(string == "uint64") return TargetTypeT::uInt64;
+  if(string == "Int8") return TargetTypeT::Int8;
+  if(string == "Int16") return TargetTypeT::Int16;
+  if(string == "Int32") return TargetTypeT::Int32;
+  if(string == "Int64") return TargetTypeT::Int64;
+
+  return TargetTypeT::Invalid;
 }
 
 std::string relativeStatusToStr(const RelativeStatus Status) {

@@ -12,7 +12,8 @@ template <typename T>
 std::vector<uint64_t>
 searchValue(const std::vector<uint8_t>& Data, const T& Target, const std::vector<bool>& mask = {});
 
-std::string targetTypeToStr(TargetTypeT TargetType);
+std::string targetTypeToStr(TargetTypeT targetType);
+TargetTypeT strToTargetType(const std::string& string);
 template <typename T> std::string dataToStr(const std::vector<uint8_t>& Bytes);
 std::string relativeStatusToStr(RelativeStatus Status);
 
