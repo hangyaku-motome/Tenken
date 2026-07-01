@@ -3,6 +3,7 @@
 if [ "$1" = "win" ]; then
     cmake -B build-win -DCMAKE_TOOLCHAIN_FILE=toolchain-mingw.cmake -DCMAKE_BUILD_TYPE=Release
     cmake --build build-win
+    ln -sf build-win/compile_commands.json compile_commands.json
 elif [ "$1" = "debug" ]; then
     cmake -B build-linux -DCMAKE_BUILD_TYPE=Debug
     cmake --build build-linux
