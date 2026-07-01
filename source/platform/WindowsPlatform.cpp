@@ -3,7 +3,14 @@
 
 // not implemented yet. Need to check if admin.
 bool Platform::checkPermission() {
-  return 1;
+  HANDLE token;
+  TOKEN_ELEVATION elevation;
+  OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token);
+  DWORD returned_size;
+  GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &returned_size);
+  CloseHandle(token);
+
+  return elevation.TokenIsElevated != 0;
 }
 
 std::filesystem::path Platform::getImGuiInitPath() {

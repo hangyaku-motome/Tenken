@@ -13,6 +13,7 @@
 
 #include "types.h"
 #include "ProcessOS.h"
+#include "LogW.h"
 
 namespace ProcessOS {
 std::vector<ProcessInfoT> GetProcTargets();
@@ -97,7 +98,7 @@ char* WindowsImpl::allocMMapDisk(uint64_t size) {
 
 };  // namespace
 
-std::vector<ProcessInfoT> GetProcTargets() {
+std::vector<ProcessInfoT> getProcTargets() {
   HANDLE hProcessSnap;
   PROCESSENTRY32 pe32;
 
@@ -119,6 +120,6 @@ std::vector<ProcessInfoT> GetProcTargets() {
   return Proccesses;
 }
 
-std::unique_ptr<IProcess> Attach(int pid) { return std::make_unique<WindowsImpl>(pid); }
+std::unique_ptr<IProcess> attach(int pid) { return std::make_unique<WindowsImpl>(pid); }
 
 }  // namespace ActOS

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -47,7 +48,8 @@ GLFWwindow* initalise_imgui(const std::filesystem::path& ImGuiInitPath) {
 
   if (!ImGuiInitPath.empty()) {
     std::filesystem::create_directories(ImGuiInitPath.parent_path());
-    io.IniFilename = ImGuiInitPath.c_str();
+    std::string pathString = ImGuiInitPath.string();
+    io.IniFilename = pathString.c_str();
   }
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
