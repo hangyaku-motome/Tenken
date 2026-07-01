@@ -1,5 +1,6 @@
 #include "Platform.h"
 #include <windows.h>
+#include <filesystem>
 
 // not implemented yet. Need to check if admin.
 bool Platform::checkPermission() {
@@ -14,10 +15,13 @@ bool Platform::checkPermission() {
 }
 
 std::filesystem::path Platform::getImGuiInitPath() {
-  return std::filesystem::path(getenv("LOCALAPPDATA")) / "Tenken" / "imgui.ini";
+  const wchar_t* localappdata = _wgetenv(L"LOCALAPPDATA");
+  if(!localappdata) localappdata = L".";
+  return std::filesystem::path(localappdata) / L"Tenken" / L"imgui.ini";
 }
 
 std::filesystem::path Platform::getSavePath() {
-  return std::filesystem::path(getenv("APPDATA")) / "Tenken" / "tenkenSave.json";
+  const wchar_t* appdata = _wgetenv(L"APPDATA");
+  if(!appdata) appdata = L".";
+  return std::filesystem::path(appdata) / L"Tenken" / L"tenkenSave.json";
 }
-  
