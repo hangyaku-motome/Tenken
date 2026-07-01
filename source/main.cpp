@@ -1,16 +1,8 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
-#include <pwd.h>
-#include <sys/types.h>
 
-#include <cstdint>
-#include <filesystem>
 #include <fstream>
-#include <ios>
-#include <iostream>
 #include <nlohmann/json.hpp>
-#include <thread>
-#include <vector>
 
 #include "DataInspectorW.h"
 #include "display.h"
@@ -27,6 +19,8 @@
 #include "TargetPopUp.h"
 #include "types.h"
 #include "utils.h"
+
+#include "Platform.h"
 
 using nlohmann::json;
 
@@ -48,32 +42,20 @@ void ResolveActions(Scanner& ScannerObj,
 int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites);
 int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites);
 
-// 0 invalid. 1 normal user. 2 sudo.
-int checkPermission();
-
-std::filesystem::path getHome(int32_t userMode);
-
 int main() {
-  #ifndef _WIN32
-  int userMode = checkPermission();
-  if (!userMode) return 1;
-
-  std::filesystem::path home = getHome(userMode);
-  if (home.empty()) return 1;
+  if (Platform::checkPermission() == false) {
+    printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
+    return 1;
+  }
 
   // Start up Dear ImGui.
-  std::filesystem::path ImGuiInitPath = home / ".local" / "state" / "Tenken" / "imgui.ini";
-  GLFWwindow* window = initalise_main(ImGuiInitPath);
-#endif
-  #ifdef _WIN32
-  GLFWwindow* window = initalise_main("");
-#endif
-
+  std::filesystem::path ImGuiInitPath = Platform::getImGuiInitPath();
+  GLFWwindow* window = initalise_imgui(ImGuiInitPath);
   ImGuiIO& io = ImGui::GetIO();
   ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
 
   // Start up Tenken.
-  std::filesystem::path savePath = home / ".local" / "share" / "Tenken" / "tenkenSave.json";
+  std::filesystem::path savePath = Platform::getSavePath();
 
   SessionState State;
 
@@ -306,7 +288,6 @@ int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>
 
     std::filesystem::create_directories(savePath.parent_path());
     std::ofstream saveFile(savePath);
-    std::cout << savePath << "\n";
     saveFile << savedState.dump(2);
 
   } catch (...) {
@@ -317,7 +298,6 @@ int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>
 }
 
 int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites) {
-  std::cout << savePath << " in load\n";
   try {
     json loadedState;
 
@@ -364,36 +344,4 @@ int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favo
     return 1;
   }
   return 0;
-}
-
-int checkPermission() {
-  const char* sudo_user = getenv("SUDO_USER");
-  if (sudo_user) return 2;
-
-  printf("you are not root\n");
-
-  std::ifstream ptrace_permission("/proc/sys/kernel/yama/ptrace_scope");
-  int32_t ptrace_value;
-  if (!(ptrace_permission >> ptrace_value)) return 1;
-
-  if (ptrace_value != 0) {
-    printf("You are not running as root. Which is fine. However it means you NEED to set "
-           "/proc/sys/kernel/yama/ptrace_scope to 0 for this program to work. Exiting.\n");
-    return 0;
-  }
-
-  return 1;
-}
-
-std::filesystem::path getHome(int32_t userMode) {
-  if (userMode == 0) return "";
-
-  if (userMode == 1) return std::filesystem::path(getenv("HOME"));
-
-  printf("also not root in gethome\n");
-
-  const char* sudo_user = getenv("SUDO_USER");
-  struct passwd* user_pw = getpwnam(sudo_user);
-
-  return std::filesystem::path(user_pw->pw_dir);
 }
