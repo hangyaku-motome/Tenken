@@ -293,7 +293,6 @@ bool saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT
     saveFile << savedState.dump(2);
 
   } catch (...) {
-    printf("failed to save state.\n");
     return false;
   }
   return true;

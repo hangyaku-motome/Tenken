@@ -9,7 +9,6 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -60,7 +59,7 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     return {};
   }
 
-  // For now I will hard code the fiters. we should add the choice to change
+  // For now I will hard code the fiters. I should add the choice to change
   // these.
 
   std::vector<MapInfoT> MapRegions;
@@ -83,8 +82,8 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     if (name.empty()) name = "UNNAMED_REGION";
 
     if (MemoryAddresses.find('-') == std::string::npos) {
-      printf("couldn't find \"-\" in maps. Something is really wrong.\n");
-      exit(1);
+      // wouldn't happen but...
+      continue;
     }
 
     std::string StartStr = MemoryAddresses.substr(0, MemoryAddresses.find('-'));
@@ -175,7 +174,7 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
       mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, static_cast<int64_t>(curr_offset)));
 
   if (ptr == MAP_FAILED) {
-    printf("mmap failed. %s\n", strerror(errno));
+    Log::Error("mmap failed." + std::string(strerror(errno)));
     return nullptr;
   }
   return ptr;

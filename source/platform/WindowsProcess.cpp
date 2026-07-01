@@ -77,7 +77,6 @@ std::vector<uint8_t> WindowsImpl::read(uint64_t address, uint64_t ReadSize) {
   bool res = ReadProcessMemory(handle_, reinterpret_cast<void*>(address), readBytes.data(), ReadSize, NULL);
 
   if (res == 0) {
-    printf("couldn't read\n");
     return {};
   }
   return readBytes;
@@ -87,17 +86,11 @@ bool WindowsImpl::write(uint64_t address, const std::vector<uint8_t>& value) {
   uint64_t bytes_written;
   bool res = WriteProcessMemory(handle_, reinterpret_cast<void*>(address), value.data(), value.size(), &bytes_written);
 
-  if (res == 0) printf("write failed\n");
-
   return res && bytes_written == value.size();
 }
 
 char* WindowsImpl::allocMMapDisk(uint64_t size) {
   char* ret = static_cast<char*>(VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
-
-  if (ret == NULL) {
-    printf("alloc failed.·\n");
-  }
 
   return ret;
 }
@@ -112,8 +105,8 @@ std::vector<ProcessInfoT> GetProcTargets() {
   pe32.dwSize = sizeof(PROCESSENTRY32);
 
   if (!Process32First(hProcessSnap, &pe32)) {
-    printf("failed to get processes\n");
-    CloseHandle(hProcessSnap);  // clean the snapshot object
+    Log::Error("Failed to get processes");
+    CloseHandle(hProcessSnap);  // apparently we are supposed to close every handle.
     return {};
   }
 

@@ -7,7 +7,6 @@
 #include <cctype>
 #include <cinttypes>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <vector>
@@ -35,17 +34,11 @@ void HexW::CycleW() {
   ImGui::SameLine();
   if (ImGui::Button("Go")) {
     shownBytes_ = readAround(searchAddress_);
-    if (shownBytes_.size() != CONTEXT_BYTES_AFTER + CONTEXT_BYTES_BEFORE) {
-      printf("truncated!!\n");
-    }
     currentAddress_ = searchAddress_;
   }
   ImGui::SameLine();
   if (ImGui::Button("Refresh")) {
     shownBytes_ = readAround(currentAddress_);
-    if (shownBytes_.size() != CONTEXT_BYTES_AFTER + CONTEXT_BYTES_BEFORE) {
-      printf("truncated!!\n");
-    }
   }
   if (!shownBytes_.empty()) drawHexTable();
 

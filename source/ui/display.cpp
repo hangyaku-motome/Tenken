@@ -110,7 +110,6 @@ void SetDefaultDisplay() {
   ImGuiID dockspaceID = ImGui::GetID("DockSpace");
 
   if (ImGui::DockBuilderGetNode(dockspaceID) == nullptr) {
-    printf("it is null\n");
     ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
     ImGui::DockBuilderSetNodeSize(dockspaceID, viewport->Size);
 

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cinttypes>
 #include <cstdint>
-#include <cstdio>
 #include <string>
 #include <variant>
 #include <vector>

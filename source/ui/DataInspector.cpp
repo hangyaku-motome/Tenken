@@ -10,8 +10,6 @@
 
 // TODO: readAround exists both in here and in HexW. Make a common function in utils or somehwere.
 
-static constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing;
-
 bool DataInspectorW::InitW() { return ImGui::Begin("Inspector"); }
 
 void DataInspectorW::EndW() { ImGui::End(); }
@@ -148,19 +146,16 @@ void DataInspectorW::RenderTable() {
 
 std::vector<uint8_t> DataInspectorW::readAround(const uint64_t adr) {
   uint64_t search_start = adr - BYTES_BEFORE < 0 ? 0 : adr - BYTES_BEFORE;
-  printf("%lu\n", bytes_.size());
   return scanner_->readAdr(search_start, BYTES_AFTER + BYTES_BEFORE);
 }
 
 void DataInspectorW::TypePopUp() {
   if (popupclicked_) {
-    printf("open popup\n");
     ImGui::OpenPopup("Target List");
     popupclicked_ = false;
   }
   if (!ImGui::BeginPopupModal("Target List", nullptr, popup_flags)) return;
 
-  printf("doing shi\n");
   ImGui::Checkbox("unsigned 1 byte", &types_.u8);
   ImGui::Checkbox("unsigned 2 byte", &types_.u16);
   ImGui::Checkbox("unsigned 4 byte", &types_.u32);
@@ -174,7 +169,6 @@ void DataInspectorW::TypePopUp() {
   ImGui::Checkbox("string", &types_.stringT);
 
   if (ImGui::Button("Cancel")) {
-    printf("cancelled\n");
     ImGui::CloseCurrentPopup();
   }
   ImGui::EndPopup();

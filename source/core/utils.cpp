@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -34,7 +33,6 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
     return RelativeStatus::DECREASED;
   }
 
-  printf("how did we get here?\n");
   return RelativeStatus::UNSET;
 }
 
