@@ -22,7 +22,7 @@ static void glfw_error_callback(int error, const char* description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow* initalise_main(const std::filesystem::path& ImGuiInitPath) {
+GLFWwindow* initalise_imgui(const std::filesystem::path& ImGuiInitPath) {
   glfwSetErrorCallback(glfw_error_callback);
 
   if (glfwInit() == 0) exit(1);
