@@ -14,11 +14,11 @@
 #include <sstream>
 #include <string>
 
-#include "ActOS.h"
 #include "LogW.h"
 #include "types.h"
+#include "ProcessOS.h"
 
-namespace ActOS {
+namespace ProcessOS {
 std::vector<ProcessInfoT> GetTargetProc();
 
 namespace {
@@ -45,12 +45,12 @@ public:
   std::vector<MapInfoT> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
   bool write(uint64_t address, const std::vector<uint8_t>& value) override;
-  char* AllocMMapDisk(uint64_t size) override;
-  void UnAllocMMapDisk(uint64_t address, uint64_t size) override;
+  char* allocMMapDisk(uint64_t size) override;
+  void unAllocMMapDisk(uint64_t address, uint64_t size) override;
 
 };  // namespace LinuxImpl IProcess
 
-void LinuxImpl::UnAllocMMapDisk(uint64_t address, uint64_t size) { munmap(reinterpret_cast<void*>(address), size); }
+void LinuxImpl::unAllocMMapDisk(uint64_t address, uint64_t size) { munmap(reinterpret_cast<void*>(address), size); }
 
 std::vector<MapInfoT> LinuxImpl::getRegions() {
   std::ifstream maps;
@@ -115,9 +115,6 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t Read
   int64_t read_amount = process_vm_readv(pid_, &Receive, 1, &WriteTo, 1, 0);
 
   if (read_amount == -1) {
-    std::stringstream ss;
-    ss << std::hex << address;
-    // Some sort of counter for unreadable.
     return {};
   }
   read_buf.resize(read_amount);
@@ -164,7 +161,7 @@ std::string ReadFileString(const std::string& path) {
   return readString.str();
 }
 
-char* LinuxImpl::AllocMMapDisk(uint64_t size) {
+char* LinuxImpl::allocMMapDisk(uint64_t size) {
   uint64_t pagesize = sysconf(_SC_PAGESIZE);
 
   uint64_t alignedsize = (size + pagesize - 1) & ~(pagesize - 1);
@@ -186,7 +183,7 @@ char* LinuxImpl::AllocMMapDisk(uint64_t size) {
 
 };  // namespace
 
-std::vector<ProcessInfoT> GetProcTargets() {
+std::vector<ProcessInfoT> getProcTargets() {
   std::vector<ProcessInfoT> Processes;
 
   for (int pid : ListPid()) {
@@ -218,5 +215,5 @@ std::vector<ProcessInfoT> GetProcTargets() {
   return Processes;
 };
 
-std::unique_ptr<IProcess> Attach(int pid) { return std::make_unique<LinuxImpl>(pid); }
+std::unique_ptr<IProcess> attach(int pid) { return std::make_unique<LinuxImpl>(pid); }
 }  // namespace ActOS

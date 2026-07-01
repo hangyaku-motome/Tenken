@@ -76,11 +76,17 @@ target_include_directories(Tenken PRIVATE
 
 target_link_libraries(Tenken PRIVATE imgui)
 if(WIN32)
-    target_sources(Tenken PRIVATE source/platform/WindowsImpl.cpp)
+    target_sources(Tenken PRIVATE 
+    source/platform/WindowsPlatform.cpp
+    source/platform/WindowsProcess.cpp
+    )
     target_link_options(Tenken PRIVATE -static)
 
 else()
-    target_sources(Tenken PRIVATE source/platform/LinuxImpl.cpp)
+    target_sources(Tenken PRIVATE
+    source/platform/LinuxPlatform.cpp 
+    source/platform/LinuxProcess.cpp
+    )
 endif()
 
 

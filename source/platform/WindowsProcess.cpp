@@ -11,10 +11,10 @@
 #include <cstdint>
 #include <vector>
 
-#include "ActOS.h"
 #include "types.h"
+#include "ProcessOS.h"
 
-namespace ActOS {
+namespace ProcessOS {
 std::vector<ProcessInfoT> GetProcTargets();
 
 namespace {
@@ -36,12 +36,12 @@ public:
   std::vector<MapInfoT> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
   bool write(uint64_t address, const std::vector<uint8_t>& value) override;
-  char* AllocMMapDisk(uint64_t size) override;
-  void UnAllocMMapDisk(uint64_t address, uint64_t size) override;
+  char* allocMMapDisk(uint64_t size) override;
+  void unAllocMMapDisk(uint64_t address, uint64_t size) override;
 
 };  // namespace WindowsImpl IProcess
 
-void WindowsImpl::UnAllocMMapDisk(uint64_t address, uint64_t size) {
+void WindowsImpl::unAllocMMapDisk(uint64_t address, uint64_t size) {
   VirtualFree(reinterpret_cast<void*>(address), 0, MEM_RELEASE);
 }
 
@@ -92,7 +92,7 @@ bool WindowsImpl::write(uint64_t address, const std::vector<uint8_t>& value) {
   return res && bytes_written == value.size();
 }
 
-char* WindowsImpl::AllocMMapDisk(uint64_t size) {
+char* WindowsImpl::allocMMapDisk(uint64_t size) {
   char* ret = static_cast<char*>(VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
 
   if (ret == NULL) {
