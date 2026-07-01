@@ -13,14 +13,13 @@
 #include "HitsW.h"
 #include "LogW.h"
 #include "MapPopUp.h"
+#include "Platform.h"
 #include "scan_ops.h"
 #include "Scanner.h"
 #include "SearchW.h"
 #include "TargetPopUp.h"
 #include "types.h"
 #include "utils.h"
-
-#include "Platform.h"
 
 using nlohmann::json;
 
@@ -39,8 +38,8 @@ void ResolveActions(Scanner& ScannerObj,
 // it...At some point. For now (hopefully) that ugly ifndef ifdef piece keeps windows working.
 
 // Hard coded save location for now.
-int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites);
-int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites);
+bool saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites);
+bool loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites);
 
 int main() {
   if (Platform::checkPermission() == false) {
@@ -96,11 +95,14 @@ int main() {
         TargetPUpObj.clicked_, MapPUpObj.clicked_, LogWObj.enabled_, HexWObj.enabled_, DataInspectorWObj.enabled_);
 
     if (menuBarAction == "Save") {
-      if (!saveTenken(savePath, Favourite.get())) Log::Info("Save successful.");
+      if (saveTenken(savePath, Favourite.get()) == true)
+        Log::Info("Save successful.");
+      else
+        Log::Error("Save failed.");
     }
     if (menuBarAction == "Load") {
       std::vector<FavouriteInfoT> newFavourites;
-      if (!loadTenken(savePath, newFavourites))
+      if (loadTenken(savePath, newFavourites) == true)
         Favourite.assignNew(newFavourites);
       else
         Log::Error("Load failed\n");
@@ -267,7 +269,7 @@ void ResolveActions(Scanner& ScannerObj,
   }
 }
 
-int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites) {
+bool saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites) {
   try {
     json savedState;
     savedState["favourites"] = json::array();
@@ -292,12 +294,12 @@ int saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>
 
   } catch (...) {
     printf("failed to save state.\n");
-    return 1;
+    return false;
   }
-  return 0;
+  return true;
 }
 
-int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites) {
+bool loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites) {
   try {
     json loadedState;
 
@@ -319,7 +321,7 @@ int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favo
           " . And the only reason this log file is so unnecessarily long is because I felt like it. Anyways good "
           "luck "
           "with this problem someone who is probably me.");
-      return 1;
+      return false;
     }
 
     std::vector<FavouriteInfoT> newFavourites;
@@ -341,7 +343,7 @@ int loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favo
     favourites = std::move(newFavourites);
   } catch (...) {
     Log::Error("Failed to load. idk why.");
-    return 1;
+    return false;
   }
-  return 0;
+  return true;
 }
