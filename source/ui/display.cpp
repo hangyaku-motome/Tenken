@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <memory>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -23,7 +23,7 @@ static void glfw_error_callback(int error, const char* description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow* initalise_imgui(const std::filesystem::path& ImGuiInitPath) {
+GLFWwindow* initalise_imgui(const std::string& ImGuiInitPathStr) {
   glfwSetErrorCallback(glfw_error_callback);
 
   if (glfwInit() == 0) exit(1);
@@ -46,10 +46,11 @@ GLFWwindow* initalise_imgui(const std::filesystem::path& ImGuiInitPath) {
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-  if (!ImGuiInitPath.empty()) {
-    std::filesystem::create_directories(ImGuiInitPath.parent_path());
-    std::string pathString = ImGuiInitPath.string();
-    io.IniFilename = pathString.c_str();
+  if (!ImGuiInitPathStr.empty()) {
+    if (!std::filesystem::path(ImGuiInitPathStr).has_parent_path())
+      std::filesystem::create_directories(std::filesystem::path(ImGuiInitPathStr).parent_path());
+    std::cout << ImGuiInitPathStr << "\n";
+    io.IniFilename = ImGuiInitPathStr.c_str();
   }
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 

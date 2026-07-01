@@ -2,12 +2,11 @@
 
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-#include <filesystem>
 
 #include "imgui.h"
 #include "types.h"
 
-GLFWwindow* initalise_imgui(const std::filesystem::path &ImGuiInitPath);
+GLFWwindow* initalise_imgui(const std::string &ImGuiInitPathStr);
 void exit_main(GLFWwindow* window);
 void start_frame();
 void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window);

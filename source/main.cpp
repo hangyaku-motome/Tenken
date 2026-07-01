@@ -49,7 +49,8 @@ int main() {
 
   // Start up Dear ImGui.
   std::filesystem::path ImGuiInitPath = Platform::getImGuiInitPath();
-  GLFWwindow* window = initalise_imgui(ImGuiInitPath);
+  std::string ImguiInitPathStr = ImGuiInitPath.string();
+  GLFWwindow* window = initalise_imgui(ImguiInitPathStr);
   ImGuiIO& io = ImGui::GetIO();
   ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
 
