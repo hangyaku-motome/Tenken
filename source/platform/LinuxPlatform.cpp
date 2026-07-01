@@ -27,10 +27,10 @@ bool Platform::checkPermission() {
 
 std::filesystem::path Platform::getImGuiInitPath() {
   char* user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
-  return std::filesystem::path(user) / ".local" / "state" / "Tenken" / "imgui.ini";
+  return std::filesystem::path("/home") / user / ".local" / "state" / "Tenken" / "imgui.ini";
 }
 
 std::filesystem::path Platform::getSavePath() {
   char* user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
-  return std::filesystem::path(user) / ".local" / "state" / "Tenken" / "tenkenSave.json";
+  return std::filesystem::path("/home") / user / ".local" / "share" / "Tenken" / "tenkenSave.json";
 }
