@@ -5,12 +5,12 @@
 #include "imgui.h"
 #include "LogW.h"
 #include "misc/cpp/imgui_stdlib.cpp"
-#include "platform/ActOS.h"
+#include "platform/ProcessOS.h"
 #include "types.h"
 
 
 void TargetPopUp::InitPopUp() {
-  processes_ = ActOS::GetProcTargets();
+  processes_ = ProcessOS::getProcTargets();
   Log::Info("Found PID count: " + std::to_string(processes_.size()) + "\n");
   ImGui::OpenPopup("Target List");
   clicked_ = false;
@@ -54,7 +54,7 @@ PendingAction TargetPopUp::CyclePUp() {
   }
 
   if (ImGui::Button("Refresh")) {
-    processes_ = ActOS::GetProcTargets();
+    processes_ = ProcessOS::getProcTargets();
 
     Log::Info("Found PID count: " + std::to_string(processes_.size()) + "\n");
   }
