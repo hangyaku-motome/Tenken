@@ -19,5 +19,6 @@ template <typename F> void RunOnScannerThread(std::thread& scannerThread, Sessio
   });
 }
 
-std::vector<HitInfoT> startScan(const Scanner& ScannerObj, SessionState& State);
+//atp not sure if just giving state as an arg is better or not.
+std::vector<HitInfoT> startScan(const Scanner& ScannerObj, const TargetInfoT& TargetInfo, std::atomic<float> & ScanProgress,const std::vector<MapInfoT>& ActiveRegions);
 };  // namespace ScanOp
