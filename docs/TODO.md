@@ -7,6 +7,7 @@
 - [X] Memory viewer/editor window.
 - [X] Data Inspector.
 - [X] Save/Load Sessions.
+- [ ] Update changelog and keep it active.
 
 ## Medium term
 - [ ] Pointer scanner
