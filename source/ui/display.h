@@ -7,7 +7,7 @@
 #include "types.h"
 
 GLFWwindow* initalise_imgui(const std::string &ImGuiInitPathStr);
-void exit_main(GLFWwindow* window);
+void exit_imgui(GLFWwindow* window);
 void start_frame();
 void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window);
 void SetDefaultDisplay();

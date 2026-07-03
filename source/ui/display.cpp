@@ -49,7 +49,6 @@ GLFWwindow* initalise_imgui(const std::string& ImGuiInitPathStr) {
   if (!ImGuiInitPathStr.empty()) {
     if (!std::filesystem::path(ImGuiInitPathStr).has_parent_path())
       std::filesystem::create_directories(std::filesystem::path(ImGuiInitPathStr).parent_path());
-    std::cout << ImGuiInitPathStr << "\n";
     io.IniFilename = ImGuiInitPathStr.c_str();
   }
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -67,7 +66,7 @@ GLFWwindow* initalise_imgui(const std::string& ImGuiInitPathStr) {
   return window;
 }
 
-void exit_main(GLFWwindow* window) {
+void exit_imgui(GLFWwindow* window) {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
