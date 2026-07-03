@@ -323,3 +323,40 @@ bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask) {
 }
 
 std::string hexToStr(const uint8_t byte) { return std::string({hex[(byte >> 4)], hex[(byte & 0xF)]}); }
+
+
+std::string mapTypeToStr(const MapType type){
+     switch (type) {
+      case MapType::MAIN_EXEC_DATA:
+      return "Main Exec Data";
+      case MapType::ANON:
+      return "Anon";
+      case MapType::HEAP:
+      return "Heap";
+      case MapType::MAIN_EXEC_CODE:
+      return "Main Exec Code";
+      case MapType::MAIN_EXEC_CONST:
+      return "Main Exec Const";
+      case MapType::SHARED_LIB_CODE:
+      return "Shared Lib Code";
+      case MapType::SHARED_LIB_DATA:
+      return "Shared Lib Data";
+      case MapType::SHARED_LIB_CONST:
+      return "Shared Lib Const";
+      case MapType::KERNEL_PAGES:
+      return "Kernel Pages";
+      case MapType::STACK:
+      return "Stack";
+      case MapType::UNREADABLE:
+      return "Unreadable";
+      case MapType::UNSET:
+      return "Unset";
+    }
+  }
+
+
+
+
+
+
+

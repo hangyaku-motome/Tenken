@@ -55,3 +55,5 @@ bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask);
 std::string hexToStr(uint8_t byte);
 
 std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector<bool>& mask);
+
+std::string mapTypeToStr(const MapType type);
