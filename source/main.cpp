@@ -1,6 +1,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 
+#include <iostream>
 #include <fstream>
 #include <nlohmann/json.hpp>
 
@@ -33,11 +34,11 @@ void ResolveActions(Scanner& ScannerObj,
 // TODO: Implement or import a file location chooser.
 
 // TODO: The search window is incredibly wonky. Fix it. A variable for it in state? really? also many UI problems.
-//
-// WARNING: The windows version will definitely fail as of this latest version. I'm gonna have to get around to fixing
-// it...At some point. For now (hopefully) that ugly ifndef ifdef piece keeps windows working.
 
-// Hard coded save location for now.
+// TODO: My naming sense and rules changed a lot as I have been writing this, so the names are inconsistent. Need to
+// address that.
+
+// Hard coded save location for now. (share/state and share/local or equavilent in windows for save file and imgui.ini)
 bool saveTenken(std::filesystem::path savePath, const std::vector<FavouriteInfoT>& favourites);
 bool loadTenken(std::filesystem::path savePath, std::vector<FavouriteInfoT>& favourites);
 
@@ -46,6 +47,10 @@ int main() {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
     return 1;
   }
+
+  // Pointer scanning!
+  // Let's do that.
+  // nevermind...got caught up in something else.
 
   // Start up Dear ImGui.
   std::filesystem::path ImGuiInitPath = Platform::getImGuiInitPath();
@@ -69,7 +74,7 @@ int main() {
   DataInspectorW DataInspectorWObj(ScannerObj);
 
   TargetPopUp TargetPUpObj;
-  MapsPopUp MapPUpObj;
+  MapsPopUp MapPUpObj(ScannerObj);
 
   HitList Hit;
   FavouriteList Favourite;
@@ -113,8 +118,7 @@ int main() {
     Actions.push_back(TargetPUpObj.CyclePUp());
 
     // Region popup.
-    if (MapPUpObj.refresh_) MapPUpObj.UpdateRegions(ScannerObj.getMapRegions());
-    MapPUpObj.CyclePUp();
+    MapPUpObj.CyclePUp(State.ActiveRegions);
 
     // Hits window.
     if (!State.IsScanning)
@@ -163,7 +167,7 @@ int main() {
       }
     }
   }
-  exit_main(window);
+  exit_imgui(window);
   Favourite.endFreezeThread();
   if (scannerThread.joinable()) scannerThread.join();
 }
@@ -188,7 +192,7 @@ void ResolveActions(Scanner& ScannerObj,
             },
             [&](const Action::firstScan) {
               ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
-                auto hits = ScanOp::startScan(ScannerObj, State);
+                auto hits = ScanOp::startScan(ScannerObj, State.TargetInfo, State.ScanProgress, State.ActiveRegions);
                 Hit.assignNew(std::move(hits));
               });
               State.SearchWStatus = SessionState::SearchWStatusT::SECOND;
@@ -196,7 +200,7 @@ void ResolveActions(Scanner& ScannerObj,
             [&](const Action::startUnknownValueScan) {
               State.IsUnknownnValueScan = true;
               ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
-                State.Snapshots = ScannerObj.StartUnknownValueScan(State.ScanProgress);
+                State.Snapshots = ScannerObj.StartUnknownValueScan(State.ScanProgress, State.ActiveRegions);
               });
               State.SearchWStatus = SessionState::SearchWStatusT::SECOND;
             },
