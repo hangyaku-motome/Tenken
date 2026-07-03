@@ -39,8 +39,11 @@ public:
   bool write(uint64_t address, const std::vector<uint8_t>& value) override;
   char* allocMMapDisk(uint64_t size) override;
   void unAllocMMapDisk(uint64_t address, uint64_t size) override;
+  bool isAttached() override;
 
 };  // namespace WindowsImpl IProcess
+
+bool WindowsImpl::isAttached() { return handle_ != nullptr;}
 
 void WindowsImpl::unAllocMMapDisk(uint64_t address, uint64_t size) {
   VirtualFree(reinterpret_cast<void*>(address), 0, MEM_RELEASE);

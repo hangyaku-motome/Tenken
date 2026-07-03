@@ -14,9 +14,12 @@ std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t readSize) const
   return proc_->read(address, readSize);
 };
 
-Snapshot Scanner::StartUnknownValueScan(std::atomic<float>& progress) const {
+//we could maybe std::move the ActiveRegions since we probably won't need them afterwards but...Meh.
+//...edit. we kind of DO need it for now. if we want to move it, then we need to make sure on target change and scan restart ActiveRegion will be filled in again.
+// Well...Actually it SHOULD be filled in again, since we check for empty but this means...what's the point if we are going to rescan to fill it up again?
+Snapshot Scanner::StartUnknownValueScan(std::atomic<float>& progress, const std::vector<MapInfoT>& ActiveRegions) const {
   if (proc_ == nullptr) std::runtime_error("start unk scan shouldn't be able to be called while scanner is not init.");
-  std::vector<MapInfoT> Maps = proc_->getRegions();
+  std::vector<MapInfoT> Maps = ActiveRegions;
   std::vector<MappedRegion> regs;
 
   for (uint64_t i = 0; i < Maps.size(); ++i) {

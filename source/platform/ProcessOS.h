@@ -15,6 +15,7 @@ public:
   virtual bool write(uint64_t address, const std::vector<uint8_t>& value) = 0;
   virtual char* allocMMapDisk(uint64_t size) = 0;
   virtual void unAllocMMapDisk(uint64_t address, uint64_t size) = 0;
+  virtual bool isAttached() = 0;
 };
 
 std::vector<ProcessInfoT> getProcTargets(); // unsure if I should move this to Platform or not.

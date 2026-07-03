@@ -9,13 +9,15 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 #include "LogW.h"
-#include "types.h"
 #include "ProcessOS.h"
+#include "types.h"
 
 namespace ProcessOS {
 std::vector<ProcessInfoT> GetTargetProc();
@@ -46,56 +48,107 @@ public:
   bool write(uint64_t address, const std::vector<uint8_t>& value) override;
   char* allocMMapDisk(uint64_t size) override;
   void unAllocMMapDisk(uint64_t address, uint64_t size) override;
+  bool isAttached() override;
 
 };  // namespace LinuxImpl IProcess
 
+bool LinuxImpl::isAttached() {return pid_ != 0;}
+
 void LinuxImpl::unAllocMMapDisk(uint64_t address, uint64_t size) { munmap(reinterpret_cast<void*>(address), size); }
 
+// This should be dumb. JUST get regions. Nothing else. Filtering will happen above.
 std::vector<MapInfoT> LinuxImpl::getRegions() {
-  std::ifstream maps;
-  maps.open("/proc/" + std::to_string(pid_) + "/maps");
-  if (!maps.is_open()) {
+  std::ifstream mapsStream;
+  mapsStream.open("/proc/" + std::to_string(pid_) + "/maps");
+  if (!mapsStream.is_open()) {
     Log::Error("Couldn't open maps!" + std::string(strerror(errno)));
     return {};
   }
-
-  // For now I will hard code the fiters. I should add the choice to change
-  // these.
-
   std::vector<MapInfoT> MapRegions;
-
   std::string MapsLine;
 
-  while (getline(maps, MapsLine)) {
+  constexpr int32_t MAX_PATH = 4096;
+  char exec_name[MAX_PATH];
+
+  int64_t len = readlink(std::string("/proc/" + std::to_string(pid_) + "/exe").c_str(), exec_name, MAX_PATH);
+
+  if (len > 0) {
+    exec_name[len] = '\0';
+  } else {
+    exec_name[len] = '\0';
+    Log::Error("Failed to read /proc/pid/exe");
+  }
+
+  // okay I decided I will first do a scan of all executable files, and put them all here excluding the main exec name.
+  std::unordered_set<std::string> libraries;
+
+  while (getline(mapsStream, MapsLine)) {
+    std::istringstream SplitMapsLine(MapsLine);
+    std::string name;
+    std::string unneeded;
+    SplitMapsLine >> unneeded >> unneeded >> unneeded >> unneeded >> unneeded >> name;
+    libraries.insert(name);
+  }
+
+  mapsStream.clear();
+  mapsStream.seekg(0, std::ios::beg);
+
+  while (getline(mapsStream, MapsLine)) {
     std::istringstream SplitMapsLine(MapsLine);
 
     std::string MemoryAddresses;
     std::string perms;
     std::string name;
-    std::string uneeded;
+    std::string unneeded;
 
-    SplitMapsLine >> MemoryAddresses >> perms >> uneeded >> uneeded >> uneeded >> name;
-
-    if (perms[0] == '-' || perms[1] == '-' || perms[2] == 'x' || perms[3] == 's') continue;
-    if (name.find("/lib/") != std::string::npos) continue;
-
-    if (name.empty()) name = "UNNAMED_REGION";
-
+    SplitMapsLine >> MemoryAddresses >> perms >> unneeded >> unneeded >> unneeded >> name;
     if (MemoryAddresses.find('-') == std::string::npos) {
       // wouldn't happen but...
       continue;
     }
-
     std::string StartStr = MemoryAddresses.substr(0, MemoryAddresses.find('-'));
     std::string EndStr = MemoryAddresses.substr(MemoryAddresses.find('-') + 1);
 
     uint64_t start = stoull(StartStr, nullptr, 16);
     uint64_t end = stoull(EndStr, nullptr, 16);
 
-    MapInfoT TempMapReg = {start, end, name};
+    MapType type;
 
+    // the only filters I will hard code.
+    if (name.find("anon_inode:") != std::string::npos) continue;
+
+    if (name == exec_name) {
+      if (perms.find('x') != std::string::npos)
+        type = MapType::MAIN_EXEC_CODE;
+      else if (perms.find('w') != std::string::npos)
+        type = MapType::MAIN_EXEC_DATA;
+      else
+        type = MapType::MAIN_EXEC_CONST;
+    } else if (name.empty()) {
+      type = MapType::ANON;
+      name = "UNNAMED_REGION";
+    } else if (name == "[stack]") {
+      type = MapType::STACK;
+    } else if (name == "[heap]") {
+      type = MapType::HEAP;
+    } else if (name == "[vvar]" || name == "[vvar_vlock]" || name == "[vdso]" || name == "[vsyscall]") {
+      type = MapType::KERNEL_PAGES;
+    } else if (libraries.contains(name)) {
+      if (perms.find('x') != std::string::npos)
+        type = MapType::SHARED_LIB_CODE;
+      else if (perms.find('w') != std::string::npos)
+        type = MapType::SHARED_LIB_DATA;
+      else
+        type = MapType::SHARED_LIB_CONST;
+    } else if (perms.find('r') == std::string::npos) {
+      type = MapType::UNREADABLE;
+    } else
+      type = MapType::UNSET;
+
+    MapInfoT TempMapReg = {start, end, name, type};
     MapRegions.push_back(TempMapReg);
   }
+
   return MapRegions;
 };
 
@@ -215,4 +268,4 @@ std::vector<ProcessInfoT> getProcTargets() {
 };
 
 std::unique_ptr<IProcess> attach(int pid) { return std::make_unique<LinuxImpl>(pid); }
-}  // namespace ActOS
+}  // namespace ProcessOS
