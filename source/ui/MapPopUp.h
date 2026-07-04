@@ -8,7 +8,7 @@
 
 class MapsPopUp {
   std::vector<MapInfoT> regions_;
-  std::unordered_set<uint64_t> active_addresses;
+  std::unordered_set<uint64_t> active_addresses_;
   bool refresh_;
   bool first_launch_ = true;
 
@@ -21,11 +21,11 @@ class MapsPopUp {
     bool lib_data = false;
   };
 
-  checkboxes filter;
+  checkboxes filter_;
 
-  bool InitPopUp();
-  void UpdateRegions();
-  void RenderTable();
+  void initPopUp();
+  void updateRegions();
+  void renderTable();
   void applyDefaultFilters();
   void toggleFilter(MapType type, bool enable);
   std::vector<MapInfoT> buildFilteredMap();

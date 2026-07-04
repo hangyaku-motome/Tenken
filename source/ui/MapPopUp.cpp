@@ -11,23 +11,17 @@
 
 // TODO: Maybe move popup names or window names to a single const for each windows/pop up?
 
-bool MapsPopUp::InitPopUp() {
-  clicked_ = false;
-  if (not scanner_->isAttached()) {
-    Log::Info("You need to choose a process to do that...");
-    return false;
-  }
-  UpdateRegions();
+void MapsPopUp::initPopUp() {
   ImGui::OpenPopup("Regions List");
-  return true;
+  clicked_ = false;
 }
 
-void MapsPopUp::UpdateRegions() {
+void MapsPopUp::updateRegions() {
   regions_ = scanner_->getMapRegions();
   Log::Info(std::to_string(regions_.size()) + " regions found.");
 }
 
-void MapsPopUp::RenderTable() {
+void MapsPopUp::renderTable() {
   if (!ImGui::BeginTable("Regions", 5)) return;
 
   for (auto const& region : regions_) {
@@ -35,12 +29,12 @@ void MapsPopUp::RenderTable() {
     ImGui::PushID(region.start);
 
     ImGui::TableNextColumn();
-    bool is_active = active_addresses.contains(region.start);
+    bool is_active = active_addresses_.contains(region.start);
     if (ImGui::Checkbox("##", &is_active)) {
       if (is_active)
-        active_addresses.insert(region.start);
+        active_addresses_.insert(region.start);
       else
-        active_addresses.erase(region.start);
+        active_addresses_.erase(region.start);
     }
 
     ImGui::TableNextColumn();
@@ -75,61 +69,61 @@ void MapsPopUp::RenderTable() {
 }
 
 void MapsPopUp::CyclePUp(std::vector<MapInfoT>& ActiveRegions) {
-  if(not scanner_->isAttached()) return;
-  if (clicked_)
-    if (!InitPopUp()) return;
-
-  if (ActiveRegions.empty()) {
-    UpdateRegions();
+  if (clicked_) initPopUp();
+   if (ActiveRegions.empty() && scanner_->isAttached()) {
+    updateRegions();
     applyDefaultFilters();
     ActiveRegions = buildFilteredMap();
   }
 
-  if (!ImGui::BeginPopupModal("Regions List",
-                              nullptr,
-                              ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar |
-                                  ImGuiWindowFlags_HorizontalScrollbar))
+ if (!ImGui::BeginPopupModal("Regions List", nullptr, popup_flags)) return;
+
+  if (not scanner_->isAttached()) {
+    ImGui::Text("Nothing! Obviously! No targets! Go choose one.");
+    if (ImGui::Button("Leave in utter shame")) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
     return;
+  }
 
   ImGui::TextUnformatted("You can toggle these filters on and off to choose specific memory regions to scan. Most of "
                          "the time the defaults are the right ones.");
 
-  if (ImGui::Checkbox("code", &filter.code)) {
-    toggleFilter(MapType::MAIN_EXEC_CODE, filter.code);
-    toggleFilter(MapType::SHARED_LIB_CODE, filter.code);
+  if (ImGui::Checkbox("code", &filter_.code)) {
+    toggleFilter(MapType::MAIN_EXEC_CODE, filter_.code);
+    toggleFilter(MapType::SHARED_LIB_CODE, filter_.code);
   }
   ImGui::SameLine();
-  if (ImGui::Checkbox("anon", &filter.anon)) {
-    toggleFilter(MapType::ANON, filter.anon);
+  if (ImGui::Checkbox("anon", &filter_.anon)) {
+    toggleFilter(MapType::ANON, filter_.anon);
   }
   ImGui::SameLine();
-  if (ImGui::Checkbox("heap", &filter.heap)) {
-    toggleFilter(MapType::HEAP, filter.heap);
+  if (ImGui::Checkbox("heap", &filter_.heap)) {
+    toggleFilter(MapType::HEAP, filter_.heap);
   }
   ImGui::SameLine();
-  if (ImGui::Checkbox("lib data", &filter.lib_data)) {
-    toggleFilter(MapType::SHARED_LIB_DATA, filter.lib_data);
+  if (ImGui::Checkbox("lib data", &filter_.lib_data)) {
+    toggleFilter(MapType::SHARED_LIB_DATA, filter_.lib_data);
   }
   ImGui::SameLine();
-  if (ImGui::Checkbox("main exec data", &filter.main_exec_data)) {
-    toggleFilter(MapType::MAIN_EXEC_DATA, filter.main_exec_data);
+  if (ImGui::Checkbox("main exec data", &filter_.main_exec_data)) {
+    toggleFilter(MapType::MAIN_EXEC_DATA, filter_.main_exec_data);
   }
   ImGui::SameLine();
-  if (ImGui::Checkbox("read_only_const", &filter.read_only_const)) {
-    toggleFilter(MapType::MAIN_EXEC_CONST, filter.read_only_const);
-    toggleFilter(MapType::SHARED_LIB_CONST, filter.read_only_const);
+  if (ImGui::Checkbox("read_only_const", &filter_.read_only_const)) {
+    toggleFilter(MapType::MAIN_EXEC_CONST, filter_.read_only_const);
+    toggleFilter(MapType::SHARED_LIB_CONST, filter_.read_only_const);
   }
 
-  RenderTable();
+  renderTable();
 
   if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
   ImGui::SameLine();
   if (ImGui::Button("Refresh")) {
-    UpdateRegions();
+    updateRegions();
     applyDefaultFilters();
   }
 
-  ImGui::BeginDisabled(active_addresses.size() == 0);
+  ImGui::BeginDisabled(active_addresses_.size() == 0);
   if (ImGui::Button("Apply Filter")) {
     ActiveRegions = buildFilteredMap();
     ImGui::CloseCurrentPopup();
@@ -147,7 +141,7 @@ void MapsPopUp::applyDefaultFilters() {
       case MapType::MAIN_EXEC_DATA:
       case MapType::ANON:
       case MapType::HEAP:
-        active_addresses.insert(region.start);
+        active_addresses_.insert(region.start);
         continue;
       case MapType::MAIN_EXEC_CODE:
       case MapType::MAIN_EXEC_CONST:
@@ -168,17 +162,17 @@ void MapsPopUp::toggleFilter(MapType type, bool enable) {
     if (region.type != type) continue;
     if (not enable)  // I didn't even know "not" existed in C++. I just tried and it worked LOL. I'll keep it like this
                      // even if it makes less sense for now cause I just wanna see it.
-      active_addresses.erase(region.start);
+      active_addresses_.erase(region.start);
     else
-      active_addresses.insert(region.start);
+      active_addresses_.insert(region.start);
   }
 }
 
 std::vector<MapInfoT> MapsPopUp::buildFilteredMap() {
   std::vector<MapInfoT> maps;
   for (const auto& region : regions_) {
-    if (active_addresses.contains(region.start)) maps.push_back(region);
+    if (active_addresses_.contains(region.start)) maps.push_back(region);
   }
-  Log::Info(std::to_string(maps.size()) + "regions in filtered list.");
+  Log::Info(std::to_string(maps.size()) + " regions in filtered list.");
   return maps;
 }
