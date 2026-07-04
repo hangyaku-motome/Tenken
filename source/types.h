@@ -25,8 +25,8 @@ constexpr char hex[] = "0123456789ABCDEF";
 static constexpr auto popup_flags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
 
-
-// shouldn't invalid be first, and unset be first for TargetTypeT and RelativeStatus respectively? Also...Naming convention problems.
+// shouldn't invalid be first, and unset be first for TargetTypeT and RelativeStatus respectively? Also...Naming
+// convention problems.
 enum class TargetTypeT : int8_t {
   uInt8,
   uInt16,
@@ -53,7 +53,20 @@ struct HitInfoT {
   RelativeStatus status = RelativeStatus::UNSET;
 };
 
-enum class MapType : int8_t {UNSET, MAIN_EXEC_CODE, MAIN_EXEC_DATA, MAIN_EXEC_CONST, SHARED_LIB_CODE, SHARED_LIB_DATA, SHARED_LIB_CONST, HEAP, ANON, STACK, KERNEL_PAGES, UNREADABLE};
+enum class MapType : int8_t {
+  UNSET,
+  MAIN_EXEC_CODE,
+  MAIN_EXEC_DATA,
+  MAIN_EXEC_CONST,
+  SHARED_LIB_CODE,
+  SHARED_LIB_DATA,
+  SHARED_LIB_CONST,
+  HEAP,
+  ANON,
+  STACK,
+  KERNEL_PAGES,
+  UNREADABLE
+};
 
 struct MapInfoT {
   uint64_t start;

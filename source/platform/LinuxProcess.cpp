@@ -114,7 +114,7 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
 
     MapType type;
 
-    // the only filters I will hard code.
+    // the only filter I will hard code.
     if (name.find("anon_inode:") != std::string::npos) continue;
 
     if (name == exec_name) {
