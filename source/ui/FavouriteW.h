@@ -4,23 +4,23 @@
 #include "types.h"
 
 class FavouriteW {
-  static bool InitW();
-  static void EndW();
-  int64_t selected_row = -1;
-  int64_t selected_element = 0;
-  bool IsEditingDesc = false;
-  bool JustStartedEditingDesc = false;
-  bool IsEditingVal = false;
-  bool JustStartedEditingVal = false;
-  bool AllColumnChosen = false;
+  static bool initW();
+  static void endW();
+  int64_t selected_row_ = -1;
+  int64_t selected_element_ = 0;
+  bool is_editing_desc_ = false;
+  bool just_started_editing_desc_ = false;
+  bool is_editing_val = false;
+  bool just_started_editing_val = false;
+  bool all_column_chosen = false;
 
-  PendingAction DrawFavouriteTable(const std::vector<FavouriteInfoT>& Favourites);
-  bool DrawRefreshContextButton();
-  void AlignButtons();
-  void DrawContextMenu(const FavouriteInfoT& Favourite);
+  PendingAction drawFavouriteTable(const std::vector<FavouriteInfoT>& favourites);
+  bool drawRefreshContextButton();
+  void alignButtons();
+  void drawContextMenu(const FavouriteInfoT& favourite);
 
-  ContextDisplay Context;
+  ContextDisplay context;
 
 public:
-  PendingAction CycleW(const std::vector<FavouriteInfoT>& Favourites, SessionState& State);
+  PendingAction cycleW(const std::vector<FavouriteInfoT>& favourites, SessionState& state);
 };

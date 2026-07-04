@@ -6,81 +6,81 @@
 #include "types.h"
 #include "utils.h"
 
-void HitList::assignNew(const std::vector<HitInfoT>& NewHits) {
+void HitList::assignNew(const std::vector<HitInfoT>& new_hits) {
   std::scoped_lock<std::mutex> lock(mutex_);
-  hits_ = NewHits;
+  hits_ = new_hits;
 }
 
-void HitList::rescan(const Scanner& ScannerObj, uint64_t index, const TargetTypeT TargetType) {
+void HitList::rescan(const Scanner& scanner, uint64_t index, const TargetType target_type) {
   std::scoped_lock<std::mutex> lock(mutex_);
   hits_[index].previous_value = hits_[index].value;
 
-  hits_[index].bytes_around.resize(BYTES_BEFORE + BYTES_AFTER + hits_[index].value.size());
+  hits_[index].bytes_around.resize(bytes_before + bytes_after + hits_[index].value.size());
 
   hits_[index].bytes_around =
-      ScannerObj.readAdr(hits_[index].location - BYTES_BEFORE, hits_[index].bytes_around.size());
+      scanner.readAdr(hits_[index].location - bytes_before, hits_[index].bytes_around.size());
 
-  if (hits_[index].bytes_around.size() != BYTES_BEFORE + BYTES_AFTER + hits_[index].value.size()) {
+  if (hits_[index].bytes_around.size() != bytes_before + bytes_after + hits_[index].value.size()) {
     hits_[index].bytes_around.clear();
-    hits_[index].value = ScannerObj.readAdr(hits_[index].location, hits_[index].value.size());
+    hits_[index].value = scanner.readAdr(hits_[index].location, hits_[index].value.size());
     if (hits_[index].value.empty()) {
       hits_.erase(hits_.begin() + static_cast<int64_t>(index));
       return;
     }
   } else {
-    hits_[index].value.assign(hits_[index].bytes_around.begin() + BYTES_BEFORE,
-                              hits_[index].bytes_around.begin() + BYTES_BEFORE +
+    hits_[index].value.assign(hits_[index].bytes_around.begin() + bytes_before,
+                              hits_[index].bytes_around.begin() + bytes_before +
                                   static_cast<int64_t>(hits_[index].value.size()));
   }
   if (!hits_[index].previous_value.empty())
-    dispatchType(TargetType, [&]<typename T> {
+    dispatchType(target_type, [&]<typename T> {
       hits_[index].status = tagChange(dataToType<T>(hits_[index].value), dataToType<T>(hits_[index].previous_value));
     });
 }
 
-void HitList::write(const Scanner& ScannerObj, uint64_t index, const std::vector<uint8_t>& value) {
+void HitList::write(const Scanner& scanner_obj, uint64_t index, const std::vector<uint8_t>& value) {
   std::scoped_lock<std::mutex> lock(mutex_);
-  ScannerObj.writeAdr(hits_[index].location, value);
+  scanner_obj.writeAdr(hits_[index].location, value);
 }
 
-void HitList::filter(RelativeStatus KeepType) {
+void HitList::filter(RelativeStatus keep_type) {
   std::scoped_lock<std::mutex> lock(mutex_);
-  RelativeStatus KeepType2 = KeepType;
-  RelativeStatus KeepType3 = KeepType;
-  if (KeepType == RelativeStatus::CHANGED) {
-    KeepType2 = RelativeStatus::INCREASED;
-    KeepType3 = RelativeStatus::DECREASED;
+  RelativeStatus KeepType2 = keep_type;
+  RelativeStatus KeepType3 = keep_type;
+  if (keep_type == RelativeStatus::changed) {
+    KeepType2 = RelativeStatus::increased;
+    KeepType3 = RelativeStatus::decreased;
   }
 
-  cachedhits_ = hits_;
+  cached_hits_ = hits_;
 
   uint64_t init_amount = hits_.size();
 
   hits_.erase(std::remove_if(hits_.begin(),
                              hits_.end(),
-                             [KeepType, KeepType2, KeepType3](const HitInfoT& hit) {
-                               return hit.status != KeepType && hit.status != KeepType2 && hit.status != KeepType3;
+                             [keep_type, KeepType2, KeepType3](const HitInfoT& hit) {
+                               return hit.status != keep_type && hit.status != KeepType2 && hit.status != KeepType3;
                              }),
               hits_.end());
-  Log::Info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
+  Log::info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
             " filtered.)");
 }
 
-void HitList::filter(const std::vector<uint8_t>& KeepValue) {
+void HitList::filter(const std::vector<uint8_t>& keep_value) {
   std::scoped_lock<std::mutex> lock(mutex_);
 
-  cachedhits_ = hits_;
+  cached_hits_ = hits_;
 
   uint64_t init_amount = hits_.size();
 
   hits_.erase(std::remove_if(hits_.begin(),
                              hits_.end(),
-                             [&KeepValue](const HitInfoT& hit) {
-                               return hit.value != KeepValue;
+                             [&keep_value](const HitInfoT& hit) {
+                               return hit.value != keep_value;
                                ;
                              }),
               hits_.end());
-  Log::Info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
+  Log::info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
             " filtered.)");
 }
 

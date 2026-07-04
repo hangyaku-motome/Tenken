@@ -22,32 +22,32 @@ class DataInspectorW {
     bool s32 = true;
     bool s64 = true;
 
-    bool floatT = true;
-    bool doubleT = false;
+    bool f32 = true;
+    bool f64 = false;
 
-    bool stringT = true;
+    bool string = true;
   };
 
-  bool InitW();
-  void EndW();
+  bool initW();
+  void endW();
 
-  void RenderTable();
-  void TypePopUp();
+  void renderTable();
+  void typePopUp();
 
   std::vector<uint8_t> readAround(uint64_t adr);
-  static constexpr int32_t BYTES_BEFORE = 256;
-  static constexpr int32_t BYTES_AFTER = 256;
-  static constexpr int32_t LIMIT = 8;
+  static constexpr int32_t bytes_before_ = 256;
+  static constexpr int32_t bytes_after_ = 256;
+  static constexpr int32_t limit_ = 8;
 
   std::vector<uint8_t> bytes_{};
-  uint64_t currentaddress_ = 0;
+  uint64_t current_address_ = 0;
   uint64_t addressbuffer_ = 0;
 
   const Scanner* scanner_;
 
   EnabledTypes types_;
 
-  bool popupclicked_ = false;
+  bool popup_clicked_ = false;
 
 public:
   explicit DataInspectorW(const Scanner& scanner)
@@ -55,5 +55,5 @@ public:
 
   bool enabled_ = false;
 
-  void CycleW();
+  void cycleW();
 };

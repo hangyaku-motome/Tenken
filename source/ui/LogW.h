@@ -5,17 +5,17 @@
 
 class LogW {
 private:
-  static bool InitW();
-  static void EndW();
+  static bool initW();
+  static void endW();
 
 public:
   bool enabled_ = false;
-  void CycleW();
+  void cycleW();
 };
 
 namespace Log {
-std::vector<std::string> GetLogsText();
+std::vector<std::string> getLogText();
 
-void Info(const std::string& WrittenString);
-void Error(const std::string& WrittenString);
+void info(const std::string& written_string);
+void error(const std::string& written_string);
 }  // namespace Log

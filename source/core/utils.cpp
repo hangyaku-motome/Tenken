@@ -14,26 +14,26 @@
 template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
   if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<uint8_t>>) {
     if (old_value != new_value)
-      return RelativeStatus::CHANGED;
+      return RelativeStatus::changed;
     else
-      return RelativeStatus::UNCHANGED;
+      return RelativeStatus::unchanged;
   } else if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(old_value) || std::isnan(new_value)) return RelativeStatus::CHANGED;
+    if (std::isnan(old_value) || std::isnan(new_value)) return RelativeStatus::changed;
 
     float diff = old_value - new_value;
-    if (std::abs(diff) <= EPSILON) return RelativeStatus::UNCHANGED;
+    if (std::abs(diff) <= epsilon) return RelativeStatus::unchanged;
 
-    if (diff > 0) return RelativeStatus::INCREASED;
+    if (diff > 0) return RelativeStatus::increased;
 
-    return RelativeStatus::DECREASED;
+    return RelativeStatus::decreased;
   } else if constexpr (std::is_arithmetic_v<T>) {
-    if (old_value == new_value) return RelativeStatus::UNCHANGED;
-    if (new_value > old_value) return RelativeStatus::INCREASED;
+    if (old_value == new_value) return RelativeStatus::unchanged;
+    if (new_value > old_value) return RelativeStatus::increased;
 
-    return RelativeStatus::DECREASED;
+    return RelativeStatus::decreased;
   }
 
-  return RelativeStatus::UNSET;
+  return RelativeStatus::unset;
 }
 
 template RelativeStatus tagChange<uint8_t>(uint8_t, uint8_t);
@@ -55,44 +55,45 @@ std::vector<uint8_t> findBytesAround(const uint32_t offset, const std::vector<ui
   uint64_t START = offset < 32 ? 0 : offset - 32;
   uint64_t END = offset + 32 + size > data.size() ? data.size() : offset + 32 + size;
 
-  std::vector<uint8_t> bytes(BYTES_BEFORE + BYTES_AFTER + size);
+  std::vector<uint8_t> bytes(bytes_before + bytes_after
+                             + size);
   memcpy(bytes.data(), &data[START], END - START);
   return bytes;
 }
 
 // I could simplfy this my merging string path and primitive, as the only difference is size.
 template <typename T>
-std::vector<uint64_t> searchValue(const std::vector<uint8_t>& Data, const T& Target, const std::vector<bool>& mask) {
-  std::vector<uint64_t> FoundOffsets;
+std::vector<uint64_t> searchValue(const std::vector<uint8_t>& data, const T& target, const std::vector<bool>& mask) {
+  std::vector<uint64_t> found_offsets;
 
   T data_value;
 
   if constexpr (std::is_same_v<std::string, T>) {
-    for (uint32_t i = 0; i + Target.size() <= Data.size(); ++i)
-      if (memcmp(&Data[i], Target.data(), Target.size()) == 0) FoundOffsets.push_back(i);
+    for (uint32_t i = 0; i + target.size() <= data.size(); ++i)
+      if (memcmp(&data[i], target.data(), target.size()) == 0) found_offsets.push_back(i);
 
   } else if constexpr (std::is_same_v<std::vector<uint8_t>, T>) {
-    for (uint32_t i = 0; i + Target.size() <= Data.size(); ++i) {
+    for (uint32_t i = 0; i + target.size() <= data.size(); ++i) {
       bool push = true;
-      for (uint32_t k = 0; k < Target.size(); ++k)
-        if (memcmp(Data.data() + i + k, Target.data() + k, 1) != 0 && mask[k]) {
+      for (uint32_t k = 0; k < target.size(); ++k)
+        if (memcmp(data.data() + i + k, target.data() + k, 1) != 0 && mask[k]) {
           push = false;
           break;
         }
 
-      if (push) FoundOffsets.push_back(i);
+      if (push) found_offsets.push_back(i);
     }
   } else {
-    for (uint32_t i = 0; i + sizeof(T) <= Data.size(); i += sizeof(T)) {
-      memcpy(&data_value, Data.data() + i, sizeof(T));
+    for (uint32_t i = 0; i + sizeof(T) <= data.size(); i += sizeof(T)) {
+      memcpy(&data_value, data.data() + i, sizeof(T));
       if constexpr (std::is_floating_point_v<T>) {
-        if (std::abs(data_value - Target) <= EPSILON) FoundOffsets.push_back(i);
+        if (std::abs(data_value - target) <= epsilon) found_offsets.push_back(i);
       } else {
-        if (data_value == Target) FoundOffsets.push_back(i);
+        if (data_value == target) found_offsets.push_back(i);
       }
     }
   }
-  return FoundOffsets;
+  return found_offsets;
 }
 
 template std::vector<uint64_t>
@@ -123,35 +124,35 @@ searchValue<std::vector<uint8_t>>(const std::vector<uint8_t>&, const std::vector
 
 // I might wanna merge searchRawValue and searchValue but not right now.
 
-std::vector<uint64_t> searchRawValue(const std::vector<uint8_t>& Data,
-                                     const std::vector<uint8_t>& TargetData,
+std::vector<uint64_t> searchRawValue(const std::vector<uint8_t>& data,
+                                     const std::vector<uint8_t>& target_data,
                                      const std::vector<bool>& mask) {  // validbytes for byte scanning later.
 
-  std::vector<uint64_t> FoundOffsets;
-  uint64_t TargetSize = TargetData.size();
+  std::vector<uint64_t> found_offsets;
+  uint64_t TargetSize = target_data.size();
 
-  for (uint32_t i = 0; i + TargetSize <= Data.size(); ++i) {
-    if (memcmp(&Data[i], TargetData.data(), TargetSize) == 0) {
-      FoundOffsets.push_back(i);
+  for (uint32_t i = 0; i + TargetSize <= data.size(); ++i) {
+    if (memcmp(&data[i], target_data.data(), TargetSize) == 0) {
+      found_offsets.push_back(i);
     }
   }
-  return FoundOffsets;
+  return found_offsets;
 }
 
 // a function that takes no mask just returns a normal string for vector.
 // a wrapper function that swtiches the bytes to ?? as neeeded:
 
 std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector<bool>& mask) {
-  std::string returnstring;
+  std::string return_string;
   for (uint64_t i = 0; i < bytes.size(); ++i) {
-    if (i != 0) returnstring += " ";
+    if (i != 0) return_string += " ";
     if (mask[i] == false) {
-      returnstring += "??";
+      return_string += "??";
       continue;
     }
-    returnstring += hexToStr(bytes[i]);
+    return_string += hexToStr(bytes[i]);
   }
-  return returnstring;
+  return return_string;
 }
 
 template <typename T> std::string dataToStr(const std::vector<uint8_t>& bytes) {
@@ -160,12 +161,12 @@ template <typename T> std::string dataToStr(const std::vector<uint8_t>& bytes) {
   if constexpr (std::is_same_v<T, std::string>) {
     return std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
   } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
-    std::string returnstring;
+    std::string return_string;
     for (uint64_t i = 0; i < bytes.size(); ++i) {
-      if (i != 0) returnstring += " ";
-      returnstring += hexToStr(bytes[i]);
+      if (i != 0) return_string += " ";
+      return_string += hexToStr(bytes[i]);
     }
-    return returnstring;
+    return return_string;
   } else {
     T value;
     memcpy(&value, bytes.data(), sizeof(T));
@@ -196,61 +197,61 @@ template std::string dataToStr<std::vector<uint8_t>>(const std::vector<uint8_t>&
 
 //
 
-std::string targetTypeToStr(const TargetTypeT targetType) {
+std::string targetTypeToStr(const TargetType targetType) {
   switch (targetType) {
-    case TargetTypeT::uInt8:
+    case TargetType::uInt8:
       return "uInt8";
-    case TargetTypeT::uInt16:
+    case TargetType::uInt16:
       return "uInt16";
-    case TargetTypeT::uInt32:
+    case TargetType::uInt32:
       return "uInt32";
-    case TargetTypeT::uInt64:
+    case TargetType::uInt64:
       return "uInt64";
-    case TargetTypeT::Int8:
-      return "Int8";
-    case TargetTypeT::Int16:
-      return "Int16";
-    case TargetTypeT::Int32:
-      return "Int32";
-    case TargetTypeT::Int64:
-      return "Int64";
-    case TargetTypeT::Float:
-      return "Float";
-    case TargetTypeT::Double:
-      return "Double";
-    case TargetTypeT::String:
-      return "String";
-    case TargetTypeT::Invalid:
-      return "Invalid";
-    case TargetTypeT::AOB:
-      return "AOB";
+    case TargetType::int8:
+      return "int8";
+    case TargetType::int16:
+      return "int16";
+    case TargetType::int32:
+      return "int32";
+    case TargetType::int64:
+      return "int64";
+    case TargetType::f32:
+      return "float";
+    case TargetType::f64:
+    return "double";
+    case TargetType::string:
+      return "string";
+    case TargetType::invalid:
+      return "invalid";
+    case TargetType::aob:
+      return "aob";
   }
 }
 
-TargetTypeT strToTargetType(const std::string &string) {
-  if(string == "uInt8") return TargetTypeT::uInt8;
-  if(string == "uInt16") return TargetTypeT::uInt16;
-  if(string == "uInt32") return TargetTypeT::uInt32;
-  if(string == "uint64") return TargetTypeT::uInt64;
-  if(string == "Int8") return TargetTypeT::Int8;
-  if(string == "Int16") return TargetTypeT::Int16;
-  if(string == "Int32") return TargetTypeT::Int32;
-  if(string == "Int64") return TargetTypeT::Int64;
+TargetType strToTargetType(const std::string &string) {
+  if(string == "uInt8") return TargetType::uInt8;
+  if(string == "uInt16") return TargetType::uInt16;
+  if(string == "uInt32") return TargetType::uInt32;
+  if(string == "uInt64") return TargetType::uInt64;
+  if(string == "int8") return TargetType::int8;
+  if(string == "int16") return TargetType::int16;
+  if(string == "int32") return TargetType::int32;
+  if(string == "int64") return TargetType::int64;
 
-  return TargetTypeT::Invalid;
+  return TargetType::invalid;
 }
 
-std::string relativeStatusToStr(const RelativeStatus Status) {
-  switch (Status) {
-    case RelativeStatus::INCREASED:
+std::string relativeStatusToStr(const RelativeStatus status) {
+  switch (status) {
+    case RelativeStatus::increased:
       return "Increased";
-    case RelativeStatus::DECREASED:
+    case RelativeStatus::decreased:
       return "Decreased";
-    case RelativeStatus::UNCHANGED:
+    case RelativeStatus::unchanged:
       return "Unchanged";
-    case RelativeStatus::CHANGED:
+    case RelativeStatus::changed:
       return "Changed";
-    case RelativeStatus::UNSET:
+    case RelativeStatus::unset:
       return "Unset";
   }
   return "";
@@ -265,9 +266,9 @@ template <typename T> T dataToType(const std::vector<uint8_t>& data) {
   } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
     return data;
   } else {
-    T returnVal;
-    memcpy(&returnVal, data.data(), sizeof(T));
-    return returnVal;
+    T return_val;
+    memcpy(&return_val, data.data(), sizeof(T));
+    return return_val;
   }
 }
 
@@ -287,13 +288,13 @@ template std::string dataToType<std::string>(const std::vector<uint8_t>&);
 //
 
 bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask) {
-  std::string tempbuf = dataToMaskedStr(bytes, mask);
-  if (!ImGui::InputText("##value", &tempbuf)) {
-    if (tempbuf.empty()) bytes.clear();
+  std::string tmp_str = dataToMaskedStr(bytes, mask);
+  if (!ImGui::InputText("##value", &tmp_str)) {
+    if (tmp_str.empty()) bytes.clear();
     return false;
   }
 
-  std::istringstream stream(tempbuf);
+  std::istringstream stream(tmp_str);
   std::string token;
 
   std::vector<uint8_t> new_bytes;
@@ -327,29 +328,29 @@ std::string hexToStr(const uint8_t byte) { return std::string({hex[(byte >> 4)],
 
 std::string mapTypeToStr(const MapType type){
      switch (type) {
-      case MapType::MAIN_EXEC_DATA:
+      case MapType::mainExecData:
       return "Main Exec Data";
-      case MapType::ANON:
+      case MapType::anon:
       return "Anon";
-      case MapType::HEAP:
+      case MapType::heap:
       return "Heap";
-      case MapType::MAIN_EXEC_CODE:
+      case MapType::mainExecCode:
       return "Main Exec Code";
-      case MapType::MAIN_EXEC_CONST:
+      case MapType::mainExecConst:
       return "Main Exec Const";
-      case MapType::SHARED_LIB_CODE:
+      case MapType::sharedLibCode:
       return "Shared Lib Code";
-      case MapType::SHARED_LIB_DATA:
+      case MapType::sharedLibData:
       return "Shared Lib Data";
-      case MapType::SHARED_LIB_CONST:
+      case MapType::sharedLibConst:
       return "Shared Lib Const";
-      case MapType::KERNEL_PAGES:
+      case MapType::kernelPages:
       return "Kernel Pages";
-      case MapType::STACK:
+      case MapType::stack:
       return "Stack";
-      case MapType::UNREADABLE:
+      case MapType::unreadable:
       return "Unreadable";
-      case MapType::UNSET:
+      case MapType::unset:
       return "Unset";
     }
   }

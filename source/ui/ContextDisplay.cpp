@@ -1,59 +1,59 @@
 #include "ContextDisplay.h"
 
-void ContextDisplay::AlignButtons() {
-  button_h = ImGui::GetFrameHeight();
-  button_w = 150.0F;
+void ContextDisplay::alignButtons() {
+  button_h_ = ImGui::GetFrameHeight();
+  button_w_ = 150.0F;
   float current_h = ImGui::GetContentRegionAvail().y;
 
-  if (current_h > button_h) {
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
+  if (current_h > button_h_) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h_);
   }
 
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ((ImGui::GetContentRegionAvail().x - button_w) / 2));
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ((ImGui::GetContentRegionAvail().x - button_w_) / 2));
 }
 
-bool ContextDisplay::DrawRefreshContextButton() const { return ImGui::Button("Refresh Context Entry", {button_w, 0}); }
+bool ContextDisplay::drawRefreshContextButton() const { return ImGui::Button("Refresh Context Entry", {button_w_, 0}); }
 
-bool ContextDisplay::DrawRefreshAllButton() const {
+bool ContextDisplay::drawRefreshAllButton() const {
   float current_h = ImGui::GetContentRegionAvail().y;
-  if (current_h > button_h) {
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h);
+  if (current_h > button_h_) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + current_h - button_h_);
   }
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - button_w);
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - button_w_);
 
-  return ImGui::Button("Refresh All Entries", {button_w, 0});
+  return ImGui::Button("Refresh All Entries", {button_w_, 0});
 }
 
-float ContextDisplay::DrawRefreshInterval(const float RefreshDuration) {
+float ContextDisplay::drawRefreshInterval(const float RefreshDuration) {
   float DisplaySeconds = RefreshDuration < 0.3 ? 0 : RefreshDuration;
   float returnval = -2;
 
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - slider_w - checkbox_w - 25);
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - slider_w_ - checkbox_w_ - 25);
   ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - 50);
 
   ImGui::TextDisabled("(?)");
   if (ImGui::IsItemHovered()) {
     ImGui::SetTooltip("Will regularly refresh entry each given duration.\n");
   }
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - slider_w - checkbox_w);
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - slider_w_ - checkbox_w_);
   ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - 50);
-  if (ImGui::Checkbox("##Regular Refresh", &IsRefresh)) {
-    if (!IsRefresh) {
+  if (ImGui::Checkbox("##Regular Refresh", &is_refresh_)) {
+    if (!is_refresh_) {
       returnval = -1;
     }
-    if (IsRefresh) returnval = 0;
+    if (is_refresh_) returnval = 0;
   }
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - slider_w);
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - slider_w_);
   ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - 50);
 
-  ImGui::SetNextItemWidth(slider_w);
+  ImGui::SetNextItemWidth(slider_w_);
 
-  if (!IsRefresh) ImGui::BeginDisabled();
+  if (!is_refresh_) ImGui::BeginDisabled();
   if (ImGui::SliderFloat("##interval", &DisplaySeconds, 0.3F, 3.0F, "%.1f", ImGuiSliderFlags_AlwaysClamp)) {
     return DisplaySeconds;
   }
 
-  if (!IsRefresh) ImGui::EndDisabled();
+  if (!is_refresh_) ImGui::EndDisabled();
 
   return returnval;
 }

@@ -12,36 +12,36 @@ template <typename T>
 std::vector<uint64_t>
 searchValue(const std::vector<uint8_t>& Data, const T& Target, const std::vector<bool>& mask = {});
 
-std::string targetTypeToStr(TargetTypeT targetType);
-TargetTypeT strToTargetType(const std::string& string);
+std::string targetTypeToStr(TargetType targetType);
+TargetType strToTargetType(const std::string& string);
 template <typename T> std::string dataToStr(const std::vector<uint8_t>& Bytes);
 std::string relativeStatusToStr(RelativeStatus Status);
 
-template <typename Func> auto dispatchType(TargetTypeT type, Func&& func) {
+template <typename Func> auto dispatchType(TargetType type, Func&& func) {
   switch (type) {
-    case TargetTypeT::uInt8:
+    case TargetType::uInt8:
       return func.template operator()<uint8_t>();
-    case TargetTypeT::uInt16:
+    case TargetType::uInt16:
       return func.template operator()<uint16_t>();
-    case TargetTypeT::uInt32:
+    case TargetType::uInt32:
       return func.template operator()<uint32_t>();
-    case TargetTypeT::uInt64:
+    case TargetType::uInt64:
       return func.template operator()<uint64_t>();
-    case TargetTypeT::Int8:
+    case TargetType::int8:
       return func.template operator()<int8_t>();
-    case TargetTypeT::Int16:
+    case TargetType::int16:
       return func.template operator()<int16_t>();
-    case TargetTypeT::Int32:
+    case TargetType::int32:
       return func.template operator()<int32_t>();
-    case TargetTypeT::Int64:
+    case TargetType::int64:
       return func.template operator()<int64_t>();
-    case TargetTypeT::Float:
+    case TargetType::f32:
       return func.template operator()<float>();
-    case TargetTypeT::Double:
+    case TargetType::f64:
       return func.template operator()<double>();
-    case TargetTypeT::String:
+    case TargetType::string:
       return func.template operator()<std::string>();
-    case TargetTypeT::AOB:
+    case TargetType::aob:
       return func.template operator()<std::vector<uint8_t>>();
     default:
       throw std::runtime_error("invalid type");

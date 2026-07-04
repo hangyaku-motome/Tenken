@@ -10,34 +10,35 @@
 class FavouriteList {
   std::vector<FavouriteInfoT> favourites_;
   std::mutex mutex_;
-  std::thread freezeThread;
-  std::atomic<bool> freezeRunning;
+  std::thread freeze_thread_;
+  std::atomic<bool> freeze_running_;
 
-  void rescanNoLock(const Scanner& ScannerObj, uint64_t index, TargetTypeT TargetType);
+  void rescanNoLock(const Scanner& scanner_obj, uint64_t index, TargetType target_type);
 
 public:
-  void assignNew(const std::vector<FavouriteInfoT>& NewList);
+  void assignNew(const std::vector<FavouriteInfoT>& new_list
+                 );
 
-  void add(const HitInfoT& hit, TargetTypeT TargetType);
+  void add(const HitInfoT& hit, TargetType target_type);
   void remove(uint64_t index);
 
-  void setFreezeDur(uint64_t index, float setTo);
-  void setFreezeVal(uint64_t index, const std::vector<uint8_t>& setTo);
-  void setFreeze(uint64_t index, bool setTo);
-  void setDesc(uint64_t index, std::string setTo);
+  void setFreezeDur(uint64_t index, float set_to);
+  void setFreezeVal(uint64_t index, const std::vector<uint8_t>& set_to);
+  void setFreeze(uint64_t index, bool set_to);
+  void setDesc(uint64_t index, std::string set_to);
 
-  void rescan(const Scanner& ScannerObj, uint64_t index, TargetTypeT TargetType);
-  void rescanAll(const Scanner& ScannerObj, TargetTypeT TargetType);
+  void rescan(const Scanner& scanner, uint64_t index, TargetType target_type);
+  void rescanAll(const Scanner& scanner, TargetType target_type);
 
-  void write(const Scanner& ScannerObj, uint64_t index, const std::vector<uint8_t>& value);
+  void write(const Scanner& scanner, uint64_t index, const std::vector<uint8_t>& value);
 
   const std::vector<FavouriteInfoT>& get() { return favourites_; }
 
-  void startFreezeThread(const Scanner& ScannerObj);
+  void startFreezeThread(const Scanner& scanner);
 
   void endFreezeThread() {
-    freezeRunning = false;
-    if (freezeThread.joinable()) freezeThread.join();
+    freeze_running_ = false;
+    if (freeze_thread_.joinable()) freeze_thread_.join();
   }
 
   void reset() {

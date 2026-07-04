@@ -6,42 +6,42 @@
 
 #include "imgui.h"
 
-bool LogW::InitW() { return ImGui::Begin("Log"); }
+bool LogW::initW() { return ImGui::Begin("Log"); }
 
-void LogW::EndW() { ImGui::End(); }
+void LogW::endW() { ImGui::End(); }
 
-void LogW::CycleW() {
+void LogW::cycleW() {
   if (!enabled_) return;
 
-  if (!InitW()) {
-    EndW();
+  if (!initW()) {
+    endW();
     return;
   }
-  for (const auto& Text : Log::GetLogsText()) {
-    ImGui::TextUnformatted(Text.c_str());
+  for (const auto& text : Log::getLogText()) {
+    ImGui::TextUnformatted(text.c_str());
   }
-  EndW();
+  endW();
 }
 
 namespace Log {
 namespace {
-std::mutex LogMutex;
-std::vector<std::string> Logs;
+std::mutex log_mutex;
+std::vector<std::string> logs;
 }  // namespace
 
-std::vector<std::string> GetLogsText() {
-  std::scoped_lock<std::mutex> lock(LogMutex);
-  return Logs;
+std::vector<std::string> getLogText() {
+  std::scoped_lock<std::mutex> lock(log_mutex);
+  return logs;
 }
 
-void Info(const std::string& WrittenString) {
-  std::scoped_lock<std::mutex> lock(LogMutex);
-  Logs.push_back(WrittenString);
+void info(const std::string& written_string) {
+  std::scoped_lock<std::mutex> lock(log_mutex);
+  logs.push_back(written_string);
 }
 
-void Error(const std::string& WrittenString) {
-  std::scoped_lock<std::mutex> lock(LogMutex);
-  Logs.push_back("ERROR: " + WrittenString);
+void error(const std::string& written_string) {
+  std::scoped_lock<std::mutex> lock(log_mutex);
+  logs.push_back("ERROR: " + written_string);
 }
 
 }  // namespace Log

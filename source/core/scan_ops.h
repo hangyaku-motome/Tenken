@@ -8,17 +8,17 @@
 
 namespace ScanOp {
 
-void rescanAllHits(const Scanner& ScannerObj, HitList& Hit, std::atomic<float>& progress, TargetTypeT TargetType);
+void rescanAllHits(const Scanner& scanner, HitList& hit, std::atomic<float>& progress, TargetType target_type);
 
-template <typename F> void RunOnScannerThread(std::thread& scannerThread, SessionState& State, F&& task) {
-  if (scannerThread.joinable()) scannerThread.join();
-  State.IsScanning = true;
-  scannerThread = std::thread([&State, task = std::forward<F>(task)]() {
+template <typename F> void runOnScannerThread(std::thread& scanner_thread, SessionState& state, F&& task) {
+  if (scanner_thread.joinable()) scanner_thread.join();
+  state.is_scanning = true;
+  scanner_thread = std::thread([&state, task = std::forward<F>(task)]() {
     task();
-    State.IsScanning = false;
+    state.is_scanning = false;
   });
 }
 
 //atp not sure if just giving state as an arg is better or not.
-std::vector<HitInfoT> startScan(const Scanner& ScannerObj, const TargetInfoT& TargetInfo, std::atomic<float> & ScanProgress,const std::vector<MapInfoT>& ActiveRegions);
+std::vector<HitInfoT> startScan(const Scanner& scanner_obj, const TargetInfoT& target_info, std::atomic<float> & scanner_progress,const std::vector<MapInfoT>& active_regions);
 };  // namespace ScanOp

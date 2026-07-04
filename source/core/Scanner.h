@@ -13,13 +13,13 @@ public:
   void init(int pid) { proc_ = ProcessOS::attach(pid); }
 
   bool writeAdr(uint64_t address, const std::vector<uint8_t>& value) const;
-  std::vector<uint8_t> readAdr(uint64_t address, uint64_t readSize) const;
+  std::vector<uint8_t> readAdr(uint64_t address, uint64_t read_size) const;
 
   std::vector<MapInfoT> getMapRegions() const;
 
-  Snapshot getSnapshot(const std::vector<MapInfoT>& ActiveRegions, std::atomic<float>& progress) const;
+  Snapshot getSnapshot(const std::vector<MapInfoT>& active_regions, std::atomic<float>& progress) const;
 
-  std::vector<HitInfoT> filterSnapshot(const Snapshot& Old, RelativeStatus KeepType, TargetTypeT TargetType) const;
+  std::vector<HitInfoT> filterSnapshot(const Snapshot& old, RelativeStatus keep_type, TargetType target_type) const;
 
   bool isAttached() const {
     if (proc_ == nullptr) return false;

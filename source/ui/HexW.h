@@ -5,15 +5,15 @@
 #include "Scanner.h"
 
 class HexW {
-  static bool InitW();
-  static void EndW();
+  static bool initW();
+  static void endW();
 
-  uint64_t searchAddress_ = 0;
-  uint64_t currentAddress_ = 0;
+  uint64_t search_address_ = 0;
+  uint64_t current_address_ = 0;
 
-  std::vector<uint8_t> shownBytes_;
+  std::vector<uint8_t> shown_bytes_;
 
-  int64_t editing_index = -1;
+  int64_t editing_index_ = -1;
 
   const Scanner* scanner_;
 
@@ -26,5 +26,5 @@ public:
 
   bool enabled_ = true;
 
-  void CycleW();
+  void cycleW();
 };

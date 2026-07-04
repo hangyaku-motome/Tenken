@@ -18,7 +18,7 @@ void MapsPopUp::initPopUp() {
 
 void MapsPopUp::updateRegions() {
   regions_ = scanner_->getMapRegions();
-  Log::Info(std::to_string(regions_.size()) + " regions found.");
+  Log::info(std::to_string(regions_.size()) + " regions found.");
 }
 
 void MapsPopUp::renderTable() {
@@ -68,12 +68,12 @@ void MapsPopUp::renderTable() {
   ImGui::EndTable();
 }
 
-void MapsPopUp::CyclePUp(std::vector<MapInfoT>& ActiveRegions) {
+void MapsPopUp::cyclePopUp(std::vector<MapInfoT>& active_regions) {
   if (clicked_) initPopUp();
-   if (ActiveRegions.empty() && scanner_->isAttached()) {
+   if (active_regions.empty() && scanner_->isAttached()) {
     updateRegions();
     applyDefaultFilters();
-    ActiveRegions = buildFilteredMap();
+    active_regions = buildFilteredMap();
   }
 
  if (!ImGui::BeginPopupModal("Regions List", nullptr, popup_flags)) return;
@@ -89,29 +89,29 @@ void MapsPopUp::CyclePUp(std::vector<MapInfoT>& ActiveRegions) {
                          "the time the defaults are the right ones.");
 
   if (ImGui::Checkbox("code", &filter_.code)) {
-    toggleFilter(MapType::MAIN_EXEC_CODE, filter_.code);
-    toggleFilter(MapType::SHARED_LIB_CODE, filter_.code);
+    toggleFilter(MapType::mainExecCode, filter_.code);
+    toggleFilter(MapType::sharedLibCode, filter_.code);
   }
   ImGui::SameLine();
   if (ImGui::Checkbox("anon", &filter_.anon)) {
-    toggleFilter(MapType::ANON, filter_.anon);
+    toggleFilter(MapType::anon, filter_.anon);
   }
   ImGui::SameLine();
   if (ImGui::Checkbox("heap", &filter_.heap)) {
-    toggleFilter(MapType::HEAP, filter_.heap);
+    toggleFilter(MapType::heap, filter_.heap);
   }
   ImGui::SameLine();
   if (ImGui::Checkbox("lib data", &filter_.lib_data)) {
-    toggleFilter(MapType::SHARED_LIB_DATA, filter_.lib_data);
+    toggleFilter(MapType::sharedLibData, filter_.lib_data);
   }
   ImGui::SameLine();
   if (ImGui::Checkbox("main exec data", &filter_.main_exec_data)) {
-    toggleFilter(MapType::MAIN_EXEC_DATA, filter_.main_exec_data);
+    toggleFilter(MapType::mainExecData, filter_.main_exec_data);
   }
   ImGui::SameLine();
   if (ImGui::Checkbox("read_only_const", &filter_.read_only_const)) {
-    toggleFilter(MapType::MAIN_EXEC_CONST, filter_.read_only_const);
-    toggleFilter(MapType::SHARED_LIB_CONST, filter_.read_only_const);
+    toggleFilter(MapType::mainExecConst, filter_.read_only_const);
+    toggleFilter(MapType::sharedLibConst, filter_.read_only_const);
   }
 
   renderTable();
@@ -125,7 +125,7 @@ void MapsPopUp::CyclePUp(std::vector<MapInfoT>& ActiveRegions) {
 
   ImGui::BeginDisabled(active_addresses_.size() == 0);
   if (ImGui::Button("Apply Filter")) {
-    ActiveRegions = buildFilteredMap();
+    active_regions = buildFilteredMap();
     ImGui::CloseCurrentPopup();
   }
   ImGui::EndDisabled();
@@ -138,20 +138,20 @@ void MapsPopUp::CyclePUp(std::vector<MapInfoT>& ActiveRegions) {
 void MapsPopUp::applyDefaultFilters() {
   for (auto const& region : regions_) {
     switch (region.type) {
-      case MapType::MAIN_EXEC_DATA:
-      case MapType::ANON:
-      case MapType::HEAP:
+      case MapType::mainExecData:
+      case MapType::anon:
+      case MapType::heap:
         active_addresses_.insert(region.start);
         continue;
-      case MapType::MAIN_EXEC_CODE:
-      case MapType::MAIN_EXEC_CONST:
-      case MapType::SHARED_LIB_CODE:
-      case MapType::SHARED_LIB_DATA:
-      case MapType::SHARED_LIB_CONST:
-      case MapType::KERNEL_PAGES:
-      case MapType::STACK:
-      case MapType::UNREADABLE:
-      case MapType::UNSET:
+      case MapType::mainExecCode:
+      case MapType::mainExecConst:
+      case MapType::sharedLibCode:
+      case MapType::sharedLibData:
+      case MapType::sharedLibConst:
+      case MapType::kernelPages:
+      case MapType::stack:
+      case MapType::unreadable:
+      case MapType::unset:
         continue;
     }
   }
@@ -173,6 +173,6 @@ std::vector<MapInfoT> MapsPopUp::buildFilteredMap() {
   for (const auto& region : regions_) {
     if (active_addresses_.contains(region.start)) maps.push_back(region);
   }
-  Log::Info(std::to_string(maps.size()) + " regions in filtered list.");
+  Log::info(std::to_string(maps.size()) + " regions in filtered list.");
   return maps;
 }

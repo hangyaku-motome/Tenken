@@ -7,30 +7,30 @@
 #include "types.h"
 
 class SearchW {
-  static bool InitW();
-  static void EndW();
+  static bool initW();
+  static void endW();
 
-  bool GetTargetType(TargetTypeT& writeTo);
-  std::string GetHitFilter(TargetInfoT& TargetInfo);
+  bool getTargetType(TargetType& write_to);
+  std::string getHitFilter(TargetInfoT& target_info);
 
-  bool isInitValueGiven_ = false;
-  bool IsUnsigned_ = false;
-  bool isBasedOnCurrentValues_ = false;
-  bool isUnknownValueScan_ = false;
-  bool isOnFirstWindow_ = true;
+  bool is_init_value_given_ = false;
+  bool is_unsigned_ = false;
+  bool is_based_on_curr_val_ = false;
+  bool is_unknown_value_scan_ = false;
+  bool is_on_first_window_ = true;
 
-  int32_t tmpFilterType_ = -1;
-  std::vector<uint8_t> tmpBuf_;
-  std::vector<uint8_t> tmpVal_;
-  int tmpTargetType_ = -1;
+  int32_t tmp_filter_type_ = -1;
+  std::vector<uint8_t> tmp_buf_;
+  std::vector<uint8_t> tmp_val_;
+  int tmp_target_type = -1;
 
-  int procID_ = 0;
+  int proc_id_ = 0;
 
-  PendingAction CycleFirstW(const TargetInfoT& TargetInfo);
-  PendingAction CycleSecondW(const TargetInfoT& TargetInfo);
+  PendingAction cycleFirstW(const TargetInfoT& target_info);
+  PendingAction cycleSecondW(const TargetInfoT& target_info);
 
   void reset();
 
 public:
-  PendingAction CycleW(TargetInfoT& TargetInfo, int32_t procID);
+  PendingAction cycleW(TargetInfoT& target_info, int32_t proc_id);
 };

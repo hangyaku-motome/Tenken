@@ -9,7 +9,7 @@ void FavouriteList::assignNew(const std::vector<FavouriteInfoT>& NewList) {
   favourites_ = NewList;
 }
 
-void FavouriteList::add(const HitInfoT& hit, TargetTypeT TargetType) {
+void FavouriteList::add(const HitInfoT& hit, TargetType TargetType) {
   std::scoped_lock<std::mutex> lock(mutex_);
   FavouriteInfoT PushFavourite;
   favourites_.push_back({.location = hit.location,
@@ -36,15 +36,15 @@ void FavouriteList::setDesc(uint64_t index, std::string setTo) {
   favourites_[index].desc = setTo;
 }
 
-void FavouriteList::rescanNoLock(const Scanner& ScannerObj, uint64_t index, TargetTypeT TargetType) {
+void FavouriteList::rescanNoLock(const Scanner& ScannerObj, uint64_t index, TargetType TargetType) {
   favourites_[index].previous_value = favourites_[index].value;
 
-  favourites_[index].bytes_around.resize(BYTES_BEFORE + BYTES_AFTER + favourites_[index].value.size());
+  favourites_[index].bytes_around.resize(bytes_before + bytes_after + favourites_[index].value.size());
 
   favourites_[index].bytes_around =
-      ScannerObj.readAdr(favourites_[index].location - BYTES_BEFORE, favourites_[index].bytes_around.size());
+      ScannerObj.readAdr(favourites_[index].location - bytes_before, favourites_[index].bytes_around.size());
 
-  if (favourites_[index].bytes_around.size() != BYTES_BEFORE + BYTES_AFTER + favourites_[index].value.size()) {
+  if (favourites_[index].bytes_around.size() != bytes_before + bytes_after + favourites_[index].value.size()) {
     favourites_[index].bytes_around.clear();
     favourites_[index].value = ScannerObj.readAdr(favourites_[index].location, favourites_[index].value.size());
     if (favourites_[index].value.empty()) {
@@ -52,8 +52,8 @@ void FavouriteList::rescanNoLock(const Scanner& ScannerObj, uint64_t index, Targ
       return;
     }
   } else {
-    favourites_[index].value.assign(favourites_[index].bytes_around.begin() + BYTES_BEFORE,
-                                    favourites_[index].bytes_around.begin() + BYTES_BEFORE +
+    favourites_[index].value.assign(favourites_[index].bytes_around.begin() + bytes_before,
+                                    favourites_[index].bytes_around.begin() + bytes_before +
                                         static_cast<int64_t>(favourites_[index].value.size()));
   }
 
@@ -64,12 +64,12 @@ void FavouriteList::rescanNoLock(const Scanner& ScannerObj, uint64_t index, Targ
     });
 }
 
-void FavouriteList::rescan(const Scanner& ScannerObj, uint64_t index, TargetTypeT TargetType) {
+void FavouriteList::rescan(const Scanner& ScannerObj, uint64_t index, TargetType TargetType) {
   std::scoped_lock<std::mutex> lock(mutex_);
   rescanNoLock(ScannerObj, index, TargetType);
 }
 
-void FavouriteList::rescanAll(const Scanner& ScannerObj, TargetTypeT TargetType) {
+void FavouriteList::rescanAll(const Scanner& ScannerObj, TargetType TargetType) {
   std::scoped_lock<std::mutex> lock(mutex_);
 
   for (uint64_t i = 0; i < favourites_.size(); ++i) rescanNoLock(ScannerObj, i, TargetType);
@@ -89,10 +89,10 @@ void FavouriteList::setFreezeVal(uint64_t index, const std::vector<uint8_t>& set
 }
 
 void FavouriteList::startFreezeThread(const Scanner& ScannerObj) {
-  if (freezeThread.joinable()) freezeThread.join();
-  freezeRunning = true;
-  freezeThread = std::thread([&]() {
-    while (freezeRunning) {
+  if (freeze_thread_.joinable()) freeze_thread_.join();
+  freeze_running_ = true;
+  freeze_thread_ = std::thread([&]() {
+    while (freeze_running_) {
       {
         std::scoped_lock<std::mutex> lock(mutex_);
         for (const auto& favourite : favourites_)

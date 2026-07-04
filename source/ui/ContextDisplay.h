@@ -5,46 +5,48 @@
 
 #include "types.h"
 
+//might be overengineered.......
+
 namespace ContextIntent {
-struct rescan {
+struct Rescan {
   uint64_t index;
 };
 
-struct rescanAll {};
+struct RescanAll {};
 
-struct write {
+struct Write {
   uint64_t index;
 };
 
-struct regularRefresh {
+struct RegularRefresh {
   float seconds;
 };
 }  // namespace ContextIntent
 
 using ContextResult = std::variant<std::monostate,
-                                   ContextIntent::rescan,
-                                   ContextIntent::rescanAll,
-                                   ContextIntent::write,
-                                   ContextIntent::regularRefresh>;
+                                   ContextIntent::Rescan,
+                                   ContextIntent::RescanAll,
+                                   ContextIntent::Write,
+                                   ContextIntent::RegularRefresh>;
 
 class ContextDisplay {
-  float button_w = 150.0F;
-  float button_h = 150.0F;
-  float slider_w = 150.0F;
-  float checkbox_w = 50.0F;
-  bool IsRefresh = false;
+  float button_w_ = 150.0F;
+  float button_h_ = 150.0F;
+  float slider_w_ = 150.0F;
+  float checkbox_w_ = 50.0F;
+  bool is_refresh_ = false;
 
-  float DrawRefreshInterval(float RefreshDuration);
-  bool DrawRefreshAllButton() const;
-  bool DrawRefreshContextButton() const;
-  void AlignButtons();
+  float drawRefreshInterval(float RefreshDuration);
+  bool drawRefreshAllButton() const;
+  bool drawRefreshContextButton() const;
+  void alignButtons();
 
-  template <typename T> static void DrawContextMenu(const T Entry) {
-    if (Entry.bytes_around.size() != Entry.value.size() + BYTES_BEFORE + BYTES_AFTER) {
+  template <typename T> static void drawContextMenu(const T entry) {
+    if (entry.value.size() + bytes_before + bytes_after != entry.bytes_around.size()) {
       return;
     }
 
-    for (uint64_t i = 0; i < Entry.bytes_around.size(); ++i) {
+    for (uint64_t i = 0; i < entry.bytes_around.size(); ++i) {
       ImGui::SameLine(0, 4);
       if (i % 32 == 0)
         ImGui::NewLine();
@@ -52,40 +54,40 @@ class ContextDisplay {
         ImGui::Text(" ");
         ImGui::SameLine(0, 4);
       }
-      if (i >= BYTES_BEFORE && i + BYTES_AFTER < Entry.bytes_around.size()) {
+      if (i >= bytes_before && i + bytes_after < entry.bytes_around.size()) {
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
-        ImGui::Text("%02X", Entry.bytes_around[i]);
+        ImGui::Text("%02X", entry.bytes_around[i]);
         ImGui::PopStyleColor();
       } else
-        ImGui::Text("%02X", Entry.bytes_around[i]);
+        ImGui::Text("%02X", entry.bytes_around[i]);
     }
   }
 
 public:
-  template <typename T> ContextResult CycleContext(const uint64_t selected_row, const T Entry, float refreshSeconds) {
-    if (refreshSeconds >= 0)
-      IsRefresh = true;
+  template <typename T> ContextResult cycleContext(const uint64_t selected_row, const T entry, float refresh_seconds) {
+    if (refresh_seconds >= 0)
+      is_refresh_ = true;
     else
-      IsRefresh = false;
+      is_refresh_ = false;
 
     ContextResult ReturnAction{};
 
-    DrawContextMenu(Entry);
+    drawContextMenu(entry);
 
-    AlignButtons();
+    alignButtons();
 
-    auto RefreshContext = DrawRefreshContextButton();
+    auto RefreshContext = drawRefreshContextButton();
 
     ImGui::SameLine();
-    float NewRefreshDuration = DrawRefreshInterval(refreshSeconds);
+    float NewRefreshDuration = drawRefreshInterval(refresh_seconds);
     if (NewRefreshDuration != -2) {
-      ReturnAction = ContextIntent::regularRefresh(NewRefreshDuration);
+      ReturnAction = ContextIntent::RegularRefresh(NewRefreshDuration);
     }
     ImGui::SameLine();
-    auto RefreshAll = DrawRefreshAllButton();
+    auto RefreshAll = drawRefreshAllButton();
 
-    if (RefreshContext) return ContextIntent::rescan{selected_row};
-    if (RefreshAll) return ContextIntent::rescanAll{};
+    if (RefreshContext) return ContextIntent::Rescan{selected_row};
+    if (RefreshAll) return ContextIntent::RescanAll{};
 
     return ReturnAction;
   }
@@ -93,23 +95,23 @@ public:
   PendingAction ResolveContextIntent(ContextResult& cont, bool IsHitWindow) {
     PendingAction result{};
     std::visit(overloaded{
-                   [&](ContextIntent::rescan& c) -> void {
+                   [&](ContextIntent::Rescan& c) -> void {
                      if (IsHitWindow)
-                       result = Action::rescanHit{c.index};
+                       result = Action::RescanHit{c.index};
                      else
-                       result = Action::rescanFavourite{c.index};
+                       result = Action::RescanFavourite{c.index};
                    },
-                   [&](ContextIntent::rescanAll&) -> void {
+                   [&](ContextIntent::RescanAll&) -> void {
                      if (IsHitWindow)
-                       result = Action::rescanAllHits{};
+                       result = Action::RescanAllHits{};
                      else
-                       result = Action::rescanAllFavourites{};
+                       result = Action::RescanAllFavourites{};
                    },
-                   [&](ContextIntent::regularRefresh& c) -> void {
+                   [&](ContextIntent::RegularRefresh& c) -> void {
                      if (IsHitWindow)
-                       result = Action::regularRefreshHits{c.seconds};
+                       result = Action::RegularRefreshHits{c.seconds};
                      else
-                       result = Action::regularRefreshFavourite{c.seconds};
+                       result = Action::RegularRefreshFavourite{c.seconds};
                    },
                    [&](auto&) {},
                },

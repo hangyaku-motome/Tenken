@@ -8,16 +8,16 @@
 
 class HitW {
 private:
-  static bool InitW();
-  static void EndW();
-  PendingAction DrawHitTable(const std::vector<HitInfoT>& Hits, const TargetInfoT& TargetInfo);
+  static bool initW();
+  static void endW();
+  PendingAction drawHitTable(const std::vector<HitInfoT>& hits, const TargetInfoT& target_info);
 
-  bool IsEditing = false;
-  bool JustStartedEditing = false;
-  int64_t selected_row = -1;
+  bool is_editing_ = false;
+  bool just_started_editing_ = false;
+  int64_t selected_row_ = -1;
 
-  ContextDisplay Context;
+  ContextDisplay context;
 
 public:
-  PendingAction CycleW(const std::vector<HitInfoT>& Hits, SessionState& State);
+  PendingAction cycleW(const std::vector<HitInfoT>& hits, SessionState& state);
 };

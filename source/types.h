@@ -15,54 +15,54 @@
   #include <sys/mman.h>
 #endif
 
-constexpr int8_t BYTES_BEFORE = 32;
-constexpr int8_t BYTES_AFTER = 32;
-constexpr float EPSILON = 0.1F;
+constexpr int8_t bytes_before = 32;
+constexpr int8_t bytes_after = 32;
+constexpr float epsilon = 0.1F;
 constexpr char hex[] = "0123456789ABCDEF";
 constexpr auto popup_flags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
 
 // shouldn't invalid be first, and unset be first for TargetTypeT and RelativeStatus respectively? Also...Naming
 // convention problems.
-enum class TargetTypeT : int8_t {
+enum class TargetType : int8_t {
   uInt8,
   uInt16,
   uInt32,
   uInt64,
-  Int8,
-  Int16,
-  Int32,
-  Int64,
-  Float,
-  Double,
-  String,
-  AOB,
-  Invalid
+  int8,
+  int16,
+  int32,
+  int64,
+  f32,
+  f64,
+  string,
+  aob,
+  invalid
 };
 
-enum class RelativeStatus : int8_t { UNCHANGED, CHANGED, INCREASED, DECREASED, UNSET };
+enum class RelativeStatus : int8_t { unchanged, changed, increased, decreased, unset };
 
 struct HitInfoT {
   uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
   std::vector<uint8_t> bytes_around;
-  RelativeStatus status = RelativeStatus::UNSET;
+  RelativeStatus status = RelativeStatus::unset;
 };
 
 enum class MapType : int8_t {
-  UNSET,
-  MAIN_EXEC_CODE,
-  MAIN_EXEC_DATA,
-  MAIN_EXEC_CONST,
-  SHARED_LIB_CODE,
-  SHARED_LIB_DATA,
-  SHARED_LIB_CONST,
-  HEAP,
-  ANON,
-  STACK,
-  KERNEL_PAGES,
-  UNREADABLE
+  unset,
+  mainExecCode,
+  mainExecData,
+  mainExecConst,
+  sharedLibCode,
+  sharedLibData,
+  sharedLibConst,
+  heap,
+  anon,
+  stack,
+  kernelPages,
+  unreadable
 };
 
 struct MapInfoT {
@@ -80,7 +80,7 @@ struct ProcessInfoT {
 
 struct TargetInfoT {
   std::vector<uint8_t> value{};
-  TargetTypeT TargetType = TargetTypeT::Invalid;
+  TargetType target_type = TargetType::invalid;
   std::optional<std::vector<bool>> mask;
 };
 
@@ -89,9 +89,9 @@ struct FavouriteInfoT {
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
   std::string desc;
-  RelativeStatus status = RelativeStatus::UNSET;
+  RelativeStatus status = RelativeStatus::unset;
   std::vector<uint8_t> bytes_around;
-  TargetTypeT type;
+  TargetType type;
 
   bool frozen = false;
   std::vector<uint8_t> frozen_value;
@@ -133,15 +133,15 @@ struct Snapshot {
 };
 
 struct SessionState {
-  TargetInfoT TargetInfo;
-  ProcessInfoT TargetProcInfo;
-  std::atomic<bool> IsScanning = false;
-  std::atomic<float> ScanProgress;
-  float hitRefreshSeconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
-  float favRefreshSeconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
-  std::vector<MapInfoT> ActiveRegions;
-  std::atomic<bool> IsUnknownnValueScan = false;
-  Snapshot Snapshots;
+  TargetInfoT target_info;
+  ProcessInfoT target_proc_info;
+  std::atomic<bool> is_scanning = false;
+  std::atomic<float> scan_progress;
+  float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
+  float fav_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
+  std::vector<MapInfoT> active_regions;
+  std::atomic<bool> is_unknown_value_scan = false;
+  Snapshot snapshots;
 };
 
 //
@@ -150,16 +150,16 @@ struct SessionState {
 namespace Action {
 
 struct TargetProcChosen {
-  ProcessInfoT chosenProc;
+  ProcessInfoT chosen_proc;
 };
 
-struct firstScan {
-  TargetInfoT targetInfo;
+struct FirstScan {
+  TargetInfoT target_info;
 };
 
-struct startUnknownValueScan {};
+struct StartUnknownValueScan {};
 
-struct filterByValue {
+struct FilterByValue {
   std::vector<uint8_t> value;
 };
 
@@ -167,73 +167,73 @@ struct filterByStatus {
   RelativeStatus status;
 };
 
-struct writeHit {
+struct WriteHit {
   uint64_t index;
   std::vector<uint8_t> value;
 };
 
-struct rescanHit {
+struct RescanHit {
   uint64_t index;
 };
 
-struct rescanAllHits {};
+struct RescanAllHits {};
 
-struct regularRefreshHits {
+struct RegularRefreshHits {
   float seconds;
 };
 
 // Favourite stuff.
 // maybe put all related structs into a namespace?
 
-struct addFavourite {
+struct AddFavourite {
   uint64_t hitIndex;
 };
 
-struct removeFavourite {
+struct RemoveFavourite {
   uint64_t index;
 };
 
-struct writeFavourite {
+struct WriteFavourite {
   uint64_t index;
   std::vector<uint8_t> value;
 };
 
-struct isFreezeFavourite {
+struct IsFreezeFavourite {
   uint64_t index;
   bool freeze;
 };
 
-struct freezeValueFavourite {
+struct FreezeValueFavourite {
   uint64_t index;
   std::vector<uint8_t> value;
 };
 
-struct descFavourite {
+struct DescFavourite {
   uint64_t index;
   std::string value;
 };
 
-struct rescanFavourite {
+struct RescanFavourite {
   uint64_t index;
 };
 
-struct regularRefreshFavourite {
+struct RegularRefreshFavourite {
   float seconds;
 };
 
-struct rescanAllFavourites {};
+struct RescanAllFavourites {};
 
 // end of favourite stuff.
 
-struct restartScan {};
+struct RestartScan {};
 
-struct setTargetInfo {
-  TargetTypeT type;
+struct SetTargetInfo {
+  TargetType type;
   std::vector<uint8_t> value;
   std::optional<std::vector<bool>> mask;
 };
 
-struct undoScan {};
+struct UndoScan {};
 
 };  // namespace Action
 
@@ -244,26 +244,26 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 using PendingAction = std::variant<std::monostate,
                                    Action::TargetProcChosen,
-                                   Action::firstScan,
-                                   Action::startUnknownValueScan,
-                                   Action::filterByValue,
+                                   Action::FirstScan,
+                                   Action::StartUnknownValueScan,
+                                   Action::FilterByValue,
                                    Action::filterByStatus,
-                                   Action::writeHit,
-                                   Action::addFavourite,
-                                   Action::removeFavourite,
-                                   Action::writeFavourite,
-                                   Action::freezeValueFavourite,
-                                   Action::isFreezeFavourite,
-                                   Action::descFavourite,
-                                   Action::restartScan,
-                                   Action::regularRefreshHits,
-                                   Action::regularRefreshFavourite,
-                                   Action::rescanHit,
-                                   Action::rescanAllHits,
-                                   Action::rescanFavourite,
-                                   Action::rescanAllFavourites,
-                                   Action::setTargetInfo,
-                                   Action::undoScan>;
+                                   Action::WriteHit,
+                                   Action::AddFavourite,
+                                   Action::RemoveFavourite,
+                                   Action::WriteFavourite,
+                                   Action::FreezeValueFavourite,
+                                   Action::IsFreezeFavourite,
+                                   Action::DescFavourite,
+                                   Action::RestartScan,
+                                   Action::RegularRefreshHits,
+                                   Action::RegularRefreshFavourite,
+                                   Action::RescanHit,
+                                   Action::RescanAllHits,
+                                   Action::RescanFavourite,
+                                   Action::RescanAllFavourites,
+                                   Action::SetTargetInfo,
+                                   Action::UndoScan>;
 
 //
 // End of Action stuff.

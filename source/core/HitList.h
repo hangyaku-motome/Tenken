@@ -8,19 +8,19 @@
 #include "types.h"
 
 class HitList {
-  std::vector<HitInfoT> cachedhits_;  // assigning hits_ to this in filter
+  std::vector<HitInfoT> cached_hits_;  // assigning hits_ to this in filter
   std::vector<HitInfoT> hits_;
   std::mutex mutex_;
 
 public:
-  void assignNew(const std::vector<HitInfoT>& NewHits);
+  void assignNew(const std::vector<HitInfoT>& new_hits);
 
-  void rescan(const Scanner& ScannerObj, uint64_t index, TargetTypeT TargetType);
+  void rescan(const Scanner& scanner, uint64_t index, TargetType target_type);
 
-  void write(const Scanner& ScannerObj, uint64_t index, const std::vector<uint8_t>& value);
+  void write(const Scanner& scanner_obj, uint64_t index, const std::vector<uint8_t>& value);
 
-  void filter(RelativeStatus KeepType);
-  void filter(const std::vector<uint8_t>& KeepValue);
+  void filter(RelativeStatus keep_type);
+  void filter(const std::vector<uint8_t>& keep_type);
 
   uint64_t count();
 
@@ -30,5 +30,5 @@ public:
 
   void reset() { hits_.clear(); }
 
-  void RestoreOldHits() { hits_ = cachedhits_; }
+  void restore_old_hits() { hits_ = cached_hits_; }
 };

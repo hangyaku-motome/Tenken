@@ -9,17 +9,17 @@
 #include "types.h"
 
 
-void TargetPopUp::InitPopUp() {
+void TargetPopUp::initPopUp() {
   processes_ = ProcessOS::getProcTargets();
-  Log::Info("Found PID count: " + std::to_string(processes_.size()) + "\n");
+  Log::info("Found PID count: " + std::to_string(processes_.size()) + "\n");
   ImGui::OpenPopup("Target List");
   clicked_ = false;
 }
 
-PendingAction TargetPopUp::CyclePUp() {
-  if (clicked_) InitPopUp();
+PendingAction TargetPopUp::cyclePopUp() {
+  if (clicked_) initPopUp();
 
-  PendingAction ReturnAction{};
+  PendingAction return_action{};
 
   if (!ImGui::BeginPopupModal("Target List", nullptr, popup_flags)) return {};
 
@@ -29,21 +29,21 @@ PendingAction TargetPopUp::CyclePUp() {
 
   if (!ImGui::BeginTable("Targets", 3)) return {};
 
-  for (const auto& Target : processes_) {
-    if (!search_.empty() && Target.name.find(search_) == std::string::npos) continue;
+  for (const auto& target : processes_) {
+    if (!search_.empty() && target.name.find(search_) == std::string::npos) continue;
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(std::to_string(Target.pid).c_str());
+    ImGui::TextUnformatted(std::to_string(target.pid).c_str());
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(Target.name.c_str());
+    ImGui::TextUnformatted(target.name.c_str());
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(Target.cmdline.c_str());
+    ImGui::TextUnformatted(target.cmdline.c_str());
     ImGui::PushID(ImGui::TableGetRowIndex());
     ImGui::SameLine();
     if (ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns)) {
-      ReturnAction = Action::TargetProcChosen{Target};
-      Log::Info("...Chosen PID: " + std::to_string(Target.pid) + "   Target name:" + Target.name +
-                "   Target cmdline:" + Target.cmdline + "\n");
+      return_action = Action::TargetProcChosen{target};
+      Log::info("...Chosen PID: " + std::to_string(target.pid) + "   Target name:" + target.name +
+                "   Target cmdline:" + target.cmdline + "\n");
     }
     ImGui::PopID();
   }
@@ -56,9 +56,9 @@ PendingAction TargetPopUp::CyclePUp() {
   if (ImGui::Button("Refresh")) {
     processes_ = ProcessOS::getProcTargets();
 
-    Log::Info("Found PID count: " + std::to_string(processes_.size()) + "\n");
+    Log::info("Found PID count: " + std::to_string(processes_.size()) + "\n");
   }
 
   ImGui::EndPopup();
-  return ReturnAction;
+  return return_action;
 }

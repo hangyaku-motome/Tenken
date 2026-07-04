@@ -37,5 +37,5 @@ public:
       : scanner_(&scanner) {}
 
   bool clicked_ = false;
-  void CyclePUp(std::vector<MapInfoT>& ActiveRegions);
+  void cyclePopUp(std::vector<MapInfoT>& ActiveRegions);
 };

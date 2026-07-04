@@ -7,11 +7,11 @@
 class TargetPopUp {
 private:
   std::vector<ProcessInfoT> processes_;
-  void InitPopUp();
+  void initPopUp();
   std::string search_;
 
 public:
   bool clicked_ = false;
 
-  PendingAction CyclePUp();
+  PendingAction cyclePopUp();
 };

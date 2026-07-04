@@ -13,6 +13,6 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* win
 void SetDefaultDisplay();
 
 std::string MainMenuBarCycle(bool& TargetPUpClicked, bool& MapPupClicked, bool& LogWEnabled, bool& HexWEnabled, bool& DataInspectorWEnabled);
-bool GetTargetValue(TargetTypeT TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags = 0);
+bool GetTargetValue(TargetType TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags = 0);
 
-void printData(const std::vector<uint8_t>& data, TargetTypeT TargetType);
+void printData(const std::vector<uint8_t>& data, TargetType TargetType);

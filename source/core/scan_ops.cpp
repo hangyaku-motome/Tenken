@@ -9,66 +9,66 @@
 #include "types.h"
 #include "utils.h"
 
-void ScanOp::rescanAllHits(const Scanner& ScannerObj,
-                           HitList& Hit,
+void ScanOp::rescanAllHits(const Scanner& scanner,
+                           HitList& hit,
                            std::atomic<float>& progress,
-                           const TargetTypeT TargetType) {
-  auto hit_count = Hit.count();
+                           const TargetType target_type) {
+  auto hit_count = hit.count();
 
   for (uint64_t i = 0; i < hit_count; ++i) {
-    Hit.rescan(ScannerObj, i, TargetType);
-    hit_count = Hit.count();
+    hit.rescan(scanner, i, target_type);
+    hit_count = hit.count();
     progress = static_cast<float>(i) / hit_count;
   }
 }
 
 // here too...won't std::move for now.
-std::vector<HitInfoT> ScanOp::startScan(const Scanner& ScannerObj, const TargetInfoT& TargetInfo, std::atomic<float> & ScanProgress, const std::vector<MapInfoT>& ActiveRegions) {
-  std::vector<MapInfoT> Maps = ActiveRegions;
-  if (Maps.empty()) return {};
+std::vector<HitInfoT> ScanOp::startScan(const Scanner& scanner, const TargetInfoT& target_info, std::atomic<float> & scan_progress, const std::vector<MapInfoT>& active_region) {
+  std::vector<MapInfoT> maps = active_region;
+  if (maps.empty()) return {};
 
-  std::vector<HitInfoT> ReturnHits;
+  std::vector<HitInfoT> return_hits;
 
-  for (uint64_t i = 0; i < Maps.size(); ++i) {
-    ScanProgress = static_cast<float>(i) / Maps.size();
-    std::vector<uint8_t> Data = ScannerObj.readAdr(Maps[i].start, Maps[i].end - Maps[i].start);
-    if (Data.size() != Maps[i].end - Maps[i].start) {
-      Maps.erase(Maps.begin() + i);
+  for (uint64_t i = 0; i < maps.size(); ++i) {
+    scan_progress = static_cast<float>(i) / maps.size();
+    std::vector<uint8_t> data = scanner.readAdr(maps[i].start, maps[i].end - maps[i].start);
+    if (data.size() != maps[i].end - maps[i].start) {
+      maps.erase(maps.begin() + i);
       continue;
     }
 
-    dispatchType(TargetInfo.TargetType, [&]<typename T> {
+    dispatchType(target_info.target_type, [&]<typename T> {
       if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
-        for (const auto RelativeOffset : searchValue(Data, TargetInfo.value, TargetInfo.mask.value())) {
+        for (const auto rel_offset : searchValue(data, target_info.value, target_info.mask.value())) {
           HitInfoT PushHit;
-          PushHit.location = Maps[i].start + RelativeOffset;
+          PushHit.location = maps[i].start + rel_offset;
           PushHit.bytes_around =
-              findBytesAround(RelativeOffset, Data, static_cast<uint32_t>(TargetInfo.value.size()));
-          std::vector<uint8_t> value(PushHit.bytes_around.begin() + BYTES_BEFORE,
-                                     PushHit.bytes_around.begin() + BYTES_BEFORE + TargetInfo.value.size());
+              findBytesAround(rel_offset, data, static_cast<uint32_t>(target_info.value.size()));
+          std::vector<uint8_t> value(PushHit.bytes_around.begin() + bytes_before,
+                                     PushHit.bytes_around.begin() + bytes_before + target_info.value.size());
           PushHit.value = value;
-          ReturnHits.push_back(PushHit);
+          return_hits.push_back(PushHit);
         }
       } else {
         T target;
         if constexpr (std::is_same_v<T, std::string>) {
-          target.resize(TargetInfo.value.size());
-          memcpy(target.data(), TargetInfo.value.data(), target.size());
+          target.resize(target_info.value.size());
+          memcpy(target.data(), target_info.value.data(), target.size());
         } else
-          memcpy(&target, TargetInfo.value.data(), sizeof(T));
-        for (const auto RelativeOffset : searchValue(Data, target)) {
+          memcpy(&target, target_info.value.data(), sizeof(T));
+        for (const auto rel_offset : searchValue(data, target)) {
           HitInfoT PushHit;
-          PushHit.location = Maps[i].start + RelativeOffset;
+          PushHit.location = maps[i].start + rel_offset;
           PushHit.bytes_around =
-              findBytesAround(RelativeOffset, Data, static_cast<uint32_t>(TargetInfo.value.size()));
-          std::vector<uint8_t> value(PushHit.bytes_around.begin() + BYTES_BEFORE,
-                                     PushHit.bytes_around.begin() + BYTES_BEFORE + TargetInfo.value.size());
+              findBytesAround(rel_offset, data, static_cast<uint32_t>(target_info.value.size()));
+          std::vector<uint8_t> value(PushHit.bytes_around.begin() + bytes_before,
+                                     PushHit.bytes_around.begin() + bytes_before + target_info.value.size());
           PushHit.value = value;
-          ReturnHits.push_back(PushHit);
+          return_hits.push_back(PushHit);
         }
       }
     });
   }
-  Log::Info(std::to_string(ReturnHits.size()) + " hits found.");
-  return ReturnHits;
+  Log::info(std::to_string(return_hits.size()) + " hits found.");
+  return return_hits;
 }

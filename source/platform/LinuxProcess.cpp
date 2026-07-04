@@ -61,7 +61,7 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
   std::ifstream mapsStream;
   mapsStream.open("/proc/" + std::to_string(pid_) + "/maps");
   if (!mapsStream.is_open()) {
-    Log::Error("Couldn't open maps!" + std::string(strerror(errno)));
+    Log::error("Couldn't open maps!" + std::string(strerror(errno)));
     return {};
   }
   std::vector<MapInfoT> MapRegions;
@@ -76,7 +76,7 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     exec_name[len] = '\0';
   } else {
     exec_name[len] = '\0';
-    Log::Error("Failed to read /proc/pid/exe");
+    Log::error("Failed to read /proc/pid/exe");
   }
 
   // okay I decided I will first do a scan of all executable files, and put them all here excluding the main exec name.
@@ -119,31 +119,31 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
 
     if (name == exec_name) {
       if (perms.find('x') != std::string::npos)
-        type = MapType::MAIN_EXEC_CODE;
+        type = MapType::mainExecCode;
       else if (perms.find('w') != std::string::npos)
-        type = MapType::MAIN_EXEC_DATA;
+        type = MapType::mainExecData;
       else
-        type = MapType::MAIN_EXEC_CONST;
+        type = MapType::mainExecConst;
     } else if (name.empty()) {
-      type = MapType::ANON;
+      type = MapType::anon;
       name = "UNNAMED_REGION";
     } else if (name == "[stack]") {
-      type = MapType::STACK;
+      type = MapType::stack;
     } else if (name == "[heap]") {
-      type = MapType::HEAP;
+      type = MapType::heap;
     } else if (name == "[vvar]" || name == "[vvar_vlock]" || name == "[vdso]" || name == "[vsyscall]") {
-      type = MapType::KERNEL_PAGES;
+      type = MapType::kernelPages;
     } else if (libraries.contains(name)) {
       if (perms.find('x') != std::string::npos)
-        type = MapType::SHARED_LIB_CODE;
+        type = MapType::sharedLibCode;
       else if (perms.find('w') != std::string::npos)
-        type = MapType::SHARED_LIB_DATA;
+        type = MapType::sharedLibData;
       else
-        type = MapType::SHARED_LIB_CONST;
+        type = MapType::sharedLibConst;
     } else if (perms.find('r') == std::string::npos) {
-      type = MapType::UNREADABLE;
+      type = MapType::unreadable;
     } else
-      type = MapType::UNSET;
+      type = MapType::unset;
 
     MapInfoT TempMapReg = {start, end, name, type};
     MapRegions.push_back(TempMapReg);
@@ -227,7 +227,7 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
       mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, static_cast<int64_t>(curr_offset)));
 
   if (ptr == MAP_FAILED) {
-    Log::Error("mmap failed." + std::string(strerror(errno)));
+    Log::error("mmap failed." + std::string(strerror(errno)));
     return nullptr;
   }
   return ptr;

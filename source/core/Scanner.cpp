@@ -9,9 +9,9 @@ bool Scanner::writeAdr(uint64_t address, const std::vector<uint8_t>& value) cons
   return proc_->write(address, value);
 };
 
-std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t readSize) const {
+std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t read_size) const {
   if (proc_ == nullptr) return {};
-  return proc_->read(address, readSize);
+  return proc_->read(address, read_size);
 };
 
 // we could maybe std::move the ActiveRegions since we probably won't need them afterwards but...Meh.
@@ -19,72 +19,72 @@ std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t readSize) const
 // restart ActiveRegion will be filled in again.
 //  Well...Actually it SHOULD be filled in again, since we check for empty but this means...what's the point if we are
 //  going to rescan to fill it up again?
-Snapshot Scanner::getSnapshot(const std::vector<MapInfoT>& ActiveRegions, std::atomic<float>& progress) const {
+Snapshot Scanner::getSnapshot(const std::vector<MapInfoT>& active_regions, std::atomic<float>& progress) const {
   if (proc_ == nullptr) return {};
-  std::vector<MapInfoT> Maps = ActiveRegions;
+  std::vector<MapInfoT> maps = active_regions;
   std::vector<MappedRegion> regs;
 
-  for (uint64_t i = 0; i < Maps.size(); ++i) {
-    progress = static_cast<float>(i) / Maps.size();
-    char* ptr = proc_->allocMMapDisk(Maps[i].end - Maps[i].start);
+  for (uint64_t i = 0; i < maps.size(); ++i) {
+    progress = static_cast<float>(i) / maps.size();
+    char* ptr = proc_->allocMMapDisk(maps[i].end - maps[i].start);
     if (ptr == nullptr) {
-      Log::Error("mmap failed for region " + std::to_string(i + 1) + " will skip.");  // still wonky but whatever.
-      Maps.erase(Maps.begin() + i);
+      Log::error("mmap failed for region " + std::to_string(i + 1) + " will skip.");  // still wonky but whatever.
+      maps.erase(maps.begin() + i);
       --i;
       continue;
     }
-    auto data = proc_->read(Maps[i].start, Maps[i].end - Maps[i].start);
-    if (data.size() != Maps[i].end - Maps[i].start) {
-      Log::Error("partial read for region " + std::to_string(i) + " will skip.");
-      proc_->unAllocMMapDisk(reinterpret_cast<uint64_t>(ptr), Maps[i].end - Maps[i].start);
-      Maps.erase(Maps.begin() + i);
+    auto data = proc_->read(maps[i].start, maps[i].end - maps[i].start);
+    if (data.size() != maps[i].end - maps[i].start) {
+      Log::error("partial read for region " + std::to_string(i) + " will skip.");
+      proc_->unAllocMMapDisk(reinterpret_cast<uint64_t>(ptr), maps[i].end - maps[i].start);
+      maps.erase(maps.begin() + i);
       --i;
       continue;
     }
-    memcpy(ptr, data.data(), Maps[i].end - Maps[i].start);
-    regs.push_back({ptr, Maps[i].end - Maps[i].start});
+    memcpy(ptr, data.data(), maps[i].end - maps[i].start);
+    regs.push_back({ptr, maps[i].end - maps[i].start});
   }
-  return {std::move(regs), std::move(Maps)}; //idk if these std::move do anything.
+  return {std::move(regs), std::move(maps)}; //idk if these std::move do anything.
 }
 
 std::vector<HitInfoT>
-Scanner::filterSnapshot(const Snapshot& Old, RelativeStatus KeepType, TargetTypeT TargetType) const {
-  std::vector<HitInfoT> Hits;
+Scanner::filterSnapshot(const Snapshot& old, RelativeStatus keep_types, TargetType target_types) const {
+  std::vector<HitInfoT> hits;
   RelativeStatus status;
 
-  dispatchType(TargetType, [&]<typename T> {
+  dispatchType(target_types, [&]<typename T> {
     if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<uint8_t>>)
       std::runtime_error("why is filter called with string or AOB.");
 
-    for (uint64_t i = 0; i < Old.maps.size(); ++i) {
-      auto new_data = proc_->read(Old.maps[i].start, Old.regions[i].size);
+    for (uint64_t i = 0; i < old.maps.size(); ++i) {
+      auto new_data = proc_->read(old.maps[i].start, old.regions[i].size);
       if (new_data.empty()) continue;
 
-      for (uint64_t k = 0; k + sizeof(T) <= Old.regions[i].size; k += sizeof(T)) {
+      for (uint64_t k = 0; k + sizeof(T) <= old.regions[i].size; k += sizeof(T)) {
         if (k + sizeof(T) >= new_data.size()) break;
 
         T new_value;
         T old_value;
         memcpy(&new_value, new_data.data() + k, sizeof(T));
-        memcpy(&old_value, Old.regions[i].ptr + k, sizeof(T));
+        memcpy(&old_value, old.regions[i].ptr + k, sizeof(T));
         status = tagChange(new_value, old_value);
 
-        if (KeepType == RelativeStatus::CHANGED) {
-          if (status != RelativeStatus::INCREASED && status != RelativeStatus::DECREASED) continue;
-        } else if (status != KeepType)
+        if (keep_types == RelativeStatus::changed) {
+          if (status != RelativeStatus::increased && status != RelativeStatus::decreased) continue;
+        } else if (status != keep_types)
           continue;
 
-        HitInfoT PushHit;
-        PushHit.location = Old.maps[i].start + k;
-        PushHit.bytes_around = findBytesAround(static_cast<uint32_t>(k), new_data, sizeof(T));
-        PushHit.value.assign(PushHit.bytes_around.begin() + BYTES_BEFORE,
-                             PushHit.bytes_around.begin() + BYTES_BEFORE + sizeof(T));
-        PushHit.status = status;
-        Hits.push_back(PushHit);
+        HitInfoT hit;
+        hit.location = old.maps[i].start + k;
+        hit.bytes_around = findBytesAround(static_cast<uint32_t>(k), new_data, sizeof(T));
+        hit.value.assign(hit.bytes_around.begin() + bytes_before,
+                             hit.bytes_around.begin() + bytes_before + sizeof(T));
+        hit.status = status;
+        hits.push_back(hit);
       }
     }
   });
-  return Hits;
+  return hits;
 };
 
 std::vector<MapInfoT> Scanner::getMapRegions() const {

@@ -175,8 +175,8 @@ template <typename out, typename T> std::vector<uint8_t> ValtoData(const T& val)
 }
 
 // this is a mess. I should rewrite this.
-bool GetTargetValue(const TargetTypeT TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags) {
-  if (TargetType == TargetTypeT::Invalid) return false;
+bool GetTargetValue(const TargetType TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags) {
+  if (TargetType == TargetType::invalid) return false;
 
   std::string tempbuf;
   return dispatchType(TargetType, [&]<typename T>() -> bool {
@@ -230,8 +230,8 @@ bool GetTargetValue(const TargetTypeT TargetType, std::vector<uint8_t>& write_to
   });
 }
 
-void printData(const std::vector<uint8_t>& data, TargetTypeT TargetType) {
-  if (data.empty() || TargetType == TargetTypeT::Invalid) return;
+void printData(const std::vector<uint8_t>& data, TargetType TargetType) {
+  if (data.empty() || TargetType == TargetType::invalid) return;
 
   std::string print_str = dispatchType(TargetType, [&]<typename T>() { return dataToStr<T>(data); });
   ImGui::TextUnformatted(print_str.c_str());
