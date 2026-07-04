@@ -124,8 +124,6 @@ int main() {
       Actions.push_back(HitWObj.CycleW({}, State));
 
     // Search window.
-    // this window is THE one who tells us if we need to do is unknown scan yet takes it as an arg afterwards. how dumb.
-    // Really need to fix this one.
     Actions.push_back(SearchWObj.CycleW(State.TargetInfo, State.TargetProcInfo.pid));
 
     // Favourite window.
