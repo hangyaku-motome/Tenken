@@ -52,7 +52,7 @@ add_executable(Tenken
     source/ui/display.cpp
     source/ui/LogW.cpp
     source/ui/TargetPopUp.cpp
-    source/ui/HitsW.cpp
+    source/ui/HitW.cpp
     source/ui/SearchW.cpp
     source/ui/FavouriteW.cpp
     source/ui/ContextDisplay.cpp

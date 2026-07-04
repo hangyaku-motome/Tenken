@@ -6,7 +6,7 @@
 #include "ContextDisplay.h"
 #include "types.h"
 
-class HitsW {
+class HitW {
 private:
   static bool InitW();
   static void EndW();

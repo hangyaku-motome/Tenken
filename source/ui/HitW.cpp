@@ -1,4 +1,4 @@
-#include "HitsW.h"
+#include "HitW.h"
 
 #include <algorithm>
 #include <cinttypes>
@@ -13,17 +13,17 @@
 #include "types.h"
 #include "utils.h"
 
-bool HitsW::InitW() { return ImGui::Begin("Hits"); }
+bool HitW::InitW() { return ImGui::Begin("Hits"); }
 
-void HitsW::EndW() { ImGui::End(); }
+void HitW::EndW() { ImGui::End(); }
 
-PendingAction HitsW::CycleW(const std::vector<HitInfoT>& Hits, SessionState& State) {
+PendingAction HitW::CycleW(const std::vector<HitInfoT>& Hits, SessionState& State) {
   if (!InitW()) {
     EndW();
     return {};
   }
 
-  if (!State.TargetChosen) {
+  if (State.TargetProcInfo.pid == 0) {
     ImGui::TextUnformatted("No target, choose one...");
     EndW();
     return {};
@@ -62,7 +62,7 @@ PendingAction HitsW::CycleW(const std::vector<HitInfoT>& Hits, SessionState& Sta
   return {};
 }
 
-PendingAction HitsW::DrawHitTable(const std::vector<HitInfoT>& Hits, const TargetInfoT& TargetInfo) {
+PendingAction HitW::DrawHitTable(const std::vector<HitInfoT>& Hits, const TargetInfoT& TargetInfo) {
   PendingAction ReturnAction{};
 
   float avail = ImGui::GetContentRegionAvail().y;
