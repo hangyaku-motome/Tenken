@@ -2,7 +2,6 @@
 #include <windows.h>
 #include <filesystem>
 
-// not implemented yet. Need to check if admin.
 bool Platform::checkPermission() {
   HANDLE token;
   TOKEN_ELEVATION elevation;
