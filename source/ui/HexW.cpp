@@ -29,6 +29,11 @@ void HexW::CycleW() {
     EndW();
     return;
   }
+  if (not scanner_->isAttached()) {
+    ImGui::Text("No target...!");
+    EndW();
+    return;
+  }
 
   ImGui::InputScalar("Go to:", ImGuiDataType_U64, &searchAddress_, nullptr, nullptr, "%016lx");
   ImGui::SameLine();

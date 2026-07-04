@@ -8,7 +8,7 @@
 #include "types.h"
 #include "utils.h"
 
-// TODO: readAround exists both in here and in HexW. Make a common function in utils or somehwere.
+// readAround exists both in here and in HexW. Make a common function in utils or somehwere...Or don't. Not a big deal for now.
 
 bool DataInspectorW::InitW() { return ImGui::Begin("Inspector"); }
 
@@ -17,6 +17,11 @@ void DataInspectorW::EndW() { ImGui::End(); }
 void DataInspectorW::CycleW() {
   if (!enabled_) return;
   if (!InitW()) {
+    EndW();
+    return;
+  }
+  if (not scanner_->isAttached()) {
+    ImGui::Text("No target!");
     EndW();
     return;
   }
@@ -68,7 +73,7 @@ void DataInspectorW::RenderTable() {
   if (types_.stringT) ImGui::TableSetupColumn("string");
   ImGui::TableHeadersRow();
 
-  // there is a much shorter way to do this but I will deal with that later.
+  // there is a much shorter way to do this but I will deal with that later. wayy later.
   for (uint32_t row = 0; row + LIMIT < bytes_.size(); ++row) {
     ImGui::TableNextRow();
 
@@ -136,7 +141,6 @@ void DataInspectorW::RenderTable() {
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(printbuf.c_str());
     }
-
 
     ++offset;
   }
