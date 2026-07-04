@@ -14,11 +14,13 @@ std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t readSize) const
   return proc_->read(address, readSize);
 };
 
-//we could maybe std::move the ActiveRegions since we probably won't need them afterwards but...Meh.
-//...edit. we kind of DO need it for now. if we want to move it, then we need to make sure on target change and scan restart ActiveRegion will be filled in again.
-// Well...Actually it SHOULD be filled in again, since we check for empty but this means...what's the point if we are going to rescan to fill it up again?
-Snapshot Scanner::StartUnknownValueScan(std::atomic<float>& progress, const std::vector<MapInfoT>& ActiveRegions) const {
-  if (proc_ == nullptr) std::runtime_error("start unk scan shouldn't be able to be called while scanner is not init.");
+// we could maybe std::move the ActiveRegions since we probably won't need them afterwards but...Meh.
+//...edit. we kind of DO need it for now. if we want to move it, then we need to make sure on target change and scan
+// restart ActiveRegion will be filled in again.
+//  Well...Actually it SHOULD be filled in again, since we check for empty but this means...what's the point if we are
+//  going to rescan to fill it up again?
+Snapshot Scanner::getSnapshot(const std::vector<MapInfoT>& ActiveRegions, std::atomic<float>& progress) const {
+  if (proc_ == nullptr) return {};
   std::vector<MapInfoT> Maps = ActiveRegions;
   std::vector<MappedRegion> regs;
 
@@ -42,12 +44,11 @@ Snapshot Scanner::StartUnknownValueScan(std::atomic<float>& progress, const std:
     memcpy(ptr, data.data(), Maps[i].end - Maps[i].start);
     regs.push_back({ptr, Maps[i].end - Maps[i].start});
   }
-  Snapshot ReturnSnapshot{std::move(regs), std::move(Maps)};
-  return ReturnSnapshot;
+  return {std::move(regs), std::move(Maps)}; //idk if these std::move do anything.
 }
 
 std::vector<HitInfoT>
-Scanner::FilterSnapshots(const Snapshot& Old, RelativeStatus KeepType, TargetTypeT TargetType) const {
+Scanner::filterSnapshot(const Snapshot& Old, RelativeStatus KeepType, TargetTypeT TargetType) const {
   std::vector<HitInfoT> Hits;
   RelativeStatus status;
 

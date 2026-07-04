@@ -17,9 +17,9 @@ public:
 
   std::vector<MapInfoT> getMapRegions() const;
 
-  Snapshot StartUnknownValueScan(std::atomic<float>& progress, const std::vector<MapInfoT>& ActiveRegions) const;
+  Snapshot getSnapshot(const std::vector<MapInfoT>& ActiveRegions, std::atomic<float>& progress) const;
 
-  std::vector<HitInfoT> FilterSnapshots(const Snapshot& Old, RelativeStatus KeepType, TargetTypeT TargetType) const;
+  std::vector<HitInfoT> filterSnapshot(const Snapshot& Old, RelativeStatus KeepType, TargetTypeT TargetType) const;
 
   bool isAttached() const {
     if (proc_ == nullptr) return false;
