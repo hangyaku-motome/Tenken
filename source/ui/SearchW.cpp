@@ -17,25 +17,25 @@ void SearchW::EndW() { ImGui::End(); }
 bool SearchW::GetTargetType(TargetTypeT& newType) {
   bool Changed = false;
 
-  if (ImGui::Combo("Type", &TempTargetType, "int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0")) {
-    newType = static_cast<TargetTypeT>(TempTargetType + 4);
+  if (ImGui::Combo("Type", &tmpTargetType_, "int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0")) {
+    newType = static_cast<TargetTypeT>(tmpTargetType_ + 4);
     Log::Info("Chosen target type:" + targetTypeToStr(newType) + "\n");
     Changed = true;
   }
 
   bool IsInt = (static_cast<int>(newType) <= 7);
   ImGui::BeginDisabled(!IsInt);
-  if (!IsInt) IsUnsigned = false;
+  if (!IsInt) IsUnsigned_ = false;
 
-  bool temp_IsUnsigned = IsUnsigned;
-  ImGui::Checkbox("Unsigned", &IsUnsigned);
-  if (temp_IsUnsigned != IsUnsigned) {
-    if (IsUnsigned) {
+  bool temp_IsUnsigned = IsUnsigned_;
+  ImGui::Checkbox("Unsigned", &IsUnsigned_);
+  if (temp_IsUnsigned != IsUnsigned_) {
+    if (IsUnsigned_) {
       Log::Info("Will search as unsigned.\n");
       newType = static_cast<TargetTypeT>(static_cast<int>(newType) - 4);
     } else {
       Log::Info("Will search as signed.\n");
-      newType = static_cast<TargetTypeT>(TempTargetType + 4);
+      newType = static_cast<TargetTypeT>(tmpTargetType_ + 4);
     }
     Changed = true;
   }
@@ -59,59 +59,60 @@ PendingAction SearchW::CycleFirstW(const TargetInfoT& TargetInfo) {
     if (TargetInfo.mask.has_value()) mask = TargetInfo.mask.value();
     if (strToAOBInfo(bytes, mask)) {
       ReturnAction = Action::setTargetInfo{TargetInfo.TargetType, bytes, mask};
-      InitValueGiven = true;
+      isInitValueGiven_ = true;
     }
 
-    if (TargetInfo.value.empty() && !UnknownValueScan) InitValueGiven = false;
+    if (TargetInfo.value.empty() && !isUnknownValueScan_) isInitValueGiven_ = false;
 
-  } else if (GetTargetValue(TargetInfo.TargetType, tempval)) {
-    ReturnAction = Action::setTargetInfo{TargetInfo.TargetType, tempval};
-    InitValueGiven = true;
+  } else if (GetTargetValue(TargetInfo.TargetType, tmpVal_)) {
+    ReturnAction = Action::setTargetInfo{TargetInfo.TargetType, tmpVal_};
+    isInitValueGiven_ = true;
   }
 
   if (TargetInfo.TargetType != TargetTypeT::Invalid && TargetInfo.TargetType != TargetTypeT::AOB)
-    if (ImGui::Checkbox("Unknown inital value.", &UnknownValueScan)) {
-      InitValueGiven = UnknownValueScan;
+    if (ImGui::Checkbox("Unknown inital value.", &isUnknownValueScan_)) {
+      isInitValueGiven_ = isUnknownValueScan_;
     }
 
-  if (UnknownValueScan && tempType == TargetTypeT::String) {
+  if (isUnknownValueScan_ && tempType == TargetTypeT::String) {
     ImGui::Text("Unknown value scanning with type string\nis not supported.");
     ImGui::BeginDisabled();
   } else
-    ImGui::BeginDisabled(!InitValueGiven);
+    ImGui::BeginDisabled(!isInitValueGiven_);
 
   bool PressedScan = ImGui::Button("Start First Scan!");
   ImGui::EndDisabled();
   EndW();
 
   if (PressedScan) {
-    if (UnknownValueScan) return Action::startUnknownValueScan{};
+    isOnFirstWindow_ = false;
+    if (isUnknownValueScan_) return Action::startUnknownValueScan{};
     return Action::firstScan{.targetInfo = TargetInfo};
   }
   return ReturnAction;
 }
 
-PendingAction SearchW::CycleSecondW(const TargetInfoT& TargetInfo, bool IsUnknownValueScan) {
+PendingAction SearchW::CycleSecondW(const TargetInfoT& TargetInfo) {
   if (!InitW()) {
     EndW();
     return {};
   }
 
-  if (!IsUnknownValueScan)
-    ImGui::Combo("Keep", &TempFilterType, "unchanged\0changed\0increased\0decreased\0specific value\0\0");
+  if (!isUnknownValueScan_)
+    ImGui::Combo("Keep", &tmpFilterType_, "unchanged\0changed\0increased\0decreased\0specific value\0\0");
   else
-    ImGui::Combo("Keep", &TempFilterType, "unchanged\0changed\0increased\0decreased\0\0");
+    ImGui::Combo("Keep", &tmpFilterType_, "unchanged\0changed\0increased\0decreased\0\0");
 
-  if (TempFilterType == 4) GetTargetValue(TargetInfo.TargetType, tempbuf);
+  if (tmpFilterType_ == 4) GetTargetValue(TargetInfo.TargetType, tmpBuf_);
 
-  ImGui::BeginDisabled(TempFilterType == -1 || (tempbuf.empty() && TempFilterType == 4));
+  ImGui::BeginDisabled(tmpFilterType_ == -1 || (tmpBuf_.empty() && tmpFilterType_ == 4));
   if (ImGui::Button("Rescan!")) {
     ImGui::EndDisabled();
     EndW();
-    if (TempFilterType == 4)
-      return Action::filterByValue{tempbuf};
+    if (tmpFilterType_ == 4)
+      return Action::filterByValue{tmpBuf_};
     else {
-      return Action::filterByStatus(static_cast<RelativeStatus>(TempFilterType));
+      return Action::filterByStatus(static_cast<RelativeStatus>(tmpFilterType_));
     }
   }
   ImGui::EndDisabled();
@@ -132,9 +133,41 @@ PendingAction SearchW::CycleSecondW(const TargetInfoT& TargetInfo, bool IsUnknow
   ImGui::SameLine();
   if (ImGui::Button("Restart scan.", {button_w, 0})) {
     EndW();
+    reset();
     return Action::restartScan{};
   }
 
   EndW();
   return {};
+}
+
+PendingAction SearchW::CycleW(TargetInfoT& TargetInfo, const int32_t procID) {
+  if (!procID) {
+    InitW();
+    ImGui::Text("No process chosen yet.");
+    EndW();
+    return {};
+  }
+
+  if (procID_ != procID) {
+    reset();
+    procID_ = procID;
+  }
+
+  if (isOnFirstWindow_) return CycleFirstW(TargetInfo);
+
+  return CycleSecondW(TargetInfo);
+}
+
+void SearchW::reset() {
+  isInitValueGiven_ = false;
+  IsUnsigned_ = false;
+  isBasedOnCurrentValues_ = false;
+  isUnknownValueScan_ = false;
+  isOnFirstWindow_ = true;
+
+  tmpFilterType_ = -1;
+  tmpBuf_.clear();
+  tmpVal_.clear();
+  tmpTargetType_ = -1;
 }
