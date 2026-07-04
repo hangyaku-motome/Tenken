@@ -1,7 +1,6 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 
-#include <iostream>
 #include <fstream>
 #include <nlohmann/json.hpp>
 
@@ -11,7 +10,7 @@
 #include "FavouriteW.h"
 #include "HexW.h"
 #include "HitList.h"
-#include "HitsW.h"
+#include "HitW.h"
 #include "LogW.h"
 #include "MapPopUp.h"
 #include "Platform.h"
@@ -49,8 +48,6 @@ int main() {
   }
 
   // Pointer scanning!
-  // Let's do that.
-  // nevermind...got caught up in something else.
 
   // Start up Dear ImGui.
   std::filesystem::path ImGuiInitPath = Platform::getImGuiInitPath();
@@ -67,7 +64,7 @@ int main() {
   Scanner ScannerObj;
 
   SearchW SearchWObj;
-  HitsW HitWObj;
+  HitW HitWObj;
   FavouriteW FavouriteWObj;
   LogW LogWObj;
   HexW HexWObj(ScannerObj);
@@ -127,7 +124,9 @@ int main() {
       Actions.push_back(HitWObj.CycleW({}, State));
 
     // Search window.
-    Actions.push_back(SearchWObj.CycleW(State.TargetInfo, State.SearchWStatus, State.IsUnknownnValueScan));
+    // this window is THE one who tells us if we need to do is unknown scan yet takes it as an arg afterwards. how dumb.
+    // Really need to fix this one.
+    Actions.push_back(SearchWObj.CycleW(State.TargetInfo, State.TargetProcInfo.pid));
 
     // Favourite window.
     Actions.push_back(FavouriteWObj.CycleW(Favourite.get(), State));
@@ -186,8 +185,6 @@ void ResolveActions(Scanner& ScannerObj,
               Favourite.reset();
               ScannerObj.init(a.chosenProc.pid);
               State.TargetProcInfo = a.chosenProc;
-              State.SearchWStatus = SessionState::SearchWStatusT::FIRST;
-              State.TargetChosen = true;
               Favourite.startFreezeThread(ScannerObj);
             },
             [&](const Action::firstScan) {
@@ -195,14 +192,13 @@ void ResolveActions(Scanner& ScannerObj,
                 auto hits = ScanOp::startScan(ScannerObj, State.TargetInfo, State.ScanProgress, State.ActiveRegions);
                 Hit.assignNew(std::move(hits));
               });
-              State.SearchWStatus = SessionState::SearchWStatusT::SECOND;
             },
             [&](const Action::startUnknownValueScan) {
-              State.IsUnknownnValueScan = true;
+              State.IsUnknownnValueScan =
+                  true;  // a way to know if we are doing it actively. it won't need Snapshot after scan 1.
               ScanOp::RunOnScannerThread(scannerThread, State, [&]() {
-                State.Snapshots = ScannerObj.StartUnknownValueScan(State.ScanProgress, State.ActiveRegions);
+                State.Snapshots = ScannerObj.getSnapshot(State.ActiveRegions, State.ScanProgress);
               });
-              State.SearchWStatus = SessionState::SearchWStatusT::SECOND;
             },
             [&](const Action::filterByValue& a) {
               ScanOp::RunOnScannerThread(scannerThread, State, [&, value = a.value]() {
@@ -213,7 +209,7 @@ void ResolveActions(Scanner& ScannerObj,
             [&](const Action::filterByStatus& a) {
               if (State.IsUnknownnValueScan) {
                 ScanOp::RunOnScannerThread(scannerThread, State, [&, status = a.status]() {
-                  Hit.assignNew(ScannerObj.FilterSnapshots(State.Snapshots, status, State.TargetInfo.TargetType));
+                  Hit.assignNew(ScannerObj.filterSnapshot(State.Snapshots, status, State.TargetInfo.TargetType));
                   State.IsUnknownnValueScan = false;
                   State.Snapshots = {};
                 });
@@ -261,7 +257,6 @@ void ResolveActions(Scanner& ScannerObj,
               State.hitRefreshSeconds = -1;
               State.TargetInfo.TargetType = TargetTypeT::Invalid;
               State.TargetInfo.value = {};
-              State.SearchWStatus = SessionState::SearchWStatusT::FIRST;
             },
             [&](const Action::setTargetInfo& a) {
               State.TargetInfo.TargetType = a.type;
