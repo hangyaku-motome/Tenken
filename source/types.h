@@ -17,12 +17,9 @@
 
 constexpr int8_t BYTES_BEFORE = 32;
 constexpr int8_t BYTES_AFTER = 32;
-
 constexpr float EPSILON = 0.1F;
-
 constexpr char hex[] = "0123456789ABCDEF";
-
-static constexpr auto popup_flags =
+constexpr auto popup_flags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
 
 // shouldn't invalid be first, and unset be first for TargetTypeT and RelativeStatus respectively? Also...Naming
@@ -138,18 +135,11 @@ struct Snapshot {
 struct SessionState {
   TargetInfoT TargetInfo;
   ProcessInfoT TargetProcInfo;
-  bool TargetChosen = false;
   std::atomic<bool> IsScanning = false;
   std::atomic<float> ScanProgress;
   float hitRefreshSeconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
   float favRefreshSeconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
   std::vector<MapInfoT> ActiveRegions;
-  enum class SearchWStatusT : int8_t {
-    DISABLED,
-    FIRST,
-    SECOND,
-  } SearchWStatus = SessionState::SearchWStatusT::DISABLED;
-
   std::atomic<bool> IsUnknownnValueScan = false;
   Snapshot Snapshots;
 };
@@ -193,6 +183,7 @@ struct regularRefreshHits {
 };
 
 // Favourite stuff.
+// maybe put all related structs into a namespace?
 
 struct addFavourite {
   uint64_t hitIndex;
