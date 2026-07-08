@@ -1,12 +1,12 @@
 #include "display.h"
 
 #include <GLFW/glfw3.h>
+#include <X11/Xdefs.h>
 #include <sys/types.h>
 
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -23,7 +23,7 @@ static void glfw_error_callback(int error, const char* description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow* initalise_imgui(const std::string& ImGuiInitPathStr) {
+GLFWwindow* initaliseImgui(const std::string& imgui_init_path_str) {
   glfwSetErrorCallback(glfw_error_callback);
 
   if (glfwInit() == 0) exit(1);
@@ -46,10 +46,10 @@ GLFWwindow* initalise_imgui(const std::string& ImGuiInitPathStr) {
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-  if (!ImGuiInitPathStr.empty()) {
-    if (!std::filesystem::path(ImGuiInitPathStr).has_parent_path())
-      std::filesystem::create_directories(std::filesystem::path(ImGuiInitPathStr).parent_path());
-    io.IniFilename = ImGuiInitPathStr.c_str();
+  if (!imgui_init_path_str.empty()) {
+    if (!std::filesystem::path(imgui_init_path_str).has_parent_path())
+      std::filesystem::create_directories(std::filesystem::path(imgui_init_path_str).parent_path());
+    io.IniFilename = imgui_init_path_str.c_str();
   }
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
@@ -66,7 +66,7 @@ GLFWwindow* initalise_imgui(const std::string& ImGuiInitPathStr) {
   return window;
 }
 
-void exit_imgui(GLFWwindow* window) {
+void exitImgui(GLFWwindow* window) {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
@@ -82,7 +82,7 @@ void start_frame() {
   ImGui::NewFrame();
 }
 
-void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window) {
+void endFrame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window) {
   ImGui::Render();
   glViewport(0, 0, display_w, display_h);
   glClearColor(
@@ -92,7 +92,7 @@ void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* win
   glfwSwapBuffers(window);
 }
 
-void SetDefaultDisplay() {
+void setDefaultDisplay() {
   ImGuiWindowFlags flags = ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
                            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
@@ -127,6 +127,7 @@ void SetDefaultDisplay() {
     ImGui::DockBuilderDockWindow("Favourite", bottom_right);
     ImGui::DockBuilderDockWindow("Hex", bottom);
     ImGui::DockBuilderDockWindow("Inspector", top_right);
+    ImGui::DockBuilderDockWindow("Pointer", top_right);
 
     ImGui::DockBuilderFinish(dockspaceID);
   }
@@ -135,14 +136,14 @@ void SetDefaultDisplay() {
   ImGui::End();
 }
 
-std::string MainMenuBarCycle(
-    bool& TargetPUpClicked, bool& MapPUpClicked, bool& LogWEnabled, bool& HexWEnabled, bool& DataInspectorWEnabled) {
+std::string mainMenuBarCycle(
+    bool& target_popup_clicked, bool& map_popup_clicked, bool& log_w_enabled, bool& hex_w_enabled, bool& data_inspector_enabled, bool& pointer_w_enabled) {
   if (!ImGui::BeginMainMenuBar()) return "";
 
   std::string doAction;
 
   if (ImGui::BeginMenu("File")) {
-    if (ImGui::MenuItem("New Target")) TargetPUpClicked = true;
+    if (ImGui::MenuItem("New Target")) target_popup_clicked = true;
 
     if (ImGui::MenuItem("Save")) doAction = "Save";
     if (ImGui::MenuItem("Load")) doAction = "Load";
@@ -151,14 +152,15 @@ std::string MainMenuBarCycle(
   }
 
   if (ImGui::BeginMenu("Utils")) {
-    if (ImGui::MenuItem("View Regions")) MapPUpClicked = true;
+    if (ImGui::MenuItem("View Regions")) map_popup_clicked = true;
 
-    if (ImGui::MenuItem("Toggle Log window.", nullptr, LogWEnabled, true)) LogWEnabled = !LogWEnabled;
+    if (ImGui::MenuItem("Toggle Log window.", nullptr, log_w_enabled, true)) log_w_enabled = !log_w_enabled;
 
-    if (ImGui::MenuItem("Toggle Hex window.", nullptr, HexWEnabled, true)) HexWEnabled = !HexWEnabled;
+    if (ImGui::MenuItem("Toggle Hex window.", nullptr, hex_w_enabled, true)) hex_w_enabled = !hex_w_enabled;
 
-    if (ImGui::MenuItem("Toggle Data Inspector window.", nullptr, DataInspectorWEnabled, true))
-      DataInspectorWEnabled = !DataInspectorWEnabled;
+    if (ImGui::MenuItem("Toggle Data Inspector window.", nullptr, data_inspector_enabled, true))
+      data_inspector_enabled = !data_inspector_enabled;
+    if (ImGui::MenuItem("Toggle Pointer window.", nullptr, pointer_w_enabled, true)) pointer_w_enabled = !pointer_w_enabled;
 
     ImGui::EndMenu();
   }
@@ -175,11 +177,11 @@ template <typename out, typename T> std::vector<uint8_t> ValtoData(const T& val)
 }
 
 // this is a mess. I should rewrite this.
-bool GetTargetValue(const TargetType TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags) {
-  if (TargetType == TargetType::invalid) return false;
+bool getTargetValue(const TargetType target_type, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags) {
+  if (target_type == TargetType::invalid) return false;
 
   std::string tempbuf;
-  return dispatchType(TargetType, [&]<typename T>() -> bool {
+  return dispatchType(target_type, [&]<typename T>() -> bool {
     tempbuf = dataToStr<T>(write_to);
 
     if (!ImGui::InputText("##value", &tempbuf, flags)) {
@@ -230,9 +232,9 @@ bool GetTargetValue(const TargetType TargetType, std::vector<uint8_t>& write_to,
   });
 }
 
-void printData(const std::vector<uint8_t>& data, TargetType TargetType) {
-  if (data.empty() || TargetType == TargetType::invalid) return;
+void printData(const std::vector<uint8_t>& data, TargetType target_type) {
+  if (data.empty() || target_type == TargetType::invalid) return;
 
-  std::string print_str = dispatchType(TargetType, [&]<typename T>() { return dataToStr<T>(data); });
+  std::string print_str = dispatchType(target_type, [&]<typename T>() { return dataToStr<T>(data); });
   ImGui::TextUnformatted(print_str.c_str());
 }

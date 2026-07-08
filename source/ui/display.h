@@ -6,13 +6,13 @@
 #include "imgui.h"
 #include "types.h"
 
-GLFWwindow* initalise_imgui(const std::string &ImGuiInitPathStr);
-void exit_imgui(GLFWwindow* window);
+GLFWwindow* initaliseImgui(const std::string &imgui_init_path_str);
+void exitImgui(GLFWwindow* window);
 void start_frame();
-void end_frame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window);
-void SetDefaultDisplay();
+void endFrame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window);
+void setDefaultDisplay();
 
-std::string MainMenuBarCycle(bool& TargetPUpClicked, bool& MapPupClicked, bool& LogWEnabled, bool& HexWEnabled, bool& DataInspectorWEnabled);
-bool GetTargetValue(TargetType TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags = 0);
+std::string mainMenuBarCycle(bool& target_popup_clicked, bool& map_popup_clicked, bool& log_w_enabled, bool& hex_w_enabled, bool& data_inspector_w_enabled, bool& pointer_w_enabled);
+bool getTargetValue(TargetType TargetType, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags = 0);
 
-void printData(const std::vector<uint8_t>& data, TargetType TargetType);
+void printData(const std::vector<uint8_t>& data, TargetType target_type);
