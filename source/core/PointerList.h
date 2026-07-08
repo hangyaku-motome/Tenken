@@ -1,18 +1,19 @@
 #pragma once
 
+#include <mutex>
+
 #include "types.h"
-#include <map>
 
 class PointerList {
-  std::map<uint64_t, uint64_t> pointerCandidates;
+  std::vector<PointerChain> chains_;
+  std::mutex mutex_;
 
+public:
+  void assignNew(std::vector<PointerChain> new_list);
+  const std::vector<PointerChain> get();
 
-
-
-
-
-
-
-
-
+  const std::vector<PointerChain>& getRef();
+  void lock();
+  void unlock();
+  bool try_lock();
 };
