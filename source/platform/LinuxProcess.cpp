@@ -20,7 +20,7 @@
 #include "types.h"
 
 namespace ProcessOS {
-std::vector<ProcessInfoT> GetTargetProc();
+std::vector<ProcessInfo> GetTargetProc();
 
 namespace {
 std::vector<int> ListPid();
@@ -43,7 +43,7 @@ public:
     if (fd_) close(fd_);
   }
 
-  std::vector<MapInfoT> getRegions() override;
+  std::vector<MapInfo> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
   bool write(uint64_t address, const std::vector<uint8_t>& value) override;
   char* allocMMapDisk(uint64_t size) override;
@@ -57,14 +57,14 @@ bool LinuxImpl::isAttached() {return pid_ != 0;}
 void LinuxImpl::unAllocMMapDisk(uint64_t address, uint64_t size) { munmap(reinterpret_cast<void*>(address), size); }
 
 // This should be dumb. JUST get regions. Nothing else. Filtering will happen above.
-std::vector<MapInfoT> LinuxImpl::getRegions() {
+std::vector<MapInfo> LinuxImpl::getRegions() {
   std::ifstream mapsStream;
   mapsStream.open("/proc/" + std::to_string(pid_) + "/maps");
   if (!mapsStream.is_open()) {
     Log::error("Couldn't open maps!" + std::string(strerror(errno)));
     return {};
   }
-  std::vector<MapInfoT> MapRegions;
+  std::vector<MapInfo> MapRegions;
   std::string MapsLine;
 
   constexpr int32_t MAX_PATH = 4096;
@@ -145,7 +145,7 @@ std::vector<MapInfoT> LinuxImpl::getRegions() {
     } else
       type = MapType::unset;
 
-    MapInfoT TempMapReg = {start, end, name, type};
+    MapInfo TempMapReg = {start, end, name, type};
     MapRegions.push_back(TempMapReg);
   }
 
@@ -235,8 +235,8 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
 
 };  // namespace
 
-std::vector<ProcessInfoT> getProcTargets() {
-  std::vector<ProcessInfoT> Processes;
+std::vector<ProcessInfo> getProcTargets() {
+  std::vector<ProcessInfo> Processes;
 
   for (int pid : ListPid()) {
     std::string name;
@@ -256,7 +256,7 @@ std::vector<ProcessInfoT> getProcTargets() {
       // empty means -> Irrelevant.
     }
 
-    ProcessInfoT PushProcess;
+    ProcessInfo PushProcess;
 
     PushProcess.pid = pid;
     PushProcess.cmdline = cmdline;

@@ -15,13 +15,19 @@
   #include <sys/mman.h>
 #endif
 
-constexpr int8_t bytes_before = 32;
-constexpr int8_t bytes_after = 32;
+constexpr int32_t ptr_search_after = 2048;
+constexpr int32_t ptr_search_before = 0;
+constexpr int32_t ptr_depth_limit = 5;
+constexpr int32_t ptr_size = 8;
+
+constexpr int32_t bytes_before = 32;
+constexpr int32_t bytes_after = 32;
+
+
 constexpr float epsilon = 0.1F;
 constexpr char hex[] = "0123456789ABCDEF";
 constexpr auto popup_flags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
-
 // shouldn't invalid be first, and unset be first for TargetTypeT and RelativeStatus respectively? Also...Naming
 // convention problems.
 enum class TargetType : int8_t {
@@ -42,7 +48,7 @@ enum class TargetType : int8_t {
 
 enum class RelativeStatus : int8_t { unchanged, changed, increased, decreased, unset };
 
-struct HitInfoT {
+struct HitInfo {
   uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
@@ -65,26 +71,28 @@ enum class MapType : int8_t {
   unreadable
 };
 
-struct MapInfoT {
+struct MapInfo {
   uint64_t start;
   uint64_t end;
   std::string name;
   MapType type;
+
+  bool operator<(const MapInfo& m) const { return start < m.start; };
 };
 
-struct ProcessInfoT {
+struct ProcessInfo {
   int pid = 0;
   std::string name;
   std::string cmdline;
 };
 
-struct TargetInfoT {
+struct TargetInfo {
   std::vector<uint8_t> value{};
   TargetType target_type = TargetType::invalid;
   std::optional<std::vector<bool>> mask;
 };
 
-struct FavouriteInfoT {
+struct FavouriteInfo {
   uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
@@ -127,21 +135,42 @@ struct MappedRegion {
   MappedRegion(const MappedRegion&) = delete;
 };
 
-struct Snapshot {
-  std::vector<MappedRegion> regions;
-  std::vector<MapInfoT> maps;
+struct Region {
+  MappedRegion mapped_region;
+  MapInfo map;
 };
 
+struct Snapshot {
+  std::vector<Region> regions;
+};
+
+enum class ScanType { Nothing, Hit, HitFilter, HitRescan, Unknown, Pointer };
+
 struct SessionState {
-  TargetInfoT target_info;
-  ProcessInfoT target_proc_info;
-  std::atomic<bool> is_scanning = false;
+  TargetInfo target_info;
+  ProcessInfo target_proc_info;
+  ScanType scan_type;
   std::atomic<float> scan_progress;
   float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
   float fav_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
-  std::vector<MapInfoT> active_regions;
+  std::vector<MapInfo> active_regions;
   std::atomic<bool> is_unknown_value_scan = false;
   Snapshot snapshots;
+};
+
+// 2 of these can be taken from a pointer MapInfo.
+struct PointerData {
+  uint64_t points_to;
+  uint64_t adr;
+  bool is_data_region;
+
+  bool operator<(const PointerData& o) const { return points_to < o.points_to; };
+};
+
+struct PointerChain {
+  int64_t offset_in_module;
+  std::string module_name;
+  std::vector<int64_t> offsets;
 };
 
 //
@@ -150,11 +179,11 @@ struct SessionState {
 namespace Action {
 
 struct TargetProcChosen {
-  ProcessInfoT chosen_proc;
+  ProcessInfo chosen_proc;
 };
 
 struct FirstScan {
-  TargetInfoT target_info;
+  TargetInfo target_info;
 };
 
 struct StartUnknownValueScan {};
@@ -235,6 +264,13 @@ struct SetTargetInfo {
 
 struct UndoScan {};
 
+struct StartPointerScan {
+  uint64_t search_for;
+  uint8_t depth = ptr_depth_limit;
+  int32_t bytes_before = 2048;
+  int32_t bytes_after = 0;
+};
+
 };  // namespace Action
 
 template <class... Ts> struct overloaded : Ts... {
@@ -263,7 +299,8 @@ using PendingAction = std::variant<std::monostate,
                                    Action::RescanFavourite,
                                    Action::RescanAllFavourites,
                                    Action::SetTargetInfo,
-                                   Action::UndoScan>;
+                                   Action::UndoScan,
+                                   Action::StartPointerScan>;
 
 //
 // End of Action stuff.

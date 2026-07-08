@@ -7,7 +7,7 @@
 #include "types.h"
 
 class MapsPopUp {
-  std::vector<MapInfoT> regions_;
+  std::vector<MapInfo> regions_;
   std::unordered_set<uint64_t> active_addresses_;
   bool refresh_;
   bool first_launch_ = true;
@@ -28,7 +28,7 @@ class MapsPopUp {
   void renderTable();
   void applyDefaultFilters();
   void toggleFilter(MapType type, bool enable);
-  std::vector<MapInfoT> buildFilteredMap();
+  std::vector<MapInfo> buildFilteredMap();
 
   const Scanner* scanner_;
 
@@ -37,5 +37,5 @@ public:
       : scanner_(&scanner) {}
 
   bool clicked_ = false;
-  void cyclePopUp(std::vector<MapInfoT>& ActiveRegions);
+  void cyclePopUp(std::vector<MapInfo>& ActiveRegions);
 };

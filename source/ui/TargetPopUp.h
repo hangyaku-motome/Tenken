@@ -6,7 +6,7 @@
 
 class TargetPopUp {
 private:
-  std::vector<ProcessInfoT> processes_;
+  std::vector<ProcessInfo> processes_;
   void initPopUp();
   std::string search_;
 

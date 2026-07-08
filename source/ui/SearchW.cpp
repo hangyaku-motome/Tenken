@@ -45,7 +45,7 @@ bool SearchW::getTargetType(TargetType& new_type) {
   return changed;
 }
 
-PendingAction SearchW::cycleFirstW(const TargetInfoT& target_info) {
+PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
   initW();
 
   PendingAction return_action{};
@@ -64,7 +64,7 @@ PendingAction SearchW::cycleFirstW(const TargetInfoT& target_info) {
 
     if (target_info.value.empty() && !is_unknown_value_scan_) is_init_value_given_ = false;
 
-  } else if (GetTargetValue(target_info.target_type, tmp_val_)) {
+  } else if (getTargetValue(target_info.target_type, tmp_val_)) {
     return_action = Action::SetTargetInfo{target_info.target_type, tmp_val_};
     is_init_value_given_ = true;
   }
@@ -92,7 +92,7 @@ PendingAction SearchW::cycleFirstW(const TargetInfoT& target_info) {
   return return_action;
 }
 
-PendingAction SearchW::cycleSecondW(const TargetInfoT& TargetInfo) {
+PendingAction SearchW::cycleSecondW(const TargetInfo& TargetInfo) {
   if (!initW()) {
     endW();
     return {};
@@ -103,7 +103,7 @@ PendingAction SearchW::cycleSecondW(const TargetInfoT& TargetInfo) {
   else
     ImGui::Combo("Keep", &tmp_filter_type_, "unchanged\0changed\0increased\0decreased\0\0");
 
-  if (tmp_filter_type_ == 4) GetTargetValue(TargetInfo.target_type, tmp_buf_);
+  if (tmp_filter_type_ == 4) getTargetValue(TargetInfo.target_type, tmp_buf_);
 
   ImGui::BeginDisabled(tmp_filter_type_ == -1 || (tmp_buf_.empty() && tmp_filter_type_ == 4));
   if (ImGui::Button("Rescan!")) {
@@ -141,7 +141,7 @@ PendingAction SearchW::cycleSecondW(const TargetInfoT& TargetInfo) {
   return {};
 }
 
-PendingAction SearchW::cycleW(TargetInfoT& TargetInfo, const int32_t procID) {
+PendingAction SearchW::cycleW(TargetInfo& TargetInfo, const int32_t procID) {
   if (!procID) {
     initW();
     ImGui::Text("No process chosen yet.");

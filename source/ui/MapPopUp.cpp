@@ -68,7 +68,7 @@ void MapsPopUp::renderTable() {
   ImGui::EndTable();
 }
 
-void MapsPopUp::cyclePopUp(std::vector<MapInfoT>& active_regions) {
+void MapsPopUp::cyclePopUp(std::vector<MapInfo>& active_regions) {
   if (clicked_) initPopUp();
    if (active_regions.empty() && scanner_->isAttached()) {
     updateRegions();
@@ -168,8 +168,8 @@ void MapsPopUp::toggleFilter(MapType type, bool enable) {
   }
 }
 
-std::vector<MapInfoT> MapsPopUp::buildFilteredMap() {
-  std::vector<MapInfoT> maps;
+std::vector<MapInfo> MapsPopUp::buildFilteredMap() {
+  std::vector<MapInfo> maps;
   for (const auto& region : regions_) {
     if (active_addresses_.contains(region.start)) maps.push_back(region);
   }

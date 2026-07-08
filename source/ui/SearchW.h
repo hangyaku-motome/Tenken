@@ -11,7 +11,7 @@ class SearchW {
   static void endW();
 
   bool getTargetType(TargetType& write_to);
-  std::string getHitFilter(TargetInfoT& target_info);
+  std::string getHitFilter(TargetInfo& target_info);
 
   bool is_init_value_given_ = false;
   bool is_unsigned_ = false;
@@ -26,11 +26,11 @@ class SearchW {
 
   int proc_id_ = 0;
 
-  PendingAction cycleFirstW(const TargetInfoT& target_info);
-  PendingAction cycleSecondW(const TargetInfoT& target_info);
+  PendingAction cycleFirstW(const TargetInfo& target_info);
+  PendingAction cycleSecondW(const TargetInfo& target_info);
 
   void reset();
 
 public:
-  PendingAction cycleW(TargetInfoT& target_info, int32_t proc_id);
+  PendingAction cycleW(TargetInfo& target_info, int32_t proc_id);
 };
