@@ -10,17 +10,16 @@ class FavouriteW {
   int64_t selected_element_ = 0;
   bool is_editing_desc_ = false;
   bool just_started_editing_desc_ = false;
-  bool is_editing_val = false;
-  bool just_started_editing_val = false;
-  bool all_column_chosen = false;
+  bool is_editing_val_ = false;
+  bool just_started_editing_val_ = false;
 
-  PendingAction drawFavouriteTable(const std::vector<FavouriteInfoT>& favourites);
+  PendingAction drawFavouriteTable(const std::vector<FavouriteInfo>& favourites);
   bool drawRefreshContextButton();
   void alignButtons();
-  void drawContextMenu(const FavouriteInfoT& favourite);
+  void drawContextMenu(const FavouriteInfo& favourite);
 
   ContextDisplay context;
 
 public:
-  PendingAction cycleW(const std::vector<FavouriteInfoT>& favourites, SessionState& state);
+  PendingAction cycleW(const std::vector<FavouriteInfo>& favourites, SessionState& state);
 };
