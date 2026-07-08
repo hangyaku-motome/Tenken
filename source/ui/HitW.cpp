@@ -17,7 +17,7 @@ bool HitW::initW() { return ImGui::Begin("Hits"); }
 
 void HitW::endW() { ImGui::End(); }
 
-PendingAction HitW::cycleW(const std::vector<HitInfoT>& hits, SessionState& state) {
+PendingAction HitW::cycleW(const std::vector<HitInfo>& hits, SessionState& state) {
   if (!initW()) {
     endW();
     return {};
@@ -29,7 +29,8 @@ PendingAction HitW::cycleW(const std::vector<HitInfoT>& hits, SessionState& stat
     return {};
   }
 
-  if (state.is_scanning) {
+  if (state.scan_type == ScanType::Hit || state.scan_type == ScanType::HitRescan ||
+      state.scan_type == ScanType::HitFilter) {
     ImGui::TextUnformatted("Scanning in progress.");
     ImGui::NewLine();
     ImGui::ProgressBar(state.scan_progress);
@@ -62,18 +63,21 @@ PendingAction HitW::cycleW(const std::vector<HitInfoT>& hits, SessionState& stat
   return {};
 }
 
-PendingAction HitW::drawHitTable(const std::vector<HitInfoT>& hits, const TargetInfoT& target_info) {
+PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetInfo& target_info) {
   PendingAction return_action{};
 
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1F, 100.0F, 250.0F);
-  if (!ImGui::BeginChild("hitstable", {0, avail - context_height})) return {};
-  if (!ImGui::BeginTable("Hit Table", 6, ImGuiTableFlags_ScrollY)) {
+  if (!ImGui::BeginChild("hitstable", {0, avail - context_height})) {
+    ImGui::EndChild();
+    return {};
+  }
+  if (!ImGui::BeginTable("Hit Table", 5, ImGuiTableFlags_ScrollY)) {
     ImGui::EndChild();
     return {};
   }
 
-  ImGui::TableSetupColumn("##");
+  ImGui::TableSetupColumn("Index");
   ImGui::TableSetupColumn("Address");
   ImGui::TableSetupColumn("Value");
   ImGui::TableSetupColumn("Old Value");
@@ -103,55 +107,48 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfoT>& hits, const Target
           is_editing_ = true;
           just_started_editing_ = true;
         }
-      } else {
-        if (ImGui::BeginPopupContextItem("hit_popup_menu")) {
-          selected_row_ = row;
-          if (ImGui::MenuItem("Add to Favourites")) {
-            return_action = Action::AddFavourite{static_cast<uint64_t>(selected_row_)};
-          }
-          if (ImGui::MenuItem("Copy address to clipboard")) {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "%016lx", hits[selected_row_].location);
-            ImGui::SetClipboardText(buf);
-          }
-          ImGui::EndPopup();
+      }
+      if (ImGui::BeginPopupContextItem("hit_popup_menu")) {
+        selected_row_ = row;
+        if (ImGui::MenuItem("Add to Favourites"))
+          return_action = Action::AddFavourite{static_cast<uint64_t>(selected_row_)};
+        if (ImGui::MenuItem("Copy address to clipboard")) {
+          char buf[32];
+          snprintf(buf, sizeof(buf), "0x%" PRIX64, hits[selected_row_].location);
+          ImGui::SetClipboardText(buf);
         }
-        ImGui::SameLine();
-        ImGui::Text("0x%" PRIX64, hits[row].location);
+        ImGui::EndPopup();
       }
 
+      ImGui::SameLine();
+      ImGui::Text("0x%" PRIX64, hits[row].location);
+
       ImGui::TableNextColumn();
-      bool cancel_edit = true;
+      bool just_started = just_started_editing_;
       if (is_editing_ && row == selected_row_) {
-        if (just_started_editing_) {
+        if (just_started) {
           ImGui::SetKeyboardFocusHere();
           just_started_editing_ = false;
-          cancel_edit = false;
         }
-        std::vector<uint8_t> tmpbuf(target_info.value.size());
-        tmpbuf = hits[row].value;
+        std::vector<uint8_t> tmpbuf = hits[row].value;
         ImGui::PushStyleColor(ImGuiCol_NavHighlight, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
-        if (GetTargetValue(target_info.target_type, tmpbuf, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if (getTargetValue(target_info.target_type, tmpbuf, ImGuiInputTextFlags_EnterReturnsTrue)) {
           return_action = Action::WriteHit{row, tmpbuf};
           is_editing_ = false;
-          cancel_edit = true;
         }
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar();
-        if (cancel_edit && (!ImGui::IsItemActive())) {
+        if (!just_started && (!ImGui::IsItemActive())) {
           is_editing_ = false;
           selected_row_ = -1;
         }
       } else
         printData(hits[row].value, target_info.target_type);
 
-      if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) {
-        selected_row_ = -1;
-      }
       if (!hits[row].previous_value.empty()) {
         ImGui::TableNextColumn();
 
@@ -165,6 +162,11 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfoT>& hits, const Target
         ImGui::TextUnformatted(relativeStatusToStr(hits[row].status).c_str());
         ImGui::PopStyleColor();
       }
+
+      if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) {
+        selected_row_ = -1;
+      }
+
       ImGui::PopID();
     }
   }

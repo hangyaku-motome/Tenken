@@ -10,7 +10,7 @@ class HitW {
 private:
   static bool initW();
   static void endW();
-  PendingAction drawHitTable(const std::vector<HitInfoT>& hits, const TargetInfoT& target_info);
+  PendingAction drawHitTable(const std::vector<HitInfo>& hits, const TargetInfo& target_info);
 
   bool is_editing_ = false;
   bool just_started_editing_ = false;
@@ -19,5 +19,5 @@ private:
   ContextDisplay context;
 
 public:
-  PendingAction cycleW(const std::vector<HitInfoT>& hits, SessionState& state);
+  PendingAction cycleW(const std::vector<HitInfo>& hits, SessionState& state);
 };
