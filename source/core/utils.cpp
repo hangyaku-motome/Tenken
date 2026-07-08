@@ -52,12 +52,12 @@ template RelativeStatus tagChange<std::vector<uint8_t>>(std::vector<uint8_t>, st
 //
 
 std::vector<uint8_t> findBytesAround(const uint32_t offset, const std::vector<uint8_t>& data, const uint32_t size) {
-  uint64_t START = offset < 32 ? 0 : offset - 32;
-  uint64_t END = offset + 32 + size > data.size() ? data.size() : offset + 32 + size;
+  uint64_t start = offset < bytes_before ? 0 : offset - bytes_before;
+  uint64_t end = offset + bytes_after + size > data.size() ? data.size() : offset + bytes_after + size;
 
   std::vector<uint8_t> bytes(bytes_before + bytes_after
                              + size);
-  memcpy(bytes.data(), &data[START], END - START);
+  memcpy(bytes.data(), &data[start], end - start);
   return bytes;
 }
 
