@@ -1,14 +1,16 @@
+#include "DataInspectorW.h"
+
 #include <imgui.h>
 
 #include <algorithm>
 #include <cstdint>
 #include <string>
 
-#include "DataInspectorW.h"
 #include "types.h"
 #include "utils.h"
 
-// readAround exists both in here and in HexW. Make a common function in utils or somehwere...Or don't. Not a big deal for now.
+// readAround exists both in here and in HexW. Make a common function in utils or somehwere...Or don't. Not a big deal
+// for now.
 
 bool DataInspectorW::initW() { return ImGui::Begin("Inspector"); }
 
@@ -50,7 +52,7 @@ void DataInspectorW::renderTable() {
   if (!ImGui::BeginChild("inspectortable", {0, avail - context_height})) return;
 
   int enabled_count = types_.f64 + types_.u8 + types_.u16 + types_.u32 + types_.u64 + types_.s8 + types_.s16 +
-                      types_.s32 + types_.s64 + types_.f32 + types_.string + 1;  // 1 for offset.
+                      types_.s32 + types_.s64 + types_.f32 + types_.string + types_.ptr + 1;  // 1 for offset.
 
   if (!ImGui::BeginTable("Inspect View", enabled_count, ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable)) {
     ImGui::EndChild();
@@ -71,6 +73,7 @@ void DataInspectorW::renderTable() {
   if (types_.f32) ImGui::TableSetupColumn("float");
   if (types_.f64) ImGui::TableSetupColumn("double");
   if (types_.string) ImGui::TableSetupColumn("string");
+  if (types_.ptr) ImGui::TableSetupColumn("hex");
   ImGui::TableHeadersRow();
 
   // there is a much shorter way to do this but I will deal with that later. wayy later.
@@ -141,6 +144,11 @@ void DataInspectorW::renderTable() {
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(printbuf.c_str());
     }
+    if (types_.ptr) {
+      ImGui::TableNextColumn();
+      ImGui::Text("%lx",
+                  dataToType<uint64_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(double))));
+    }
 
     ++offset;
   }
@@ -171,6 +179,7 @@ void DataInspectorW::typePopUp() {
   ImGui::Checkbox("float", &types_.f32);
   ImGui::Checkbox("double", &types_.f64);
   ImGui::Checkbox("string", &types_.string);
+  ImGui::Checkbox("ptr", &types_.ptr);
 
   if (ImGui::Button("Cancel")) {
     ImGui::CloseCurrentPopup();
