@@ -6,9 +6,9 @@
 #include "types.h"
 #include "utils.h"
 
-void HitList::assignNew(const std::vector<HitInfoT>& new_hits) {
+void HitList::assignNew(std::vector<HitInfo> new_hits) {
   std::scoped_lock<std::mutex> lock(mutex_);
-  hits_ = new_hits;
+  hits_ = std::move(new_hits);
 }
 
 void HitList::rescan(const Scanner& scanner, uint64_t index, const TargetType target_type) {
@@ -17,8 +17,7 @@ void HitList::rescan(const Scanner& scanner, uint64_t index, const TargetType ta
 
   hits_[index].bytes_around.resize(bytes_before + bytes_after + hits_[index].value.size());
 
-  hits_[index].bytes_around =
-      scanner.readAdr(hits_[index].location - bytes_before, hits_[index].bytes_around.size());
+  hits_[index].bytes_around = scanner.readAdr(hits_[index].location - bytes_before, hits_[index].bytes_around.size());
 
   if (hits_[index].bytes_around.size() != bytes_before + bytes_after + hits_[index].value.size()) {
     hits_[index].bytes_around.clear();
@@ -58,7 +57,7 @@ void HitList::filter(RelativeStatus keep_type) {
 
   hits_.erase(std::remove_if(hits_.begin(),
                              hits_.end(),
-                             [keep_type, KeepType2, KeepType3](const HitInfoT& hit) {
+                             [keep_type, KeepType2, KeepType3](const HitInfo& hit) {
                                return hit.status != keep_type && hit.status != KeepType2 && hit.status != KeepType3;
                              }),
               hits_.end());
@@ -75,7 +74,7 @@ void HitList::filter(const std::vector<uint8_t>& keep_value) {
 
   hits_.erase(std::remove_if(hits_.begin(),
                              hits_.end(),
-                             [&keep_value](const HitInfoT& hit) {
+                             [&keep_value](const HitInfo& hit) {
                                return hit.value != keep_value;
                                ;
                              }),
@@ -88,3 +87,33 @@ uint64_t HitList::count() {
   std::scoped_lock<std::mutex> lock(mutex_);
   return hits_.size();
 }
+
+const std::vector<HitInfo> HitList::getAll() {
+  std::scoped_lock<std::mutex> lock(mutex_);
+  return hits_;
+}
+
+const HitInfo HitList::getIndex(uint64_t index) {
+  std::scoped_lock<std::mutex> lock(mutex_);
+  return hits_[index];
+}
+
+void HitList::reset() {
+  std::scoped_lock<std::mutex> lock(mutex_);
+  hits_.clear();
+}
+
+void HitList::restore_old_hits() {
+  std::scoped_lock<std::mutex> lock(mutex_);
+
+  hits_ = std::move(cached_hits_);
+}
+
+/// You MUST call unlock before and lock after using this.
+const std::vector<HitInfo>& HitList::getRef() { return hits_; }
+
+void HitList::lock() { mutex_.lock(); }
+
+void HitList::unlock() { mutex_.unlock(); }
+
+bool HitList::try_lock() { return mutex_.try_lock(); }
