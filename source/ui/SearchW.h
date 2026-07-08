@@ -17,6 +17,7 @@ class SearchW {
   bool is_unsigned_ = false;
   bool is_based_on_curr_val_ = false;
   bool is_unknown_value_scan_ = false;
+  bool is_on_unknown_value_first_scan = false;
   bool is_on_first_window_ = true;
 
   int32_t tmp_filter_type_ = -1;

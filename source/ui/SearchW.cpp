@@ -72,6 +72,7 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
   if (target_info.target_type != TargetType::invalid && target_info.target_type != TargetType::aob)
     if (ImGui::Checkbox("Unknown inital value.", &is_unknown_value_scan_)) {
       is_init_value_given_ = is_unknown_value_scan_;
+      tmp_val_.clear();
     }
 
   if (is_unknown_value_scan_ && temp_type == TargetType::string) {
@@ -80,13 +81,16 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
   } else
     ImGui::BeginDisabled(!is_init_value_given_);
 
-  bool PressedScan = ImGui::Button("Start First Scan!");
+  bool pressed_scan = ImGui::Button("Start First Scan!");
   ImGui::EndDisabled();
   endW();
 
-  if (PressedScan) {
+  if (pressed_scan) {
     is_on_first_window_ = false;
-    if (is_unknown_value_scan_) return Action::StartUnknownValueScan{};
+    if (is_unknown_value_scan_) {
+      is_on_unknown_value_first_scan = true;
+      return Action::StartUnknownValueScan{};
+    }
     return Action::FirstScan{.target_info = target_info};
   }
   return return_action;
@@ -98,7 +102,7 @@ PendingAction SearchW::cycleSecondW(const TargetInfo& TargetInfo) {
     return {};
   }
 
-  if (!is_unknown_value_scan_)
+  if (!is_on_unknown_value_first_scan)
     ImGui::Combo("Keep", &tmp_filter_type_, "unchanged\0changed\0increased\0decreased\0specific value\0\0");
   else
     ImGui::Combo("Keep", &tmp_filter_type_, "unchanged\0changed\0increased\0decreased\0\0");
@@ -107,6 +111,7 @@ PendingAction SearchW::cycleSecondW(const TargetInfo& TargetInfo) {
 
   ImGui::BeginDisabled(tmp_filter_type_ == -1 || (tmp_buf_.empty() && tmp_filter_type_ == 4));
   if (ImGui::Button("Rescan!")) {
+    is_on_unknown_value_first_scan = false;
     ImGui::EndDisabled();
     endW();
     if (tmp_filter_type_ == 4)
