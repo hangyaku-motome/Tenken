@@ -58,12 +58,14 @@ add_executable(Tenken
     source/ui/ContextDisplay.cpp
     source/ui/MapPopUp.cpp
     source/ui/HexW.cpp
-    source/ui/DataInspector.cpp
+    source/ui/DataInspectorW.cpp
+    source/ui/PointerW.cpp
     source/core/Scanner.cpp
     source/core/HitList.cpp
     source/core/FavouriteList.cpp
     source/core/scan_ops.cpp
     source/core/utils.cpp
+    source/core/PointerList.cpp
 )
 target_include_directories(Tenken PRIVATE
     source
