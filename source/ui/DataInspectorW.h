@@ -26,7 +26,12 @@ class DataInspectorW {
     bool f64 = false;
 
     bool string = true;
+
+    bool ptr = false;  // uint64_t but in hex.
   };
+
+  static constexpr int16_t bytes_before_ = 256;
+  static constexpr int16_t bytes_after_ = 256;
 
   bool initW();
   void endW();
@@ -35,8 +40,6 @@ class DataInspectorW {
   void typePopUp();
 
   std::vector<uint8_t> readAround(uint64_t adr);
-  static constexpr int32_t bytes_before_ = 256;
-  static constexpr int32_t bytes_after_ = 256;
   static constexpr int32_t limit_ = 8;
 
   std::vector<uint8_t> bytes_{};
