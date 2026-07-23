@@ -1,8 +1,10 @@
 #pragma once
 
+// one window to start initial search with params (max depth, positive negative offset,).
 
-//one window to start initial search with params (max depth, positive negative offset,).
+#include <imgui-filebrowser/imfilebrowser.h>
 
+#include "PointerList.h"
 #include "types.h"
 
 class PointerW {
@@ -11,21 +13,22 @@ class PointerW {
 
   bool is_on_search_window_ = true;
 
-  uint64_t tmp_target_adr_;
+  Pointer::InitConfig init_config;
 
-  int32_t tmp_scan_before_ = ptr_search_before;
-  int32_t tmp_scan_after_ = ptr_search_after;
-  uint8_t depth_limit_ = ptr_depth_limit;
+  int64_t prev_display_start_ = -1;
+  int64_t prev_display_end_ = -1;
 
+  bool is_all_chains_ = false;
+
+  ImGui::FileBrowser file_browser_;
 
   PendingAction cycleSearchW();
 
-  void cyclePointerListW(const std::vector<PointerChain>& chains);
+  void cyclePointerListW(PointerList& pointer_list);
 
+  std::vector<Pointer::PrettyChain> chains_;
 
 public:
-    bool enabled_ = true;
-    PendingAction cycleW(const std::vector<PointerChain>& chains, ScanType scan_type);
-
-
+  bool enabled_ = true;
+  PendingAction cycleW(const SessionState& state, PointerList& pointer_list);
 };

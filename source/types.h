@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <optional>
@@ -15,21 +16,17 @@
   #include <sys/mman.h>
 #endif
 
-constexpr int32_t ptr_search_after = 2048;
-constexpr int32_t ptr_search_before = 0;
-constexpr int32_t ptr_depth_limit = 5;
-constexpr int32_t ptr_size = 8;
+// some of these constexpr should be file local, not here.
 
 constexpr int32_t bytes_before = 32;
 constexpr int32_t bytes_after = 32;
-
 
 constexpr float epsilon = 0.1F;
 constexpr char hex[] = "0123456789ABCDEF";
 constexpr auto popup_flags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
-// shouldn't invalid be first, and unset be first for TargetTypeT and RelativeStatus respectively? Also...Naming
-// convention problems.
+
+// fix invalid and unset not being first.
 enum class TargetType : int8_t {
   uInt8,
   uInt16,
@@ -72,38 +69,38 @@ enum class MapType : int8_t {
 };
 
 struct MapInfo {
+  std::string name;
   uint64_t start;
   uint64_t end;
-  std::string name;
   MapType type;
 
   bool operator<(const MapInfo& m) const { return start < m.start; };
 };
 
 struct ProcessInfo {
-  int pid = 0;
   std::string name;
   std::string cmdline;
+  int pid = 0;
 };
 
 struct TargetInfo {
   std::vector<uint8_t> value{};
-  TargetType target_type = TargetType::invalid;
   std::optional<std::vector<bool>> mask;
+  TargetType target_type = TargetType::invalid;
 };
 
 struct FavouriteInfo {
-  uint64_t location;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
   std::string desc;
-  RelativeStatus status = RelativeStatus::unset;
   std::vector<uint8_t> bytes_around;
-  TargetType type;
-
-  bool frozen = false;
   std::vector<uint8_t> frozen_value;
+  uint64_t location;
   float freeze_duration = -1;  // could merge frozen and freeze_duration but meh.
+  TargetType type;
+  RelativeStatus status = RelativeStatus::unset;
+  bool frozen = false;
+  bool is_ptr_backed = false;
 };
 
 struct MappedRegion {
@@ -149,7 +146,7 @@ enum class ScanType { Nothing, Hit, HitFilter, HitRescan, Unknown, Pointer };
 struct SessionState {
   TargetInfo target_info;
   ProcessInfo target_proc_info;
-  ScanType scan_type;
+  std::atomic<ScanType> scan_type;
   std::atomic<float> scan_progress;
   float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
   float fav_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
@@ -158,21 +155,58 @@ struct SessionState {
   Snapshot snapshots;
 };
 
-// 2 of these can be taken from a pointer MapInfo.
-struct PointerData {
-  uint64_t points_to;
-  uint64_t adr;
-  bool is_data_region;
+//
+namespace Pointer {
+constexpr uint32_t default_search_after = 2048;
+constexpr uint32_t default_search_before = 0;
+constexpr uint8_t default_scan_depth = 5;
 
-  bool operator<(const PointerData& o) const { return points_to < o.points_to; };
+struct ScanInfo {
+  uint32_t search_after = default_search_after;
+  uint32_t search_before = default_search_before;
+  uint8_t scan_depth = default_scan_depth;
 };
 
-struct PointerChain {
-  int64_t offset_in_module;
-  std::string module_name;
+struct InitConfig {
+  uint64_t address = 0;
+  ScanInfo info;
+};
+
+constexpr int32_t size = 8;
+
+constexpr uint64_t magic_bytes = 0xEE32BE81AAAAFEAF;
+constexpr uint8_t file_version = 1;
+constexpr uint8_t max_depth = 8;
+
+// file layout:
+// magic_bytes uint64_t
+// file_version uint8_t
+// entry_size sizeof(PointerChain) uint8_t
+// entry_start_point uint64_t
+//
+
+// string table.
+// each string entry is:
+// uint8_t len, then rest of string.
+// chain table.
+
+// this is how they are saved to file.
+struct Chain {
+  std::array<int64_t, Pointer::max_depth> offsets;
+  uint64_t offset_in_module;
+  uint32_t module_id;
+  uint8_t valid_offsets;
+};
+
+// this is how they'll look when loaded in.
+struct PrettyChain {
   std::vector<int64_t> offsets;
+  std::string module_name;
+  uint64_t offset_in_module;
 };
+};  // namespace Pointer
 
+//
 //
 // Action stuff.
 
@@ -223,8 +257,8 @@ struct RemoveFavourite {
 };
 
 struct WriteFavourite {
-  uint64_t index;
   std::vector<uint8_t> value;
+  uint64_t index;
 };
 
 struct IsFreezeFavourite {
@@ -233,13 +267,13 @@ struct IsFreezeFavourite {
 };
 
 struct FreezeValueFavourite {
-  uint64_t index;
   std::vector<uint8_t> value;
+  uint64_t index;
 };
 
 struct DescFavourite {
-  uint64_t index;
   std::string value;
+  uint64_t index;
 };
 
 struct RescanFavourite {
@@ -257,18 +291,15 @@ struct RescanAllFavourites {};
 struct RestartScan {};
 
 struct SetTargetInfo {
-  TargetType type;
   std::vector<uint8_t> value;
   std::optional<std::vector<bool>> mask;
+  TargetType type;
 };
 
 struct UndoScan {};
 
 struct StartPointerScan {
-  uint64_t search_for;
-  uint8_t depth = ptr_depth_limit;
-  int32_t bytes_before = 2048;
-  int32_t bytes_after = 0;
+  Pointer::InitConfig init_config;
 };
 
 };  // namespace Action

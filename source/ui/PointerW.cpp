@@ -1,118 +1,121 @@
 #include "PointerW.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
+#include <X11/Xdefs.h>
 
-#include <algorithm>
-#include <cinttypes>
+#include <iostream>
 #include <string>
 
 #include "types.h"
-
-using Action::StartPointerScan;
 
 bool PointerW::initW() { return ImGui::Begin("Pointer"); }
 
 void PointerW::endW() { ImGui::End(); }
 
-// TODO:settings don't work right now. all of those pointer configs.
 PendingAction PointerW::cycleSearchW() {
-  ImGui::InputScalar("Points near:", ImGuiDataType_U64, &tmp_target_adr_, nullptr, nullptr, "%016lx");
+  ImGui::InputScalar("Points near:", ImGuiDataType_U64, &init_config.address, nullptr, nullptr, "%016lx");
 
   ImGui::NewLine();
 
   ImGui::Text("don't change unless you can't find the one you are looking for.");
-  ImGui::InputScalar("Scan before:", ImGuiDataType_S32, &tmp_scan_before_, nullptr, nullptr, nullptr);
-  ImGui::InputScalar("Scan after:", ImGuiDataType_S32, &tmp_scan_after_, nullptr, nullptr, nullptr);
-  ImGui::InputScalar("depth:", ImGuiDataType_U8, &depth_limit_, nullptr, nullptr, nullptr);
+  ImGui::InputScalar("Scan before:", ImGuiDataType_S32, &init_config.info.search_before, nullptr, nullptr, nullptr);
+  ImGui::InputScalar("Scan after:", ImGuiDataType_S32, &init_config.info.search_after, nullptr, nullptr, nullptr);
+  ImGui::InputScalar("depth:", ImGuiDataType_U8, &init_config.info.scan_depth, nullptr, nullptr, nullptr);
 
   if (ImGui::Button("Scan")) {
     is_on_search_window_ = false;
     endW();
-    return StartPointerScan{.search_for = tmp_target_adr_,
-                            .depth = depth_limit_,
-                            .bytes_before = tmp_scan_before_,
-                            .bytes_after = tmp_scan_after_};
+    return Action::StartPointerScan{.init_config = init_config};
   }
+
+  ImGui::NewLine();
+  ImGui::Text("Or...If you have a result to load in");
+
+  // So...After having a pair of pointer lists (either by scanning once then loading in the other one or loading in
+  // both), on second windows (pointer listW) there needs to be an option of compare against.
+
   endW();
   return {};
 }
 
-void PointerW::cyclePointerListW(const std::vector<PointerChain>& chains) {
-  ImGui::Text("I am supposed to show pointers.");
-  ImGui::Text("%s", std::to_string(chains.size()).c_str());
-
-  float avail = ImGui::GetContentRegionAvail().y;
-  float context_height = std::clamp(avail * 0.1F, 100.0F, 250.0F);
-  if (!ImGui::BeginChild("pointer_child", {0, avail - context_height})) {
-    ImGui::EndChild();
-    return endW();
-  };
-
-  int32_t column_count = 3 + depth_limit_;
-  if (!ImGui::BeginTable("Pointer Table", column_count, ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable)) {
-    ImGui::EndChild();
+void PointerW::cyclePointerListW(PointerList& pointer_list) {
+  if (!pointer_list.is_file_open_) {
+    ImGui::Text("No valid file loaded in. If you just tried to scan and are seeing this, this means there is a BUG and "
+                "I couldn't parse the save file. Check logs for details (if there are any.)");
+    if (ImGui::Button("Load in another result")) file_browser_.Open();
     return endW();
   }
+  ImGui::Text("%s", (std::to_string(pointer_list.total_chains_) + " chains in loaded file").c_str());
+  if (ImGui::Button("Load in another result")) file_browser_.Open();
 
-  ImGui::TableSetupColumn("##");
+  if (!ImGui::BeginTable("Pointer Table", 2 + Pointer::max_depth, ImGuiTableFlags_ScrollY)) return;
+
   ImGui::TableSetupColumn("module");
   ImGui::TableSetupColumn("offset in module");
-  for (int32_t i = 0; i < depth_limit_; ++i)
-    ImGui::TableSetupColumn((std::string("offset") + std::to_string(i + 1)).c_str());
+  for (int i = 0; i < Pointer::max_depth; ++i)
+    ImGui::TableSetupColumn((std::string("offset ") + std::to_string(i)).c_str());
+
   ImGui::TableHeadersRow();
 
-  ImGuiListClipper list_clipper;
-  list_clipper.Begin(static_cast<int32_t>(chains.size()));
-  while (list_clipper.Step()) {
-    for (uint32_t row = static_cast<uint32_t>(list_clipper.DisplayStart);
-         row < static_cast<uint32_t>(list_clipper.DisplayEnd);
-         ++row) {
+  printf("THIS IS SIZE OF CHAINS %lu\n\n\n", chains_.size());
+  printf("THIS IS TOTAL SIZE OF CHAINS %lu\n\n\n", pointer_list.total_chains_);
+
+  ImGuiListClipper clipper;
+  clipper.Begin(pointer_list.total_chains_);
+
+  while (clipper.Step()) {
+    if (chains_.empty()) chains_ = pointer_list.get_from(0, pointer_list.total_chains_);
+
+    std::cout << "tried to get from to in chains " << clipper.DisplayStart << " "
+              << clipper.DisplayEnd - clipper.DisplayStart << "\n";
+
+    for (uint64_t i = 0; i + clipper.DisplayStart < clipper.DisplayEnd; ++i) {
       ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      ImGui::TextUnformatted(std::to_string(row).c_str());
 
       ImGui::TableNextColumn();
-      ImGui::Text("%s", chains[row].module_name.c_str());
+      ImGui::Text("%s", chains_[i].module_name.c_str());
+
       ImGui::TableNextColumn();
-      ImGui::Text("0x%lx", chains[row].offset_in_module);
-      for (int32_t i = 0; i < depth_limit_; ++i) {
+      ImGui::Text("%s", std::to_string(chains_[i].offset_in_module).c_str());
+
+      for (int k = 0; k < Pointer::max_depth; ++k) {
         ImGui::TableNextColumn();
-        if (i < chains[row].offsets.size())
-          ImGui::Text("0x%ld", chains[row].offsets[i]);
+        if (k < chains_[i].offsets.size())
+          ImGui::Text("%s", std::to_string(chains_[i].offsets[k]).c_str());
         else
-          ImGui::TextUnformatted("-");
+          ImGui::Text("-");
       }
     }
   }
   ImGui::EndTable();
-  ImGui::EndChild();
-  if (ImGui::Button("Go back:")) is_on_search_window_ = true;
   return endW();
+
+  // this many chains found.
+  // Info:: The result has been saved. You should choose another pointer scan result if you have one.
+  // If not, run the pointer scan on another instance of the program to get another one. Afterwards you can compare
+  // them.
+  //
 }
 
-PendingAction PointerW::cycleW(const std::vector<PointerChain>& chains, ScanType scan_type) {
+PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_list) {
   if (not enabled_) return {};
   if (!initW()) {
     endW();
     return {};
   };
 
-  if (scan_type == ScanType::Pointer) {
+  file_browser_.Display();
+
+  if (state.scan_type == ScanType::Pointer) {
     ImGui::Text("Scanning...");
     endW();
     return {};
   }
-  if (chains.empty() && not is_on_search_window_) {
-    ImGui::Text("No pointers.");
-    if (ImGui::Button("Go back")) is_on_search_window_ = true;
-    endW();
-    return {};
-  }
-
   if (is_on_search_window_) {
     return cycleSearchW();
   };
 
-  cyclePointerListW(chains);
+  cyclePointerListW(pointer_list);
   return {};
 }
