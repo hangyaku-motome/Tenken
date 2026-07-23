@@ -77,14 +77,14 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
       if (ImGui::MenuItem("Remove from Favourites")) return_action = Action::RemoveFavourite{row};
       if (ImGui::MenuItem("Copy address to clipboard")) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "0x%" PRIX64, favourites[selected_row_].location);
+        snprintf(buf, sizeof(buf), "0x%" PRIX64, favourites[static_cast<uint64_t>(selected_row_)].location);
         ImGui::SetClipboardText(buf);
       }
       ImGui::EndPopup();
     }
     ImGui::SameLine();
     if (ImGui::Selectable("##selectable_desc",
-                          is_editing_desc_ && row == selected_row_,
+                          is_editing_desc_ && row == static_cast<uint64_t>(selected_row_),
                           ImGuiSelectableFlags_AllowDoubleClick | ImGuiSelectableFlags_AllowOverlap)) {
       selected_row_ = static_cast<int64_t>(row);
       is_editing_desc_ = true;
@@ -105,7 +105,7 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
 
       std::string strbuf = favourites[row].desc;
       if (ImGui::InputText("##Description", &strbuf, ImGuiInputTextFlags_EnterReturnsTrue)) {
-        return_action = Action::DescFavourite{static_cast<uint64_t>(selected_row_), strbuf};
+        return_action = Action::DescFavourite{strbuf, static_cast<uint64_t>(selected_row_)};
         is_editing_desc_ = false;
         cancel_edit = true;
       }
@@ -124,8 +124,9 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
 
     ImGui::TableNextColumn();
 
-    if (ImGui::Selectable(
-            "##selectable_value", is_editing_val_ && row == selected_row_, ImGuiSelectableFlags_AllowDoubleClick)) {
+    if (ImGui::Selectable("##selectable_value",
+                          is_editing_val_ && row == static_cast<uint64_t>(selected_row_),
+                          ImGuiSelectableFlags_AllowDoubleClick)) {
       is_editing_val_ = true;
       selected_row_ = static_cast<int64_t>(row);
       if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
@@ -148,7 +149,7 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
 
       std::vector<uint8_t> newval_buf = favourites[row].value;
       if (getTargetValue(favourites[row].type, newval_buf, ImGuiInputTextFlags_EnterReturnsTrue)) {
-        return_action = Action::WriteFavourite(row, newval_buf);
+        return_action = Action::WriteFavourite(newval_buf, row);
         is_editing_val_ = false;
         cancel_edit = true;
       }

@@ -26,7 +26,7 @@ void MapsPopUp::renderTable() {
 
   for (auto const& region : regions_) {
     ImGui::TableNextRow();
-    ImGui::PushID(region.start);
+    ImGui::PushID(static_cast<int32_t>(region.start));
 
     ImGui::TableNextColumn();
     bool is_active = active_addresses_.contains(region.start);

@@ -71,9 +71,9 @@ void HexW::drawHexTable() {
 
     ImGui::TableNextColumn();
 
-    uint64_t row_abs_address = current_address_ - context_bytes_before < 0
-                                 ? (row * bytes_per_row)
-                                 : current_address_ - context_bytes_before + (row * bytes_per_row);
+    uint64_t row_abs_address = signedDiff(current_address_, context_bytes_before) < 0
+                                   ? (row * bytes_per_row)
+                                   : current_address_ - context_bytes_before + (row * bytes_per_row);
 
     if (row_abs_address == search_address_) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
     ImGui::Text("0x%" PRIX64, row_abs_address);
@@ -81,23 +81,23 @@ void HexW::drawHexTable() {
 
     for (int32_t hex_column = 0; hex_column < bytes_per_row; ++hex_column) {
       ImGui::TableNextColumn();
-      int32_t hex_index = row * bytes_per_row + hex_column;
+      int32_t hex_index = static_cast<int32_t>(row) * bytes_per_row + hex_column;
       if (editing_index_ == hex_index) {
-        std::string shown_str = hexToStr(shown_bytes_[hex_index]);
+        std::string shown_str = hexToStr(shown_bytes_[static_cast<uint64_t>(hex_index)]);
         ImGui::SetNextItemWidth(25.0F);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
         if (ImGui::InputText(
                 "##edit", &shown_str, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue)) {
           std::vector<uint8_t> write_value{static_cast<uint8_t>(strtoull(shown_str.c_str(), nullptr, 16))};
-          scanner_->writeAdr(row_abs_address + hex_column, write_value);
-          std::vector<uint8_t> read_byte = scanner_->readAdr(row_abs_address + hex_column, 1);
-          shown_bytes_[hex_index] = read_byte[0];
+          scanner_->writeAdr(row_abs_address + static_cast<uint64_t>(hex_column), write_value);
+          std::vector<uint8_t> read_byte = scanner_->readAdr(row_abs_address + static_cast<uint64_t>(hex_column), 1);
+          shown_bytes_[static_cast<uint64_t>(hex_column)] = read_byte[0];
         }
         if (ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) editing_index_ = -1;
         ImGui::PopStyleVar();
       } else {
         char label[16];
-        snprintf(label, sizeof(label), "%02X##%d", shown_bytes_[hex_index], hex_index);
+        snprintf(label, sizeof(label), "%02X##%d", shown_bytes_[static_cast<uint64_t>(hex_column)], hex_index);
         if (ImGui::Selectable(label, false, ImGuiSelectableFlags_AllowDoubleClick)) editing_index_ = hex_index;
       }
     }
@@ -106,9 +106,9 @@ void HexW::drawHexTable() {
 
     std::string print_buf;
     for (int32_t k = 0; k < bytes_per_row; ++k) {
-      int32_t hex_index = row * bytes_per_row + k;
-      if (std::isprint(static_cast<uint8_t>(shown_bytes_[hex_index])))
-        print_buf += shown_bytes_[hex_index];
+      int32_t hex_index = static_cast<int32_t>(row) * bytes_per_row + k;
+      if (std::isprint(static_cast<uint8_t>(shown_bytes_[static_cast<uint64_t>(hex_index)])))
+        print_buf += static_cast<char>(shown_bytes_[static_cast<uint64_t>(hex_index)]);
       else
         print_buf += '.';
     }
@@ -121,6 +121,6 @@ void HexW::drawHexTable() {
 // I do have something similar in DataInspector. probably might want to make it a function in scanner.
 
 std::vector<uint8_t> HexW::readAround(const uint64_t adr) {
-  uint64_t search_start = adr - context_bytes_before < 0 ? 0 : adr - context_bytes_before;
+  uint64_t search_start = signedDiff(adr, context_bytes_before) < 0 ? 0 : adr - context_bytes_before;
   return scanner_->readAdr(search_start, context_bytes_after + context_bytes_before);
 }

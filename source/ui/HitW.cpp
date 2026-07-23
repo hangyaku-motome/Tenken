@@ -47,6 +47,7 @@ PendingAction HitW::cycleW(const std::vector<HitInfo>& hits, SessionState& state
   auto hit_table_action = drawHitTable(hits, state.target_info);
 
   PendingAction context_action{};
+  if (selected_row_ >= hits.size()) selected_row_ = 0;
   if (selected_row_ >= 0 && static_cast<uint64_t>(selected_row_) <= hits.size()) {
     auto ctr = context.cycleContext(
         static_cast<uint64_t>(selected_row_), hits[static_cast<uint64_t>(selected_row_)], state.hit_refresh_seconds);
@@ -114,7 +115,7 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
           return_action = Action::AddFavourite{static_cast<uint64_t>(selected_row_)};
         if (ImGui::MenuItem("Copy address to clipboard")) {
           char buf[32];
-          snprintf(buf, sizeof(buf), "0x%" PRIX64, hits[selected_row_].location);
+          snprintf(buf, sizeof(buf), "0x%" PRIX64, hits[static_cast<uint64_t>(selected_row_)].location);
           ImGui::SetClipboardText(buf);
         }
         ImGui::EndPopup();

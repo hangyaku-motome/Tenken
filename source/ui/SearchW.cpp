@@ -51,21 +51,21 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
   PendingAction return_action{};
 
   TargetType temp_type = target_info.target_type;
-  if (getTargetType(temp_type)) return_action = Action::SetTargetInfo{temp_type, {}};
+  if (getTargetType(temp_type)) return_action = Action::SetTargetInfo{{}, {}, temp_type};
 
   if (target_info.target_type == TargetType::aob) {
     std::vector<uint8_t> bytes = target_info.value;
     std::vector<bool> mask;
     if (target_info.mask.has_value()) mask = target_info.mask.value();
     if (strToAOBInfo(bytes, mask)) {
-      return_action = Action::SetTargetInfo{target_info.target_type, bytes, mask};
+      return_action = Action::SetTargetInfo{bytes, mask, target_info.target_type};
       is_init_value_given_ = true;
     }
 
     if (target_info.value.empty() && !is_unknown_value_scan_) is_init_value_given_ = false;
 
   } else if (getTargetValue(target_info.target_type, tmp_val_)) {
-    return_action = Action::SetTargetInfo{target_info.target_type, tmp_val_};
+    return_action = Action::SetTargetInfo{tmp_val_, {}, target_info.target_type};
     is_init_value_given_ = true;
   }
 

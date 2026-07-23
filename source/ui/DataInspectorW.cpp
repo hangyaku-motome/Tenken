@@ -136,8 +136,8 @@ void DataInspectorW::renderTable() {
     if (types_.string) {
       std::string printbuf;
       for (int32_t i = 0; i < limit_; ++i) {
-        if (std::isprint(static_cast<uint8_t>(bytes_[row + i])))
-          printbuf += bytes_[row + i];
+        if (std::isprint(static_cast<uint8_t>(bytes_[row + static_cast<uint32_t>(i)])))
+          printbuf += static_cast<char>(bytes_[row +static_cast<uint32_t>(i)]);
         else
           printbuf += '.';
       }

@@ -12,13 +12,13 @@ void FavouriteList::assignNew(std::vector<FavouriteInfo> new_list) {
 void FavouriteList::add(const HitInfo& hit, TargetType target_type) {
   std::scoped_lock<std::mutex> lock(mutex_);
   FavouriteInfo push_favourite;
-  favourites_.push_back({.location = hit.location,
-                         .value = hit.value,
+  favourites_.push_back({.value = hit.value,
                          .previous_value = hit.previous_value,
                          .desc = "",
                          .bytes_around = hit.bytes_around,
-                         .type = target_type,
-                         .frozen_value = hit.value});
+                         .frozen_value = hit.value,
+                         .location = hit.location,
+                         .type = target_type});
 }
 
 void FavouriteList::remove(uint64_t index) {
