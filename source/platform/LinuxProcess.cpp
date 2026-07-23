@@ -34,8 +34,7 @@ class LinuxImpl : public IProcess {
 public:
   LinuxImpl(int pid)
       : pid_(pid) {
-    pid_ = pid;
-    std::string path = "/tmp/tenken_mmap_" + std::to_string(getpid());
+    std::string path = "/var/tmp/tenken_mmap_" + std::to_string(getpid());
     fd_ = open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0600);
   }
 
@@ -52,7 +51,7 @@ public:
 
 };  // namespace LinuxImpl IProcess
 
-bool LinuxImpl::isAttached() {return pid_ != 0;}
+bool LinuxImpl::isAttached() { return pid_ != 0; }
 
 void LinuxImpl::unAllocMMapDisk(uint64_t address, uint64_t size) { munmap(reinterpret_cast<void*>(address), size); }
 
@@ -145,7 +144,7 @@ std::vector<MapInfo> LinuxImpl::getRegions() {
     } else
       type = MapType::unset;
 
-    MapInfo TempMapReg = {start, end, name, type};
+    MapInfo TempMapReg = {name, start, end, type};
     MapRegions.push_back(TempMapReg);
   }
 
@@ -169,7 +168,7 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t Read
   if (read_amount == -1) {
     return {};
   }
-  read_buf.resize(read_amount);
+  read_buf.resize(static_cast<uint64_t>(read_amount));
 
   return read_buf;
 }
@@ -214,14 +213,18 @@ std::string ReadFileString(const std::string& path) {
 }
 
 char* LinuxImpl::allocMMapDisk(uint64_t size) {
-  uint64_t pagesize = sysconf(_SC_PAGESIZE);
+  uint64_t page_size = static_cast<uint64_t>(sysconf(_SC_PAGESIZE));
 
-  uint64_t alignedsize = (size + pagesize - 1) & ~(pagesize - 1);
+  uint64_t aligned_size = (size + page_size - 1) & ~(page_size - 1);
 
   uint64_t curr_offset = fileoffset_;
-  fileoffset_ += alignedsize;
+  fileoffset_ += aligned_size;
 
-  ftruncate(fd_, static_cast<int64_t>(fileoffset_));
+  if (ftruncate(fd_, static_cast<int64_t>(fileoffset_)) == -1) {
+    Log::error("allocating disk space failed" + std::string(strerror(errno)));
+    fileoffset_ -= aligned_size;
+    return nullptr;
+  }
 
   char* ptr = static_cast<char*>(
       mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, static_cast<int64_t>(curr_offset)));

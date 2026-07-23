@@ -1,8 +1,9 @@
-#include "Platform.h"
-
 #include <unistd.h>
 
 #include <fstream>
+#include <iostream>
+
+#include "Platform.h"
 
 bool Platform::checkPermission() {
   if (geteuid() == 0) return true;
@@ -25,12 +26,19 @@ bool Platform::checkPermission() {
   return false;
 }
 
-std::filesystem::path Platform::getImGuiInitPath() {
+std::filesystem::path Platform::getTenkenStatePath() {
   char* user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
-  return std::filesystem::path("/home") / user / ".local" / "state" / "Tenken" / "imgui.ini";
+  std::filesystem::path path = std::filesystem::path("/home") / user / ".local" / "state" / "Tenken";
+  std::filesystem::create_directories(path);
+  std::cout << path << " tenken save path?\n";
+  return path;
 }
 
-std::filesystem::path Platform::getSavePath() {
+std::filesystem::path Platform::getImguiInitPath() { return getTenkenStatePath() / "imgui.ini"; }
+
+std::filesystem::path getTenkenSharePath() {
   char* user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
-  return std::filesystem::path("/home") / user / ".local" / "share" / "Tenken" / "tenkenSave.json";
+  std::filesystem::path path = std::filesystem::path("/home") / user / ".local" / "share" / "Tenken";
+  std::filesystem::create_directories(path);
+  return path;
 }
