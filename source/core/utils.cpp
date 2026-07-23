@@ -20,7 +20,7 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
   } else if constexpr (std::is_floating_point_v<T>) {
     if (std::isnan(old_value) || std::isnan(new_value)) return RelativeStatus::changed;
 
-    float diff = old_value - new_value;
+    float diff = static_cast<float>(old_value - new_value);
     if (std::abs(diff) <= epsilon) return RelativeStatus::unchanged;
 
     if (diff > 0) return RelativeStatus::increased;
@@ -51,12 +51,11 @@ template RelativeStatus tagChange<std::vector<uint8_t>>(std::vector<uint8_t>, st
 
 //
 
-std::vector<uint8_t> findBytesAround(const uint32_t offset, const std::vector<uint8_t>& data, const uint32_t size) {
+std::vector<uint8_t> findBytesAround(const uint64_t offset, const std::vector<uint8_t>& data, const uint32_t size) {
   uint64_t start = offset < bytes_before ? 0 : offset - bytes_before;
   uint64_t end = offset + bytes_after + size > data.size() ? data.size() : offset + bytes_after + size;
 
-  std::vector<uint8_t> bytes(bytes_before + bytes_after
-                             + size);
+  std::vector<uint8_t> bytes(bytes_before + bytes_after + size);
   memcpy(bytes.data(), &data[start], end - start);
   return bytes;
 }
@@ -119,28 +118,6 @@ template std::vector<uint64_t>
 searchValue<std::string>(const std::vector<uint8_t>&, const std::string&, const std::vector<bool>&);
 template std::vector<uint64_t>
 searchValue<std::vector<uint8_t>>(const std::vector<uint8_t>&, const std::vector<uint8_t>&, const std::vector<bool>&);
-
-//
-
-// I might wanna merge searchRawValue and searchValue but not right now.
-
-std::vector<uint64_t> searchRawValue(const std::vector<uint8_t>& data,
-                                     const std::vector<uint8_t>& target_data,
-                                     const std::vector<bool>& mask) {  // validbytes for byte scanning later.
-
-  std::vector<uint64_t> found_offsets;
-  uint64_t TargetSize = target_data.size();
-
-  for (uint32_t i = 0; i + TargetSize <= data.size(); ++i) {
-    if (memcmp(&data[i], target_data.data(), TargetSize) == 0) {
-      found_offsets.push_back(i);
-    }
-  }
-  return found_offsets;
-}
-
-// a function that takes no mask just returns a normal string for vector.
-// a wrapper function that swtiches the bytes to ?? as neeeded:
 
 std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector<bool>& mask) {
   std::string return_string;
@@ -218,25 +195,27 @@ std::string targetTypeToStr(const TargetType targetType) {
     case TargetType::f32:
       return "float";
     case TargetType::f64:
-    return "double";
+      return "double";
     case TargetType::string:
       return "string";
     case TargetType::invalid:
       return "invalid";
     case TargetType::aob:
       return "aob";
+    default:
+    return "";
   }
 }
 
-TargetType strToTargetType(const std::string &string) {
-  if(string == "uInt8") return TargetType::uInt8;
-  if(string == "uInt16") return TargetType::uInt16;
-  if(string == "uInt32") return TargetType::uInt32;
-  if(string == "uInt64") return TargetType::uInt64;
-  if(string == "int8") return TargetType::int8;
-  if(string == "int16") return TargetType::int16;
-  if(string == "int32") return TargetType::int32;
-  if(string == "int64") return TargetType::int64;
+TargetType strToTargetType(const std::string& string) {
+  if (string == "uInt8") return TargetType::uInt8;
+  if (string == "uInt16") return TargetType::uInt16;
+  if (string == "uInt32") return TargetType::uInt32;
+  if (string == "uInt64") return TargetType::uInt64;
+  if (string == "int8") return TargetType::int8;
+  if (string == "int16") return TargetType::int16;
+  if (string == "int32") return TargetType::int32;
+  if (string == "int64") return TargetType::int64;
 
   return TargetType::invalid;
 }
@@ -253,8 +232,9 @@ std::string relativeStatusToStr(const RelativeStatus status) {
       return "Changed";
     case RelativeStatus::unset:
       return "Unset";
+    default:
+    return "";
   }
-  return "";
 }
 
 // end of tostr stuff.
@@ -325,39 +305,37 @@ bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask) {
 
 std::string hexToStr(const uint8_t byte) { return std::string({hex[(byte >> 4)], hex[(byte & 0xF)]}); }
 
-
-std::string mapTypeToStr(const MapType type){
-     switch (type) {
-      case MapType::mainExecData:
+std::string mapTypeToStr(const MapType type) {
+  switch (type) {
+    case MapType::mainExecData:
       return "Main Exec Data";
-      case MapType::anon:
+    case MapType::anon:
       return "Anon";
-      case MapType::heap:
+    case MapType::heap:
       return "Heap";
-      case MapType::mainExecCode:
+    case MapType::mainExecCode:
       return "Main Exec Code";
-      case MapType::mainExecConst:
+    case MapType::mainExecConst:
       return "Main Exec Const";
-      case MapType::sharedLibCode:
+    case MapType::sharedLibCode:
       return "Shared Lib Code";
-      case MapType::sharedLibData:
+    case MapType::sharedLibData:
       return "Shared Lib Data";
-      case MapType::sharedLibConst:
+    case MapType::sharedLibConst:
       return "Shared Lib Const";
-      case MapType::kernelPages:
+    case MapType::kernelPages:
       return "Kernel Pages";
-      case MapType::stack:
+    case MapType::stack:
       return "Stack";
-      case MapType::unreadable:
+    case MapType::unreadable:
       return "Unreadable";
-      case MapType::unset:
+    case MapType::unset:
       return "Unset";
-    }
+    default:
+    return "";
   }
+}
 
-
-
-
-
-
-
+int64_t signedDiff(uint64_t a, uint64_t b) {
+  return (a >= b) ? static_cast<int64_t>(a - b) : -static_cast<int64_t>(b - a);
+}
