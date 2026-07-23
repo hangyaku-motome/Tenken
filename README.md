@@ -76,9 +76,10 @@ Created and maintained by Hangyaku.
 
 ## Third-party
 
-- [Dear ImGui](https://github.com/ocornut/imgui) — MIT
-- [GLFW](https://www.glfw.org/) — Zlib
-- [nlohmann/json](https://github.com/nlohmann/json) — MIT
+- [Dear ImGui](https://github.com/ocornut/imgui) - MIT
+- [GLFW](https://www.glfw.org/) - Zlib
+- [nlohmann/json](https://github.com/nlohmann/json) - MIT
+- [imgui-filebrowser](https://github.com/AirGuanZ/imgui-filebrowser) - MIT
 
 ## Other Remarks
 
