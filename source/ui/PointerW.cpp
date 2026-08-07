@@ -4,7 +4,6 @@
 #include <imgui_internal.h>
 #include <X11/Xdefs.h>
 
-#include <iostream>
 #include <string>
 
 #include "types.h"
@@ -31,9 +30,7 @@ PendingAction PointerW::cycleSearchW() {
 
   ImGui::NewLine();
   ImGui::Text("Or...If you have a result to load in");
-
-  // So...After having a pair of pointer lists (either by scanning once then loading in the other one or loading in
-  // both), on second windows (pointer listW) there needs to be an option of compare against.
+  if (ImGui::Button("Choose result")) file_browser_.Open();
 
   endW();
   return {};
@@ -43,7 +40,7 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
   if (!pointer_list.is_file_open_) {
     ImGui::Text("No valid file loaded in. If you just tried to scan and are seeing this, this means there is a BUG and "
                 "I couldn't parse the save file. Check logs for details (if there are any.)");
-    if (ImGui::Button("Load in another result")) file_browser_.Open();
+    if (ImGui::Button("Go back")) is_on_search_window_ = true;
     return endW();
   }
   ImGui::Text("%s", (std::to_string(pointer_list.total_chains_) + " chains in loaded file").c_str());
@@ -53,22 +50,17 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
 
   ImGui::TableSetupColumn("module");
   ImGui::TableSetupColumn("offset in module");
+  // TODO: should be as much as biggest valid offsets in loaded file, not max depth.
   for (int i = 0; i < Pointer::max_depth; ++i)
     ImGui::TableSetupColumn((std::string("offset ") + std::to_string(i)).c_str());
 
   ImGui::TableHeadersRow();
 
-  printf("THIS IS SIZE OF CHAINS %lu\n\n\n", chains_.size());
-  printf("THIS IS TOTAL SIZE OF CHAINS %lu\n\n\n", pointer_list.total_chains_);
-
   ImGuiListClipper clipper;
   clipper.Begin(pointer_list.total_chains_);
 
   while (clipper.Step()) {
-    if (chains_.empty()) chains_ = pointer_list.get_from(0, pointer_list.total_chains_);
-
-    std::cout << "tried to get from to in chains " << clipper.DisplayStart << " "
-              << clipper.DisplayEnd - clipper.DisplayStart << "\n";
+    if (chains_.empty()) chains_ = pointer_list.getFrom(0, pointer_list.total_chains_);
 
     for (uint64_t i = 0; i + clipper.DisplayStart < clipper.DisplayEnd; ++i) {
       ImGui::TableNextRow();
@@ -91,11 +83,14 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
   ImGui::EndTable();
   return endW();
 
-  // this many chains found.
-  // Info:: The result has been saved. You should choose another pointer scan result if you have one.
-  // If not, run the pointer scan on another instance of the program to get another one. Afterwards you can compare
-  // them.
-  //
+  // also no.
+  // the new system is making a pointer scan, automatically saving it. and then adding an option to "Test Pointer" in
+  // file. from there it can automatically select the latest date one in share (maybe also give option to manually
+  // choose path). When a pointer scan result is loaded in, it will try to resolve the pointers. uhhh for
+  // that...........................................................I need to prompt the new location of the value in
+  // "Test Pointer". and when a chain DOES eventually lead to that address, we can keep it. otherwise remove. NOT SURE
+  // WHERE TO SAVE EXACTLY. But afterwards we show result in PointerW, and give choice to save. they can label each
+  // pointer, aaand we can also add a checkbox next to each entry to save or not.
 }
 
 PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_list) {
@@ -105,8 +100,17 @@ PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_l
     return {};
   };
 
+  if (file_browser_.HasSelected()) {
+    printf("this is done");
+    pointer_list.openFile(file_browser_.GetSelected());
+    is_on_search_window_ = false;
+    chains_.clear();
+    file_browser_.Close();
+  }
+
   file_browser_.Display();
 
+  // TODO: make it possible to do hit scanning and pointer scanning at the same time.
   if (state.scan_type == ScanType::Pointer) {
     ImGui::Text("Scanning...");
     endW();
@@ -117,5 +121,6 @@ PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_l
   };
 
   cyclePointerListW(pointer_list);
+
   return {};
 }

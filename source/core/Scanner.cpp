@@ -1,6 +1,7 @@
 #include "Scanner.h"
 
 #include <imgui.h>
+#include <X11/Xdefs.h>
 
 #include <algorithm>
 #include <array>
@@ -9,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <string>
 
 #include "LogW.h"
 #include "Platform.h"
@@ -31,6 +33,8 @@ std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t read_size) cons
 //  Well...Actually it SHOULD be filled in again, since we check for empty but this means...what's the point if we are
 //  going to rescan to fill it up again?
 //  edit. what was I talking about up there? will look at this later...
+//  noo idea
+//  I'll have an idea soon enough
 Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::atomic<float>& progress) const {
   if (proc_ == nullptr) return {};
   std::vector<MapInfo> maps = active_regions;
@@ -54,7 +58,8 @@ Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::a
       --i;
       continue;
     }
-    memcpy(ptr, data.data(), maps[i].end - maps[i].start);  // SIGBUS?? Why?
+    memcpy(ptr, data.data(), maps[i].end - maps[i].start);  // SIGBUS?? Why? uhh am I still getting sigbus on this
+                                                            // sometimes or did I forget to delete the comment?
 
     return_snapshot.regions.push_back(
         Region{.mapped_region = MappedRegion(ptr, maps[i].end - maps[i].start), .map = maps[i]});
@@ -112,7 +117,7 @@ std::vector<MapInfo> Scanner::getMapRegions() const {
 /// also, heaptrack thing or whatever. try it out.
 
 // returns save
-std::string Scanner::findPointerCandidates(const Snapshot& snapshot, const Pointer::InitConfig& init_config) {
+std::string Scanner::findPointerCandidates(const Snapshot& snapshot, const Pointer::InitConfig& init_config) const {
   printf("trying to make find pointer candidates..\n");
   std::vector<PointerData> potential_pointers;
   for (uint64_t i = 0; i < snapshot.regions.size(); ++i) {
@@ -162,25 +167,28 @@ std::string Scanner::findPointerCandidates(const Snapshot& snapshot, const Point
   return save_path;
 }
 
+// TODO: I need to set up some sort of multithreading scan.
 void Scanner::buildPointers(const std::vector<PointerData>& pointers,
                             const std::vector<MapInfo>& data_regions,
                             const Pointer::ScanInfo& config,
                             std::ofstream& save_stream,
                             std::array<int64_t, Pointer::max_depth>& stack,
                             uint64_t address,
-                            uint8_t depth) {
+                            uint8_t depth) const {
   auto it = std::lower_bound(pointers.begin(), pointers.end(), address, [config](const auto& ptr, const uint64_t adr) {
     return ptr.points_to < adr - config.search_before;
   });
 
   for (; it != pointers.end() && it->points_to <= address + config.search_after; ++it) {
     if ((it->adr & data_region_flag)) {
-      stack[depth] = signedDiff(it->adr & ~data_region_flag, address);
+      // OH MY GOD I'M SO DUMBBBB lasdkjfaslkfjdsalkfjdsaklfdjsa
+      stack[depth] = signedDiff(it->points_to, address);
       auto reg_it = std::upper_bound(data_regions.begin(),
                                      data_regions.end(),
                                      it->adr & ~data_region_flag,
                                      [](const uint64_t v, const auto& r) { return v < r.start; });
       --reg_it;
+
       Pointer::Chain chain = {.offsets = stack,
                               .offset_in_module = (it->adr & ~data_region_flag) - reg_it->start,
                               .module_id = static_cast<uint32_t>(std::distance(data_regions.begin(), reg_it)),
@@ -189,12 +197,12 @@ void Scanner::buildPointers(const std::vector<PointerData>& pointers,
       continue;
     }
     if (depth == config.scan_depth) continue;
-    stack[depth] = signedDiff(it->adr & ~data_region_flag, address);
+    stack[depth] = signedDiff(it->points_to, address);
     buildPointers(pointers, data_regions, config, save_stream, stack, it->adr & ~data_region_flag, depth + 1);
   }
 }
 
-std::filesystem::path Scanner::makePointerSavePath(const std::string& exec_name) {
+std::filesystem::path Scanner::makePointerSavePath(const std::string& exec_name) const {
   printf("trying to make pointer save pathh..\n");
   auto date = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
   std::string date_str = std::format("{:%Y-%m-%d_%H%M%S}", date);
@@ -207,7 +215,7 @@ std::filesystem::path Scanner::makePointerSavePath(const std::string& exec_name)
   return save_path;
 }
 
-bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions, std::ofstream& save_stream) {
+bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions, std::ofstream& save_stream) const {
   try {
     save_stream.exceptions(std::ios::failbit | std::ios::badbit);
     save_stream.write(reinterpret_cast<const char*>(&Pointer::magic_bytes), sizeof(Pointer::magic_bytes));
@@ -235,4 +243,73 @@ bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions, std:
 
   Log::info("Pointer file was successfully initialized");
   return true;
+}
+
+std::vector<Pointer::Chain> Scanner::resolveChains(const std::vector<Pointer::Chain>& chains,
+                                                   const std::vector<uint64_t>& region_starts,
+                                                   const uint64_t target_address) const {
+  std::vector<Pointer::Chain> new_chains;
+  new_chains.reserve(chains.size());
+
+  std::copy_if(chains.begin(), chains.end(), std::back_inserter(new_chains), [&](const Pointer::Chain& c) {
+    return this->resolveChain(c, region_starts, target_address);
+  });
+
+  return new_chains;
+}
+
+bool Scanner::resolveChain(const Pointer::Chain& chain,
+                           const std::vector<uint64_t>& region_starts,
+                           const uint64_t target_address) const {
+  if (region_starts[chain.module_id] == 0) return false;
+  uint64_t ptr =
+      dataToType<uint64_t>(readAdr(region_starts[chain.module_id] + chain.offset_in_module, sizeof(uint64_t)));
+  if (ptr == 0) return false;
+
+  for (int32_t i = 0; i < chain.valid_offsets; ++i) {
+    ptr = dataToType<uint64_t>(readAdr(ptr + chain.offsets[i], sizeof(uint64_t)));
+    if (ptr == 0) return false;
+  }
+
+  if (ptr == target_address) return true;
+
+  return false;
+}
+
+// I really really don't wanna use pretty chains in this entire pipeline of checking whether or not it's valid. Having
+// 30k vectors ands string allocated each time is NOT ideal. toooooo much overhead.
+
+// although...SOME optimising will be left to later. MAKE IT WORK FIRST!!!
+// uhh let's hope this all conveniently works the first time and I won't be stuck debugging.
+void Scanner::resolvePointerResult(const uint64_t target_address,
+                                   const std::string& result_path_str,
+                                   PointerList& pointer_list) const {
+  std::vector<uint64_t> region_starts;
+  region_starts.reserve(pointer_list.data_module_names_.size());
+  for (auto& region : getMapRegions()) {
+    if (region.type != MapType::mainExecData && region.type != MapType::sharedLibData) continue;
+
+    for (uint32_t i = 0; i < pointer_list.data_module_names_.size(); ++i)
+      if (pointer_list.data_module_names_[i] == region.name) region_starts[i] = region.start;
+  }
+
+  std::string append_str =
+      result_path_str.find("fltr") == std::string::npos
+          ? "__fltr_"
+          : std::to_string(std::stoi(result_path_str.substr(result_path_str.find("fltr_") + 5)) + 1);
+
+  std::ofstream save_stream(result_path_str + append_str, std::ios::binary | std::ios::trunc);
+
+  if (pointer_list.total_chains_ <= 30000) {
+    auto chains = pointer_list.getFromRaw(0, pointer_list.total_chains_);
+    chains = resolveChains(chains, region_starts, target_address);
+    save_stream.write(reinterpret_cast<const char*>(&chains), chains.size() * sizeof(Pointer::Chain));
+    return;
+  }
+
+  for (uint32_t i = 0; i + 30000 <= pointer_list.total_chains_; i += 30000) {
+    auto chains = pointer_list.getFromRaw(i, i + 30000);
+    chains = resolveChains(chains, region_starts, target_address);
+    save_stream.write(reinterpret_cast<const char*>(&chains), chains.size() * sizeof(Pointer::Chain));
+  }
 }

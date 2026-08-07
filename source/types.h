@@ -16,7 +16,7 @@
   #include <sys/mman.h>
 #endif
 
-// some of these constexpr should be file local, not here.
+// some of these constexpr should be file local, not here, and arguably some classes/structs?
 
 constexpr int32_t bytes_before = 32;
 constexpr int32_t bytes_after = 32;
@@ -190,6 +190,9 @@ constexpr uint8_t max_depth = 8;
 // uint8_t len, then rest of string.
 // chain table.
 
+// Important. Offsets are target -> root. Meaning, resolving or displaying them needs to reverse the valid offsets to
+// work properly.
+
 // this is how they are saved to file.
 struct Chain {
   std::array<int64_t, Pointer::max_depth> offsets;
@@ -292,7 +295,7 @@ struct RestartScan {};
 
 struct SetTargetInfo {
   std::vector<uint8_t> value;
-  std::optional<std::vector<bool>> mask;
+  std::optional<std::vector<bool>> mask;  // does this really need to be optional. maybe. will check later.
   TargetType type;
 };
 
@@ -302,12 +305,13 @@ struct StartPointerScan {
   Pointer::InitConfig init_config;
 };
 
+struct ResolvePointerResult {uint64_t target_address;};
+
 };  // namespace Action
 
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
-template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 using PendingAction = std::variant<std::monostate,
                                    Action::TargetProcChosen,
@@ -331,7 +335,8 @@ using PendingAction = std::variant<std::monostate,
                                    Action::RescanAllFavourites,
                                    Action::SetTargetInfo,
                                    Action::UndoScan,
-                                   Action::StartPointerScan>;
+                                   Action::StartPointerScan,
+                                   Action::ResolvePointerResult>;
 
 //
 // End of Action stuff.

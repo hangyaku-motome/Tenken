@@ -32,10 +32,6 @@ using nlohmann::json;
 constexpr auto file_browser_flags = ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CloseOnEsc |
                                     ImGuiFileBrowserFlags_CreateNewDir | ImGuiFileBrowserFlags_EditPathString;
 
-// ptr scan save:
-// on linux, .local/state/Tenken/Pointer/{name}/scan-{date}
-// on windows, I don't know. I forgot. I need to look at that again.
-
 void resolveActions(Scanner& scanner_obj,
                     const std::vector<PendingAction>& actions,
                     SessionState& state,
@@ -56,6 +52,8 @@ int main() {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
     return 1;
   }
+
+  // TODO: make sure directories are all created.
 
   // Start up Dear ImGui.
   std::string imgui_init_path_str = Platform::getImguiInitPath();
@@ -91,6 +89,7 @@ int main() {
   auto favourite_refresh_time = std::chrono::steady_clock::now();
 
   // Main loop.
+  std::vector<PendingAction> actions;
   while (glfwWindowShouldClose(window) == 0) {
     if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
       ImGui_ImplGlfw_Sleep(10);
@@ -100,8 +99,6 @@ int main() {
 
     start_frame();
     setDefaultDisplay();
-
-    std::vector<PendingAction> actions;
 
     std::string menu_bar_action = mainMenuBarCycle(save_dialog,
                                                    load_dialog,
@@ -139,6 +136,8 @@ int main() {
     actions.push_back(search_w.cycleW(state.target_info, state.target_proc_info.pid));
 
     // Favourite window.
+    // Okay frankly...I'm not sure how to feel about this whole "lock" thing we're doing with hit_l and favourite_l
+    // but...Whatever.
     if (favourite_l.try_lock()) {
       actions.push_back(favourite_w.cycleW(favourite_l.getRef(), state));
       favourite_l.unlock();
@@ -200,9 +199,7 @@ void resolveActions(Scanner& scanner,
                     std::thread& scanner_thread,
                     HitList& hit,
                     FavouriteList& favourite,
-                    PointerList& pointer
-
-) {
+                    PointerList& pointer_l) {
   for (auto& Pending : actions) {
     std::visit(
         overloaded{[&](const Action::TargetProcChosen& a) {
@@ -293,8 +290,16 @@ void resolveActions(Scanner& scanner,
                      ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a.init_config]() {
                        auto path = scanner.findPointerCandidates(
                            scanner.getSnapshot(state.active_regions, state.scan_progress), info);
-                       pointer.open_file(path);
+                       pointer_l.openFile(path);
                      });
+                   },
+                   [&](const Action::ResolvePointerResult& a) {
+                     ScanOp::runOnScannerThread(
+                         scanner_thread, state, ScanType::Pointer, [&, target_address = a.target_address]() {
+                           // TODO: Left off here. make a function to get latest file ordered by name in a directory. We
+                           // will have two options here (latest scan or manually chosen)
+                           scanner.resolvePointerResult(target_address, {}, pointer_l);
+                         });
                    },
                    [&](const std::monostate&) {}},
         Pending);

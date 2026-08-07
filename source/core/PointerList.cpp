@@ -1,13 +1,12 @@
 #include "PointerList.h"
 
+#include <algorithm>
 #include <iostream>
 
 #include "LogW.h"
 #include "types.h"
 
-/// PLEASEEE WORK ALREADYYYYYYYYYYYYYYYYYYYYYY
-
-bool PointerList::open_file(const std::filesystem::path& path) {
+bool PointerList::openFile(const std::filesystem::path& path) {
   printf("trying to open file. good luck me, hope I don't mysteriously sigfault or something!\n");
   if (stream_.is_open()) stream_.close();
 
@@ -22,7 +21,7 @@ bool PointerList::open_file(const std::filesystem::path& path) {
 
     stream_.read(reinterpret_cast<char*>(&magic_bytes), sizeof(magic_bytes));
     if (magic_bytes != Pointer::magic_bytes) {
-      Log::error("This is not the right file type.");
+      Log::error("This is not the right file type. \".tpt\" files onlyyy...");
       is_file_open_ = false;
       return false;
     };
@@ -36,7 +35,8 @@ bool PointerList::open_file(const std::filesystem::path& path) {
 
     stream_.read(reinterpret_cast<char*>(&entry_size), sizeof(entry_size));
     if (entry_size != sizeof(Pointer::Chain)) {
-      Log::error("Entry size and pointer chain do not line up. This is most definitely a bug.");
+      Log::error("Entry size and pointer chain do not line up. This is most definitely a bug. OR, you got this result "
+                 "on a different platform/system and now tried to use it in another one.");
       is_file_open_ = false;
       return false;
     };
@@ -74,7 +74,7 @@ bool PointerList::open_file(const std::filesystem::path& path) {
     }
 
     if (data_module_names_.empty()) {
-      Log::error("No module names found in file...This is most probably a bug.");
+      Log::error("No module names found in file...This is most probably a bug.");  // NOTE: what do when no pointer?
       is_file_open_ = false;
       return false;
     }
@@ -85,12 +85,6 @@ bool PointerList::open_file(const std::filesystem::path& path) {
 
     entry_start_point_ = entry_start_point;
 
-    std::cout << "WHAT I PARSED INFO. " << "MAGIC BYTES: " << std::hex << magic_bytes << "\n"
-              << "FILE VERSION :" << std::dec << file_version << "\n"
-              << "ENTRY SIZE: " << entry_size << "\n"
-              << "ENTRY START POINT: " << std::hex << entry_start_point << "\n"
-              << "TABLE SIZE: " << std::dec << table_size << "\n"
-              << "DATA MODULE NAMES:" << data_module_names_[0] << "\n\n";
   } catch (...) {
     Log::error("Reading file failed.");
     is_file_open_ = false;
@@ -101,30 +95,28 @@ bool PointerList::open_file(const std::filesystem::path& path) {
   return true;
 }
 
-std::vector<Pointer::PrettyChain> PointerList::get_from(uint64_t start_index, uint64_t read_count) {
-  printf("trying to get from\n");
-  std::vector<Pointer::Chain> chains_buf(read_count);
-  stream_.seekg(entry_start_point_ + static_cast<std::streamoff>(start_index) * sizeof(Pointer::Chain));
-  stream_.read(reinterpret_cast<char*>(chains_buf.data()), chains_buf.size() * sizeof(Pointer::Chain));
+std::vector<Pointer::PrettyChain> PointerList::getFrom(uint64_t start_index, uint64_t read_count) {
+  auto chains_raw = getFromRaw(start_index, read_count);
 
-  std::cout << "\n\nso this is what I read from stream in get_from into chains_buf:\n\n";
-  for (const auto& chain : chains_buf) {
-    std::cout << "id " << chain.module_id << "\n"
-              << "offset " << chain.offset_in_module << "\n"
-              << "valid offsets" << static_cast<int32_t>(chain.valid_offsets) << "\n";
-    for (int i = 0; i < chain.valid_offsets; ++i) std::cout << "offset: " << chain.offsets[i] << "\n";
-    std::cout << "\n";
-  }
-
-  std::cout << "\n\n\n";
-
-  std::vector<Pointer::PrettyChain> chains(read_count);
-  for (const auto& chain_buf : chains_buf) {
-    std::vector<int64_t> vec(chain_buf.offsets.begin(), chain_buf.offsets.begin() + chain_buf.valid_offsets);
+  std::vector<Pointer::PrettyChain> chains;
+  chains.reserve(chains_raw.size());
+  for (const auto& chain_raw : chains_raw) {
+    std::vector<int64_t> vec(chain_raw.offsets.begin(), chain_raw.offsets.begin() + chain_raw.valid_offsets);
     chains.push_back({.offsets = vec,
-                      .module_name = data_module_names_[chain_buf.module_id],
-                      .offset_in_module = chain_buf.offset_in_module});
+                      .module_name = data_module_names_[chain_raw.module_id],
+                      .offset_in_module = chain_raw.offset_in_module});
   }
+
+  return chains;
+}
+
+std::vector<Pointer::Chain> PointerList::getFromRaw(uint64_t start_index, uint64_t read_count) {
+  std::vector<Pointer::Chain> chains;
+  chains.reserve(read_count);
+  stream_.seekg(entry_start_point_ + static_cast<std::streamoff>(start_index) * sizeof(Pointer::Chain));
+  stream_.read(reinterpret_cast<char*>(chains.data()), chains.size() * sizeof(Pointer::Chain));
+
+  for (auto& chain : chains) std::reverse(chain.offsets.begin(), chain.offsets.begin() + chain.valid_offsets);
 
   return chains;
 }
