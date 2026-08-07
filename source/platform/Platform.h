@@ -8,4 +8,6 @@ bool checkPermission();
 std::filesystem::path getTenkenStatePath();
 std::filesystem::path getImguiInitPath();
 std::filesystem::path getTenkenSharePath();
+
+// void createTenkenDirs();
 }  // namespace Platform
