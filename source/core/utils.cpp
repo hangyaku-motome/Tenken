@@ -237,8 +237,6 @@ std::string relativeStatusToStr(const RelativeStatus status) {
   }
 }
 
-// end of tostr stuff.
-
 // takes a typename T. takes data. casts it to that. returns that.
 template <typename T> T dataToType(const std::vector<uint8_t>& data) {
   if constexpr (std::is_same_v<T, std::string>) {
