@@ -1,3 +1,22 @@
 #pragma once
 
-constexpr auto TENKEN_VERSION = "@PROJECT_VERSION@";
+constexpr auto TenkenVersion = "@PROJECT_VERSION@";
+constexpr char JsonSaveVersion = 1;
+
+constexpr char PointerResultVersion = 1;
+// file layout as of version 1:
+// magic_bytes uint64_t
+// file_version uint8_t
+// entry_size sizeof(PointerChain) uint8_t
+// entry_start_point uint64_t
+//
+
+// string table.
+// each string entry is:
+// uint8_t len, then rest of string.
+// chain table.
+
+// Important. Offsets are target -> root. Meaning, resolving or displaying them needs to reverse the valid offsets to
+// work properly. (or..walk backwards.)
+
+//
