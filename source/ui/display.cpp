@@ -127,47 +127,6 @@ void setDefaultDisplay() {
   ImGui::End();
 }
 
-std::string mainMenuBarCycle(ImGui::FileBrowser& save_dialog,
-                             ImGui::FileBrowser& load_dialog,
-                             bool& target_popup_clicked,
-                             bool& map_popup_clicked,
-                             bool& log_w_enabled,
-                             bool& hex_w_enabled,
-                             bool& data_inspector_enabled,
-                             bool& pointer_w_enabled) {
-  if (!ImGui::BeginMainMenuBar()) return "";
-
-  std::string do_action;
-
-  if (ImGui::BeginMenu("File")) {
-    if (ImGui::MenuItem("New Target")) target_popup_clicked = true;
-
-    if (ImGui::MenuItem("Save")) save_dialog.Open();
-    if (ImGui::MenuItem("Load")) load_dialog.Open();
-
-    ImGui::EndMenu();
-  }
-
-  if (ImGui::BeginMenu("Utils")) {
-    if (ImGui::MenuItem("View Regions")) map_popup_clicked = true;
-
-    if (ImGui::MenuItem("Toggle Log window.", nullptr, log_w_enabled, true)) log_w_enabled = !log_w_enabled;
-
-    if (ImGui::MenuItem("Toggle Hex window.", nullptr, hex_w_enabled, true)) hex_w_enabled = !hex_w_enabled;
-
-    if (ImGui::MenuItem("Toggle Data Inspector window.", nullptr, data_inspector_enabled, true))
-      data_inspector_enabled = !data_inspector_enabled;
-    if (ImGui::MenuItem("Toggle Pointer window.", nullptr, pointer_w_enabled, true))
-      pointer_w_enabled = !pointer_w_enabled;
-
-    ImGui::EndMenu();
-  }
-
-  ImGui::EndMainMenuBar();
-
-  return do_action;
-}
-
 template <typename out, typename T> std::vector<uint8_t> ValtoData(const T& val) {
   std::vector<uint8_t> data(sizeof(out));
   memcpy(data.data(), &val, sizeof(out));
