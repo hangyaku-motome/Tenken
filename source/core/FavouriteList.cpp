@@ -39,12 +39,12 @@ void FavouriteList::setDesc(uint64_t index, std::string set_to) {
 void FavouriteList::rescanNoLock(const Scanner& scanner, uint64_t index) {
   favourites_[index].previous_value = favourites_[index].value;
 
-  favourites_[index].bytes_around.resize(bytes_before + bytes_after + favourites_[index].value.size());
+  favourites_[index].bytes_around.resize(BytesBefore + BytesAfter + favourites_[index].value.size());
 
   favourites_[index].bytes_around =
-      scanner.readAdr(favourites_[index].location - bytes_before, favourites_[index].bytes_around.size());
+      scanner.readAdr(favourites_[index].location - BytesBefore, favourites_[index].bytes_around.size());
 
-  if (favourites_[index].bytes_around.size() != bytes_before + bytes_after + favourites_[index].value.size()) {
+  if (favourites_[index].bytes_around.size() != BytesBefore + BytesAfter + favourites_[index].value.size()) {
     favourites_[index].bytes_around.clear();
     favourites_[index].value = scanner.readAdr(favourites_[index].location, favourites_[index].value.size());
     if (favourites_[index].value.empty()) {
@@ -52,8 +52,8 @@ void FavouriteList::rescanNoLock(const Scanner& scanner, uint64_t index) {
       return;
     }
   } else {
-    favourites_[index].value.assign(favourites_[index].bytes_around.begin() + bytes_before,
-                                    favourites_[index].bytes_around.begin() + bytes_before +
+    favourites_[index].value.assign(favourites_[index].bytes_around.begin() + BytesBefore,
+                                    favourites_[index].bytes_around.begin() + BytesBefore +
                                         static_cast<int64_t>(favourites_[index].value.size()));
   }
 

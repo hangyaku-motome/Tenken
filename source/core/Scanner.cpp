@@ -98,8 +98,8 @@ Scanner::filterSnapshot(const Snapshot& snapshot, RelativeStatus keep_types, Tar
           HitInfo hit;
           hit.location = snapshot.regions[i].map.start + k;
           hit.bytes_around = findBytesAround(static_cast<uint32_t>(k), new_data, sizeof(T));
-          hit.value.assign(hit.bytes_around.begin() + bytes_before,
-                           hit.bytes_around.begin() + bytes_before + sizeof(T));
+          hit.value.assign(hit.bytes_around.begin() + BytesBefore,
+                           hit.bytes_around.begin() + BytesBefore + sizeof(T));
           hit.status = status;
           hits.push_back(hit);
         }

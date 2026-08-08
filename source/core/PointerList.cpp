@@ -5,6 +5,7 @@
 
 #include "LogW.h"
 #include "types.h"
+#include "version.h"
 
 bool PointerList::openFile(const std::filesystem::path& path) {
   printf("trying to open file. good luck me, hope I don't mysteriously sigfault or something!\n");
@@ -27,7 +28,7 @@ bool PointerList::openFile(const std::filesystem::path& path) {
     };
 
     stream_.read(reinterpret_cast<char*>(&file_version), sizeof(file_version));
-    if (file_version != Pointer::file_version) {
+    if (file_version != PointerResultVersion) {
       Log::error("This is from another version. Sorry, can't parse.");
       is_file_open_ = false;
       return false;

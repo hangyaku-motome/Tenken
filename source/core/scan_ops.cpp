@@ -46,8 +46,8 @@ std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
           HitInfo push_hit;
           push_hit.location = maps[i].start + rel_offset;
           push_hit.bytes_around = findBytesAround(rel_offset, data, static_cast<uint32_t>(target_info.value.size()));
-          std::vector<uint8_t> value(push_hit.bytes_around.begin() + bytes_before,
-                                     push_hit.bytes_around.begin() + bytes_before +
+          std::vector<uint8_t> value(push_hit.bytes_around.begin() + BytesBefore,
+                                     push_hit.bytes_around.begin() + BytesBefore +
                                          static_cast<int64_t>(target_info.value.size()));
           push_hit.value = value;
           return_hits.push_back(push_hit);
@@ -63,8 +63,8 @@ std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
           HitInfo push_hit;
           push_hit.location = maps[i].start + rel_offset;
           push_hit.bytes_around = findBytesAround(rel_offset, data, static_cast<uint32_t>(target_info.value.size()));
-          std::vector<uint8_t> value(push_hit.bytes_around.begin() + bytes_before,
-                                     push_hit.bytes_around.begin() + bytes_before +
+          std::vector<uint8_t> value(push_hit.bytes_around.begin() + BytesBefore,
+                                     push_hit.bytes_around.begin() + BytesBefore +
                                          static_cast<int64_t>(target_info.value.size()));
           push_hit.value = value;
           return_hits.push_back(push_hit);

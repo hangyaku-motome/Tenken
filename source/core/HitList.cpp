@@ -15,11 +15,11 @@ void HitList::rescan(const Scanner& scanner, uint64_t index, const TargetType ta
   std::scoped_lock<std::mutex> lock(mutex_);
   hits_[index].previous_value = hits_[index].value;
 
-  hits_[index].bytes_around.resize(bytes_before + bytes_after + hits_[index].value.size());
+  hits_[index].bytes_around.resize(BytesBefore + BytesAfter + hits_[index].value.size());
 
-  hits_[index].bytes_around = scanner.readAdr(hits_[index].location - bytes_before, hits_[index].bytes_around.size());
+  hits_[index].bytes_around = scanner.readAdr(hits_[index].location - BytesBefore, hits_[index].bytes_around.size());
 
-  if (hits_[index].bytes_around.size() != bytes_before + bytes_after + hits_[index].value.size()) {
+  if (hits_[index].bytes_around.size() != BytesAfter + BytesBefore + hits_[index].value.size()) {
     hits_[index].bytes_around.clear();
     hits_[index].value = scanner.readAdr(hits_[index].location, hits_[index].value.size());
     if (hits_[index].value.empty()) {
@@ -27,8 +27,8 @@ void HitList::rescan(const Scanner& scanner, uint64_t index, const TargetType ta
       return;
     }
   } else {
-    hits_[index].value.assign(hits_[index].bytes_around.begin() + bytes_before,
-                              hits_[index].bytes_around.begin() + bytes_before +
+    hits_[index].value.assign(hits_[index].bytes_around.begin() + BytesBefore,
+                              hits_[index].bytes_around.begin() + BytesBefore +
                                   static_cast<int64_t>(hits_[index].value.size()));
   }
   if (!hits_[index].previous_value.empty())
