@@ -59,3 +59,5 @@ std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector
 std::string mapTypeToStr(const MapType type);
 
 int64_t signedDiff(uint64_t a, uint64_t b);
+
+std::filesystem::path getLatestScan(const std::string& exec_name);

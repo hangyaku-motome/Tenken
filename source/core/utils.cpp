@@ -1,14 +1,17 @@
 #include "utils.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <sstream>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #include "misc/cpp/imgui_stdlib.h"
+#include "Platform.h"
 #include "types.h"
 
 template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
@@ -21,7 +24,7 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
     if (std::isnan(old_value) || std::isnan(new_value)) return RelativeStatus::changed;
 
     float diff = static_cast<float>(old_value - new_value);
-    if (std::abs(diff) <= epsilon) return RelativeStatus::unchanged;
+    if (std::abs(diff) <= Epsilon) return RelativeStatus::unchanged;
 
     if (diff > 0) return RelativeStatus::increased;
 
@@ -52,10 +55,10 @@ template RelativeStatus tagChange<std::vector<uint8_t>>(std::vector<uint8_t>, st
 //
 
 std::vector<uint8_t> findBytesAround(const uint64_t offset, const std::vector<uint8_t>& data, const uint32_t size) {
-  uint64_t start = offset < bytes_before ? 0 : offset - bytes_before;
-  uint64_t end = offset + bytes_after + size > data.size() ? data.size() : offset + bytes_after + size;
+  uint64_t start = offset < BytesBefore ? 0 : offset - BytesBefore;
+  uint64_t end = offset + BytesAfter + size > data.size() ? data.size() : offset + BytesAfter + size;
 
-  std::vector<uint8_t> bytes(bytes_before + bytes_after + size);
+  std::vector<uint8_t> bytes(BytesBefore + BytesAfter + size);
   memcpy(bytes.data(), &data[start], end - start);
   return bytes;
 }
@@ -86,7 +89,7 @@ std::vector<uint64_t> searchValue(const std::vector<uint8_t>& data, const T& tar
     for (uint32_t i = 0; i + sizeof(T) <= data.size(); i += sizeof(T)) {
       memcpy(&data_value, data.data() + i, sizeof(T));
       if constexpr (std::is_floating_point_v<T>) {
-        if (std::abs(data_value - target) <= epsilon) found_offsets.push_back(i);
+        if (std::abs(data_value - target) <= Epsilon) found_offsets.push_back(i);
       } else {
         if (data_value == target) found_offsets.push_back(i);
       }
@@ -203,7 +206,7 @@ std::string targetTypeToStr(const TargetType targetType) {
     case TargetType::aob:
       return "aob";
     default:
-    return "";
+      return "";
   }
 }
 
@@ -233,7 +236,7 @@ std::string relativeStatusToStr(const RelativeStatus status) {
     case RelativeStatus::unset:
       return "Unset";
     default:
-    return "";
+      return "";
   }
 }
 
@@ -301,7 +304,7 @@ bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask) {
   return true;
 }
 
-std::string hexToStr(const uint8_t byte) { return std::string({hex[(byte >> 4)], hex[(byte & 0xF)]}); }
+std::string hexToStr(const uint8_t byte) { return std::string({Hex[(byte >> 4)], Hex[(byte & 0xF)]}); }
 
 std::string mapTypeToStr(const MapType type) {
   switch (type) {
@@ -330,10 +333,23 @@ std::string mapTypeToStr(const MapType type) {
     case MapType::unset:
       return "Unset";
     default:
-    return "";
+      return "";
   }
 }
 
 int64_t signedDiff(uint64_t a, uint64_t b) {
   return (a >= b) ? static_cast<int64_t>(a - b) : -static_cast<int64_t>(b - a);
+}
+
+std::filesystem::path getLatestScan(const std::string& exec_name) {
+  std::vector<std::filesystem::directory_entry> files;
+
+  for (const auto& file : std::filesystem::directory_iterator(Platform::getTenkenStatePath() / "Pointer" / exec_name))
+    if (file.is_regular_file()) files.push_back(file);
+
+  std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) {
+    return a.path().filename() < a.path().filename();
+  });
+
+  return files.front();
 }
