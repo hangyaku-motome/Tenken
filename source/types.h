@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <variant>
@@ -16,17 +17,23 @@
   #include <sys/mman.h>
 #endif
 
-// some of these constexpr should be file local, not here, and arguably some classes/structs?
+// TODO:some of these constexpr should be file local, not here, and arguably some classes/structs?
 
-constexpr int32_t bytes_before = 32;
-constexpr int32_t bytes_after = 32;
+constexpr int32_t BytesBefore = 32;
+constexpr int32_t BytesAfter = 32;
 
-constexpr float epsilon = 0.1F;
-constexpr char hex[] = "0123456789ABCDEF";
-constexpr auto popup_flags =
+constexpr float Epsilon = 0.1F;
+constexpr char Hex[] = "0123456789ABCDEF";
+constexpr auto PopupFlags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
 
-// fix invalid and unset not being first.
+namespace Version {
+constexpr uint8_t json_format = 1;
+constexpr uint8_t pointer_save = 1;
+
+};  // namespace Version
+
+// TODO:fix invalid and unset not being first.
 enum class TargetType : int8_t {
   uInt8,
   uInt16,
@@ -96,7 +103,7 @@ struct FavouriteInfo {
   std::vector<uint8_t> bytes_around;
   std::vector<uint8_t> frozen_value;
   uint64_t location;
-  float freeze_duration = -1;  // could merge frozen and freeze_duration but meh.
+  float freeze_duration = -1;  // TODO:could merge frozen and freeze_duration but meh.
   TargetType type;
   RelativeStatus status = RelativeStatus::unset;
   bool frozen = false;
@@ -175,23 +182,7 @@ struct InitConfig {
 constexpr int32_t size = 8;
 
 constexpr uint64_t magic_bytes = 0xEE32BE81AAAAFEAF;
-constexpr uint8_t file_version = 1;
 constexpr uint8_t max_depth = 8;
-
-// file layout:
-// magic_bytes uint64_t
-// file_version uint8_t
-// entry_size sizeof(PointerChain) uint8_t
-// entry_start_point uint64_t
-//
-
-// string table.
-// each string entry is:
-// uint8_t len, then rest of string.
-// chain table.
-
-// Important. Offsets are target -> root. Meaning, resolving or displaying them needs to reverse the valid offsets to
-// work properly.
 
 // this is how they are saved to file.
 struct Chain {
@@ -234,8 +225,8 @@ struct filterByStatus {
 };
 
 struct WriteHit {
-  uint64_t index;
   std::vector<uint8_t> value;
+  uint64_t index;
 };
 
 struct RescanHit {
@@ -295,7 +286,7 @@ struct RestartScan {};
 
 struct SetTargetInfo {
   std::vector<uint8_t> value;
-  std::optional<std::vector<bool>> mask;  // does this really need to be optional. maybe. will check later.
+  std::optional<std::vector<bool>> mask;  // TODO:does this really need to be optional. maybe. will check later.
   TargetType type;
 };
 
@@ -305,7 +296,18 @@ struct StartPointerScan {
   Pointer::InitConfig init_config;
 };
 
-struct ResolvePointerResult {uint64_t target_address;};
+struct ResolvePointerResult {
+  std::string exec_name;
+  uint64_t target_address;
+};
+
+struct SaveTenken {
+  std::filesystem::path path;
+};
+
+struct LoadTenken {
+  std::filesystem::path path;
+};
 
 };  // namespace Action
 
@@ -336,7 +338,9 @@ using PendingAction = std::variant<std::monostate,
                                    Action::SetTargetInfo,
                                    Action::UndoScan,
                                    Action::StartPointerScan,
-                                   Action::ResolvePointerResult>;
+                                   Action::ResolvePointerResult,
+                                   Action::SaveTenken,
+                                   Action::LoadTenken>;
 
 //
 // End of Action stuff.

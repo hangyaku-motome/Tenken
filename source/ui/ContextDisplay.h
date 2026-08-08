@@ -42,7 +42,7 @@ class ContextDisplay {
   void alignButtons();
 
   template <typename T> static void drawContextMenu(const T entry) {
-    if (entry.value.size() + bytes_before + bytes_after != entry.bytes_around.size()) {
+    if (entry.value.size() + BytesBefore + BytesAfter != entry.bytes_around.size()) {
       return;
     }
 
@@ -54,7 +54,7 @@ class ContextDisplay {
         ImGui::Text(" ");
         ImGui::SameLine(0, 4);
       }
-      if (i >= bytes_before && i + bytes_after < entry.bytes_around.size()) {
+      if (i >= BytesBefore && i + BytesAfter < entry.bytes_around.size()) {
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
         ImGui::Text("%02X", entry.bytes_around[i]);
         ImGui::PopStyleColor();

@@ -59,7 +59,7 @@ void DataInspectorW::renderTable() {
     return;
   }
 
-  int32_t offset = -bytes_before;
+  int32_t offset = -BytesBefore;
 
   ImGui::TableSetupColumn("Offset");
   if (types_.u8) ImGui::TableSetupColumn("u8");
@@ -157,8 +157,8 @@ void DataInspectorW::renderTable() {
 }
 
 std::vector<uint8_t> DataInspectorW::readAround(const uint64_t adr) {
-  uint64_t search_start = adr - bytes_before < 0 ? 0 : adr - bytes_before;
-  return scanner_->readAdr(search_start, bytes_after + bytes_before);
+  uint64_t search_start = adr - BytesBefore < 0 ? 0 : adr - BytesBefore;
+  return scanner_->readAdr(search_start, BytesAfter + BytesBefore);
 }
 
 void DataInspectorW::typePopUp() {
@@ -166,7 +166,7 @@ void DataInspectorW::typePopUp() {
     ImGui::OpenPopup("Target List");
     popup_clicked_ = false;
   }
-  if (!ImGui::BeginPopupModal("Target List", nullptr, popup_flags)) return;
+  if (!ImGui::BeginPopupModal("Target List", nullptr, PopupFlags)) return;
 
   ImGui::Checkbox("unsigned 1 byte", &types_.u8);
   ImGui::Checkbox("unsigned 2 byte", &types_.u16);

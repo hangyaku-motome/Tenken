@@ -21,7 +21,7 @@ PendingAction TargetPopUp::cyclePopUp() {
 
   PendingAction return_action{};
 
-  if (!ImGui::BeginPopupModal("Target List", nullptr, popup_flags)) return {};
+  if (!ImGui::BeginPopupModal("Target List", nullptr, PopupFlags)) return {};
 
   ImGui::TextUnformatted("List targets here:");
 

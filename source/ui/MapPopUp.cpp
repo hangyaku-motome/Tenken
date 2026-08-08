@@ -76,7 +76,7 @@ void MapsPopUp::cyclePopUp(std::vector<MapInfo>& active_regions) {
     active_regions = buildFilteredMap();
   }
 
- if (!ImGui::BeginPopupModal("Regions List", nullptr, popup_flags)) return;
+ if (!ImGui::BeginPopupModal("Regions List", nullptr, PopupFlags)) return;
 
   if (not scanner_->isAttached()) {
     ImGui::Text("Nothing! Obviously! No targets! Go choose one.");

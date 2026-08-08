@@ -138,7 +138,7 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
         if (getTargetValue(target_info.target_type, tmpbuf, ImGuiInputTextFlags_EnterReturnsTrue)) {
-          return_action = Action::WriteHit{row, tmpbuf};
+          return_action = Action::WriteHit{tmpbuf, row};
           is_editing_ = false;
         }
         ImGui::PopStyleColor(3);
