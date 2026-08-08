@@ -60,6 +60,7 @@ add_executable(Tenken
     source/ui/HexW.cpp
     source/ui/DataInspectorW.cpp
     source/ui/PointerW.cpp
+    source/ui/MainMenuBar.cpp
     source/core/Scanner.cpp
     source/core/HitList.cpp
     source/core/FavouriteList.cpp
