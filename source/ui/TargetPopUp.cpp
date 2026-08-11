@@ -8,7 +8,6 @@
 #include "platform/ProcessOS.h"
 #include "types.h"
 
-
 void TargetPopUp::initPopUp() {
   processes_ = ProcessOS::getProcTargets();
   Log::info("Found PID count: " + std::to_string(processes_.size()) + "\n");
@@ -19,9 +18,9 @@ void TargetPopUp::initPopUp() {
 PendingAction TargetPopUp::cyclePopUp() {
   if (clicked_) initPopUp();
 
-  PendingAction return_action{};
-
   if (!ImGui::BeginPopupModal("Target List", nullptr, PopupFlags)) return {};
+
+  PendingAction return_action{};
 
   ImGui::TextUnformatted("List targets here:");
 
@@ -49,13 +48,10 @@ PendingAction TargetPopUp::cyclePopUp() {
   }
   ImGui::EndTable();
 
-  if (ImGui::Button("Cancel")) {
-    ImGui::CloseCurrentPopup();
-  }
+  if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
 
   if (ImGui::Button("Refresh")) {
     processes_ = ProcessOS::getProcTargets();
-
     Log::info("Found PID count: " + std::to_string(processes_.size()) + "\n");
   }
 

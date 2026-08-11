@@ -23,9 +23,8 @@ PendingAction PointerW::cycleSearchW() {
   ImGui::InputScalar("depth:", ImGuiDataType_U8, &init_config.info.scan_depth, nullptr, nullptr, nullptr);
 
   if (ImGui::Button("Scan")) {
-    is_on_search_window_ = false;
     endW();
-    return Action::StartPointerScan{.init_config = init_config};
+    return Action::Scan::StartPointer{.init_config = init_config};
   }
 
   ImGui::NewLine();
@@ -37,32 +36,51 @@ PendingAction PointerW::cycleSearchW() {
 }
 
 void PointerW::cyclePointerListW(PointerList& pointer_list) {
-  if (!pointer_list.is_file_open_) {
-    ImGui::Text("No valid file loaded in. If you just tried to scan and are seeing this, this means there is a BUG and "
-                "I couldn't parse the save file. Check logs for details (if there are any.)");
-    if (ImGui::Button("Go back")) is_on_search_window_ = true;
+  if (pointer_list.failed()) {
+    ImGui::Text("I couldn't parse the save file. Check logs for details (if there are any (hopefully there is )).");
+    if (ImGui::Button("Go back")) pointer_list.close();
     return endW();
   }
+
+  if (pointer_list.total_chains_ == 0) chains_.clear();
+
+  if (chains_.empty()) chains_ = pointer_list.getFrom(0, pointer_list.total_chains_);
+  if (chains_.empty()) {
+    ImGui::Text("I couldn't extract the pointers for some reason. maybe log has details.");
+    if (ImGui::Button("Load in another result")) file_browser_.Open();
+    ImGui::SameLine();
+    if (ImGui::Button("Go back")) {
+      pointer_list.close();
+      return endW();
+    }
+    return endW();
+  }
+
   ImGui::Text("%s", (std::to_string(pointer_list.total_chains_) + " chains in loaded file").c_str());
   if (ImGui::Button("Load in another result")) file_browser_.Open();
+  ImGui::SameLine();
+  if (ImGui::Button("Go back")) {
+    pointer_list.close();
+    return endW();
+  }
 
   if (!ImGui::BeginTable("Pointer Table", 2 + Pointer::max_depth, ImGuiTableFlags_ScrollY)) return;
 
   ImGui::TableSetupColumn("module");
   ImGui::TableSetupColumn("offset in module");
-  // TODO: should be as much as biggest valid offsets in loaded file, not max depth.
+
+  // TODO: should be as much as biggest valid offsets in loaded file, not max depth....but calculating that might be
+  // tricky.
   for (int i = 0; i < Pointer::max_depth; ++i)
     ImGui::TableSetupColumn((std::string("offset ") + std::to_string(i)).c_str());
 
   ImGui::TableHeadersRow();
 
   ImGuiListClipper clipper;
-  clipper.Begin(pointer_list.total_chains_);
+  clipper.Begin(chains_.size());
 
   while (clipper.Step()) {
-    if (chains_.empty()) chains_ = pointer_list.getFrom(0, pointer_list.total_chains_);
-
-    for (uint64_t i = 0; i + clipper.DisplayStart < clipper.DisplayEnd; ++i) {
+    for (int32_t i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
       ImGui::TableNextRow();
 
       ImGui::TableNextColumn();
@@ -82,17 +100,10 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
   }
   ImGui::EndTable();
   return endW();
-
-  // also no.
-  // the new system is making a pointer scan, automatically saving it. and then adding an option to "Test Pointer" in
-  // file. from there it can automatically select the latest date one in share (maybe also give option to manually
-  // choose path). When a pointer scan result is loaded in, it will try to resolve the pointers. uhhh for
-  // that...........................................................I need to prompt the new location of the value in
-  // "Test Pointer". and when a chain DOES eventually lead to that address, we can keep it. otherwise remove. NOT SURE
-  // WHERE TO SAVE EXACTLY. But afterwards we show result in PointerW, and give choice to save. they can label each
-  // pointer, aaand we can also add a checkbox next to each entry to save or not.
 }
 
+// SOME stuff to handle: I try to open from somewhere else, it neeeds to show me that screen instead of the search one
+// still. basically if a request was made to open a file, it should switch to that window.
 PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_list) {
   if (not enabled_) return {};
   if (!initW()) {
@@ -101,9 +112,7 @@ PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_l
   };
 
   if (file_browser_.HasSelected()) {
-    printf("this is done");
     pointer_list.openFile(file_browser_.GetSelected());
-    is_on_search_window_ = false;
     chains_.clear();
     file_browser_.Close();
   }
@@ -116,11 +125,9 @@ PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_l
     endW();
     return {};
   }
-  if (is_on_search_window_) {
-    return cycleSearchW();
-  };
+
+  if (!pointer_list.isOpen()) return cycleSearchW();
 
   cyclePointerListW(pointer_list);
-
   return {};
 }

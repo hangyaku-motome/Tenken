@@ -85,12 +85,10 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
   ImGui::TableSetupColumn("Status");
   ImGui::TableHeadersRow();
 
-  ImGuiListClipper list_clipper;
-  list_clipper.Begin(static_cast<int32_t>(hits.size()));
-  while (list_clipper.Step()) {
-    for (uint32_t row = static_cast<uint32_t>(list_clipper.DisplayStart);
-         row < static_cast<uint32_t>(list_clipper.DisplayEnd);
-         ++row) {
+  ImGuiListClipper clipper;
+  clipper.Begin(static_cast<int32_t>(hits.size()));
+  while (clipper.Step()) {
+    for (int32_t row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) {
       ImGui::TableNextRow();
       ImGui::PushID(static_cast<int32_t>(row));
 
@@ -112,7 +110,7 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
       if (ImGui::BeginPopupContextItem("hit_popup_menu")) {
         selected_row_ = row;
         if (ImGui::MenuItem("Add to Favourites"))
-          return_action = Action::AddFavourite{static_cast<uint64_t>(selected_row_)};
+          return_action = Action::Favourite::Add{static_cast<uint64_t>(selected_row_)};
         if (ImGui::MenuItem("Copy address to clipboard")) {
           char buf[32];
           snprintf(buf, sizeof(buf), "0x%" PRIX64, hits[static_cast<uint64_t>(selected_row_)].location);
@@ -122,7 +120,7 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
       }
 
       ImGui::SameLine();
-      ImGui::Text("0x%" PRIX64, hits[row].location);
+      ImGui::Text("0x%" PRIX64, hits[static_cast<uint64_t>(row)].location);
 
       ImGui::TableNextColumn();
       bool just_started = just_started_editing_;
@@ -131,14 +129,14 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
           ImGui::SetKeyboardFocusHere();
           just_started_editing_ = false;
         }
-        std::vector<uint8_t> tmpbuf = hits[row].value;
+        std::vector<uint8_t> tmpbuf = hits[static_cast<uint64_t>(row)].value;
         ImGui::PushStyleColor(ImGuiCol_NavHighlight, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
 
         if (getTargetValue(target_info.target_type, tmpbuf, ImGuiInputTextFlags_EnterReturnsTrue)) {
-          return_action = Action::WriteHit{tmpbuf, row};
+          return_action = Action::Hit::Write{tmpbuf, static_cast<uint64_t>(row)};
           is_editing_ = false;
         }
         ImGui::PopStyleColor(3);
@@ -148,19 +146,19 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
           selected_row_ = -1;
         }
       } else
-        printData(hits[row].value, target_info.target_type);
+        printData(hits[static_cast<uint64_t>(row)].value, target_info.target_type);
 
-      if (!hits[row].previous_value.empty()) {
+      if (!hits[static_cast<uint64_t>(row)].previous_value.empty()) {
         ImGui::TableNextColumn();
 
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(169, 169, 169, 255));
-        printData(hits[row].previous_value, target_info.target_type);
+        printData(hits[static_cast<uint64_t>(row)].previous_value, target_info.target_type);
         ImGui::PopStyleColor();
 
         ImGui::TableNextColumn();
 
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(238, 75, 43, 255));
-        ImGui::TextUnformatted(relativeStatusToStr(hits[row].status).c_str());
+        ImGui::TextUnformatted(relativeStatusToStr(hits[static_cast<uint64_t>(row)].status).c_str());
         ImGui::PopStyleColor();
       }
 

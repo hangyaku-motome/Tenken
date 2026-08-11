@@ -1,7 +1,5 @@
 #pragma once
 
-// one window to start initial search with params (max depth, positive negative offset,).
-
 #include <imgui-filebrowser/imfilebrowser.h>
 
 #include <filesystem>
@@ -14,7 +12,8 @@ class PointerW {
   bool initW();
   void endW();
 
-  bool is_on_search_window_ = true;
+  static constexpr auto file_browser_flags = ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CloseOnEsc |
+                                             ImGuiFileBrowserFlags_CreateNewDir | ImGuiFileBrowserFlags_EditPathString;
 
   Pointer::InitConfig init_config;
 
@@ -23,7 +22,7 @@ class PointerW {
 
   bool is_all_chains_ = false;
 
-  ImGui::FileBrowser file_browser_;
+  ImGui::FileBrowser file_browser_{file_browser_flags};
 
   PendingAction cycleSearchW();
 

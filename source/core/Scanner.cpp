@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -16,14 +17,20 @@
 #include "Platform.h"
 #include "types.h"
 #include "utils.h"
+#include "version.h"
 
-bool Scanner::writeAdr(uint64_t address, const std::vector<uint8_t>& value) const {
+bool Scanner::isAttached() const {
   if (proc_ == nullptr) return false;
-  return proc_->write(address, value);
+  return proc_->isAttached();
+};
+
+bool Scanner::writeAdr(const std::vector<uint8_t>& value, uint64_t address) const {
+  if (not isAttached()) return false;
+  return proc_->write(value, address);
 };
 
 std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t read_size) const {
-  if (proc_ == nullptr) return {};
+  if (not isAttached()) return {};
   return proc_->read(address, read_size);
 };
 
@@ -36,7 +43,7 @@ std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t read_size) cons
 //  noo idea
 //  I'll have an idea soon enough
 Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::atomic<float>& progress) const {
-  if (proc_ == nullptr) return {};
+  if (not isAttached()) return {};
   std::vector<MapInfo> maps = active_regions;
   Snapshot return_snapshot;
 
@@ -58,8 +65,7 @@ Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::a
       --i;
       continue;
     }
-    memcpy(ptr, data.data(), maps[i].end - maps[i].start);  // SIGBUS?? Why? uhh am I still getting sigbus on this
-                                                            // sometimes or did I forget to delete the comment?
+    memcpy(ptr, data.data(), maps[i].end - maps[i].start);
 
     return_snapshot.regions.push_back(
         Region{.mapped_region = MappedRegion(ptr, maps[i].end - maps[i].start), .map = maps[i]});
@@ -69,13 +75,13 @@ Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::a
 
 std::vector<HitInfo>
 Scanner::filterSnapshot(const Snapshot& snapshot, RelativeStatus keep_types, TargetType target_types) const {
+  if (not isAttached()) return {};
   std::vector<HitInfo> hits;
   RelativeStatus status;
 
   dispatchType(target_types, [&]<typename T> {
     if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<uint8_t>>)
-      throw std::runtime_error(
-          "why is filter called with string or AOB.");  // did I really forget to add throw here lol.
+      throw std::runtime_error("why is filter snapshot called with string or AOB.");
     else {
       for (uint64_t i = 0; i < snapshot.regions.size(); ++i) {
         auto new_data = proc_->read(snapshot.regions[i].map.start, snapshot.regions[i].mapped_region.size);
@@ -97,9 +103,9 @@ Scanner::filterSnapshot(const Snapshot& snapshot, RelativeStatus keep_types, Tar
 
           HitInfo hit;
           hit.location = snapshot.regions[i].map.start + k;
-          hit.bytes_around = findBytesAround(static_cast<uint32_t>(k), new_data, sizeof(T));
-          hit.value.assign(hit.bytes_around.begin() + BytesBefore,
-                           hit.bytes_around.begin() + BytesBefore + sizeof(T));
+          hit.bytes_around = findBytesAround(new_data, k, Context::bytes_before, Context::bytes_after);
+          hit.value.resize(sizeof(T));
+          memcpy(hit.value.data(), &new_value, sizeof(T));
           hit.status = status;
           hits.push_back(hit);
         }
@@ -116,9 +122,8 @@ std::vector<MapInfo> Scanner::getMapRegions() const {
 
 /// also, heaptrack thing or whatever. try it out.
 
-// returns save
-std::string Scanner::findPointerCandidates(const Snapshot& snapshot, const Pointer::InitConfig& init_config) const {
-  printf("trying to make find pointer candidates..\n");
+bool Scanner::findPointerCandidates(const Snapshot& snapshot, const Pointer::InitConfig& init_config) const {
+  if (not isAttached()) return {};
   std::vector<PointerData> potential_pointers;
   for (uint64_t i = 0; i < snapshot.regions.size(); ++i) {
     uint64_t ptr;
@@ -131,12 +136,9 @@ std::string Scanner::findPointerCandidates(const Snapshot& snapshot, const Point
           PointerData{.points_to = ptr,
                       .adr = (is_data_region ? (k + snapshot.regions[i].map.start) | data_region_flag
                                              : k + snapshot.regions[i].map.start)});
-
-      if (is_data_region) printf("a pointer in data! %lx\n", potential_pointers.back().adr & ~data_region_flag);
     }
   }
   std::sort(potential_pointers.begin(), potential_pointers.end());
-  std::cout << "\n\n" << potential_pointers.size() << " potential pointer count\n\n";
 
   std::string main_module;
   std::vector<MapInfo> data_regions;
@@ -147,24 +149,21 @@ std::string Scanner::findPointerCandidates(const Snapshot& snapshot, const Point
     data_regions.push_back(snapshot.regions[i].map);
   }
   std::sort(data_regions.begin(), data_regions.end());
-  std::cout << "\n\n" << data_regions.size() << " data regions count\n\n";
 
   main_module =
       main_module.substr(main_module.find_last_of('/') + 1);  /// suuuuperr wonky but fine for an initial prototype.
 
   auto save_path = makePointerSavePath(main_module);
   std::ofstream save_stream(save_path, std::ios::binary | std::ios::trunc);
-  if (!save_stream) return {};
   if (!initPointerSaveFile(data_regions, save_stream)) {
     Log::error("Couldn't initialize pointer save file, tried to save it at " + save_path.string());
-    return {};
+    return false;
   };
 
-  std::array<int64_t, Pointer::max_depth> stack;
+  std::array<int64_t, Pointer::max_depth> stack{};
   buildPointers(potential_pointers, data_regions, init_config.info, save_stream, stack, init_config.address, 0);
 
-  printf("finished\n");
-  return save_path;
+  return true;
 }
 
 // TODO: I need to set up some sort of multithreading scan.
@@ -181,7 +180,6 @@ void Scanner::buildPointers(const std::vector<PointerData>& pointers,
 
   for (; it != pointers.end() && it->points_to <= address + config.search_after; ++it) {
     if ((it->adr & data_region_flag)) {
-      // OH MY GOD I'M SO DUMBBBB lasdkjfaslkfjdsalkfjdsaklfdjsa
       stack[depth] = signedDiff(it->points_to, address);
       auto reg_it = std::upper_bound(data_regions.begin(),
                                      data_regions.end(),
@@ -194,52 +192,50 @@ void Scanner::buildPointers(const std::vector<PointerData>& pointers,
                               .module_id = static_cast<uint32_t>(std::distance(data_regions.begin(), reg_it)),
                               .valid_offsets = static_cast<uint8_t>(depth + 1)};
       save_stream.write(reinterpret_cast<const char*>(&chain), sizeof(Pointer::Chain));
-      continue;
+      // I removed continue because on further experimenting and thought...what if something from data points to another
+      // thing to data? we shouldn't those pointers off.
     }
-    if (depth == config.scan_depth) continue;
+    if (depth + 1 == config.scan_depth) continue;
     stack[depth] = signedDiff(it->points_to, address);
     buildPointers(pointers, data_regions, config, save_stream, stack, it->adr & ~data_region_flag, depth + 1);
   }
 }
 
 std::filesystem::path Scanner::makePointerSavePath(const std::string& exec_name) const {
-  printf("trying to make pointer save pathh..\n");
   auto date = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
   std::string date_str = std::format("{:%Y-%m-%d_%H%M%S}", date);
-  date_str += ".tpt";
+  date_str += ".tptr";
 
   auto save_path = Platform::getTenkenStatePath() / "Pointer" / exec_name / date_str;
   std::filesystem::create_directories(save_path.parent_path());
-  std::cout << save_path << " that is save path\n";
 
   return save_path;
 }
 
 bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions, std::ofstream& save_stream) const {
-  try {
-    save_stream.exceptions(std::ios::failbit | std::ios::badbit);
-    save_stream.write(reinterpret_cast<const char*>(&Pointer::magic_bytes), sizeof(Pointer::magic_bytes));
-    save_stream.write(reinterpret_cast<const char*>(&Pointer::file_version), sizeof(Pointer::file_version));
-    uint8_t entry_size = sizeof(Pointer::Chain);
-    save_stream.write(reinterpret_cast<const char*>(&entry_size), sizeof(entry_size));
+  save_stream.write(reinterpret_cast<const char*>(&Pointer::magic_bytes), sizeof(Pointer::magic_bytes));
+  save_stream.write(reinterpret_cast<const char*>(&PointerResultVersion), sizeof(PointerResultVersion));
+  uint8_t entry_size = sizeof(Pointer::Chain);
+  save_stream.write(reinterpret_cast<const char*>(&entry_size), sizeof(entry_size));
 
-    auto entry_start_point_seek = save_stream.tellp();  // header size unknown right now.
+  auto entry_start_point_seek = save_stream.tellp();  // header size unknown right now.
 
-    save_stream.seekp(sizeof(uint64_t), std::ios::cur);
+  save_stream.seekp(sizeof(uint64_t), std::ios::cur);
 
-    for (const auto& reg : data_regions) {
-      save_stream.put(static_cast<int8_t>(reg.name.length()));
-      save_stream.write(reinterpret_cast<const char*>(reg.name.data()), reg.name.length());
-    }
-
-    auto entry_end_point_seek = save_stream.tellp();
-    save_stream.seekp(entry_start_point_seek);
-    save_stream.write(reinterpret_cast<const char*>(&entry_end_point_seek), sizeof(uint64_t));
-    save_stream.seekp(entry_end_point_seek);
-
-  } catch (...) {
-    return false;
+  for (const auto& reg : data_regions) {
+    save_stream.put(static_cast<int8_t>(reg.name.length()));
+    save_stream.write(reinterpret_cast<const char*>(reg.name.data()), reg.name.length());
   }
+
+  auto entry_end_point_seek = save_stream.tellp();
+  save_stream.seekp(entry_start_point_seek);
+  save_stream.write(reinterpret_cast<const char*>(&entry_end_point_seek), sizeof(uint64_t));
+  save_stream.seekp(entry_end_point_seek);
+
+  if (!save_stream) {
+    Log::error("failed to initalize pointer save file");
+    return false;
+  };
 
   Log::info("Pointer file was successfully initialized");
   return true;
@@ -252,7 +248,7 @@ std::vector<Pointer::Chain> Scanner::resolveChains(const std::vector<Pointer::Ch
   new_chains.reserve(chains.size());
 
   std::copy_if(chains.begin(), chains.end(), std::back_inserter(new_chains), [&](const Pointer::Chain& c) {
-    return this->resolveChain(c, region_starts, target_address);
+    return resolveChain(c, region_starts, target_address);
   });
 
   return new_chains;
@@ -267,7 +263,11 @@ bool Scanner::resolveChain(const Pointer::Chain& chain,
   if (ptr == 0) return false;
 
   for (int32_t i = 0; i < chain.valid_offsets; ++i) {
-    ptr = dataToType<uint64_t>(readAdr(ptr + chain.offsets[i], sizeof(uint64_t)));
+    std::vector<uint8_t> read_bytes;
+    read_bytes = readAdr(ptr + chain.offsets[i], sizeof(uint64_t));
+    if (read_bytes.empty()) return false;
+    ptr = dataToType<uint64_t>(read_bytes);
+    // there is a lot of other filtering we could do but whatever for now
     if (ptr == 0) return false;
   }
 
@@ -276,40 +276,87 @@ bool Scanner::resolveChain(const Pointer::Chain& chain,
   return false;
 }
 
-// I really really don't wanna use pretty chains in this entire pipeline of checking whether or not it's valid. Having
-// 30k vectors ands string allocated each time is NOT ideal. toooooo much overhead.
-
-// although...SOME optimising will be left to later. MAKE IT WORK FIRST!!!
 // uhh let's hope this all conveniently works the first time and I won't be stuck debugging.
+// ^^ disturbingly loud incorrect buzzer
 void Scanner::resolvePointerResult(const uint64_t target_address,
-                                   const std::string& result_path_str,
+                                   const std::filesystem::path& save_file_path,
                                    PointerList& pointer_list) const {
+  if (not isAttached()) return;
+  std::vector<MapInfo> data_regions;
+  for (const auto& region : getMapRegions()) {
+    if (region.type != MapType::sharedLibData && region.type != MapType::mainExecData) continue;
+    if (std::find(pointer_list.data_module_names_.begin(), pointer_list.data_module_names_.end(), region.name) ==
+        pointer_list.data_module_names_.end())
+      continue;
+    data_regions.push_back(region);
+  }
+  // sooooooo data_module_names are already sorted by their start address.
+  // So I can just sort data_regions and.......that should be good enough!
+
+  std::sort(data_regions.begin(), data_regions.end());
+
   std::vector<uint64_t> region_starts;
-  region_starts.reserve(pointer_list.data_module_names_.size());
-  for (auto& region : getMapRegions()) {
-    if (region.type != MapType::mainExecData && region.type != MapType::sharedLibData) continue;
+  std::vector<uint32_t> invalid_module_ids;
+  for (uint32_t i = 0; i < pointer_list.data_module_names_.size(); ++i) {
+    auto it = std::find_if(data_regions.begin(), data_regions.end(), [&](const auto& r) {
+      return r.name == pointer_list.data_module_names_[i];
+    });
 
-    for (uint32_t i = 0; i < pointer_list.data_module_names_.size(); ++i)
-      if (pointer_list.data_module_names_[i] == region.name) region_starts[i] = region.start;
+    if (it != data_regions.end())
+      region_starts.push_back(it->start);
+    else {
+      invalid_module_ids.push_back(i);
+      region_starts.push_back(0);
+    }
+    continue;
   }
 
-  std::string append_str =
-      result_path_str.find("fltr") == std::string::npos
-          ? "__fltr_"
-          : std::to_string(std::stoi(result_path_str.substr(result_path_str.find("fltr_") + 5)) + 1);
+  std::ofstream save_stream(save_file_path, std::ios::binary | std::ios::trunc);
 
-  std::ofstream save_stream(result_path_str + append_str, std::ios::binary | std::ios::trunc);
+  // pointer scanning at the start. because it literally just...includes them all, no?
+  initPointerSaveFile(data_regions, save_stream);
 
-  if (pointer_list.total_chains_ <= 30000) {
-    auto chains = pointer_list.getFromRaw(0, pointer_list.total_chains_);
+  for (uint64_t i = 0; i < pointer_list.total_chains_;) {
+    uint64_t process_amount = i + 30000 > pointer_list.total_chains_ ? pointer_list.total_chains_ - i : 30000;
+    auto chains = pointer_list.getFromRaw(i, process_amount);
+
+    if (!invalid_module_ids.empty())
+      std::erase_if(chains, [&](const auto& c) {
+        return std::find(invalid_module_ids.begin(), invalid_module_ids.end(), c.module_id) == invalid_module_ids.end();
+      });
+
+    for (auto& chain : chains) std::reverse(chain.offsets.begin(), chain.offsets.begin() + chain.valid_offsets);
+
     chains = resolveChains(chains, region_starts, target_address);
-    save_stream.write(reinterpret_cast<const char*>(&chains), chains.size() * sizeof(Pointer::Chain));
-    return;
-  }
 
-  for (uint32_t i = 0; i + 30000 <= pointer_list.total_chains_; i += 30000) {
-    auto chains = pointer_list.getFromRaw(i, i + 30000);
-    chains = resolveChains(chains, region_starts, target_address);
-    save_stream.write(reinterpret_cast<const char*>(&chains), chains.size() * sizeof(Pointer::Chain));
+    if (!invalid_module_ids.empty())
+      for (auto& chain : chains) {
+        auto it = std::lower_bound(invalid_module_ids.begin(), invalid_module_ids.end(), chain.module_id);
+        if (it == invalid_module_ids.end()) it = std::prev(it);
+        chain.module_id -= it - invalid_module_ids.begin() + 1;
+      }
+
+    if (!chains.empty())  // kinda unnecessary check I guess but whatever
+      save_stream.write(reinterpret_cast<const char*>(chains.data()), chains.size() * sizeof(Pointer::Chain));
+
+    i += process_amount;
   }
+}
+
+// so it won't try to read a smaller region, it will just try to change it's offset until it can read. should be okay
+// for now.
+ReadRegion Scanner::readAround(uint64_t adr, uint64_t bytes_before, uint64_t bytes_after) const {
+  uint64_t search_start = signedDiff(adr, bytes_before) < 0 ? 0 : adr - bytes_after;
+
+  for (uint32_t i = 0; i < 8; ++i) {
+    auto read_bytes = readAdr(search_start, bytes_after + bytes_before);
+
+    if (!read_bytes.empty()) return {.read_bytes = read_bytes, .offset_from_adr = signedDiff(search_start, adr)};
+
+    if (adr > search_start)
+      search_start += bytes_before / 4;
+    else
+      search_start += bytes_after / 4;
+  }
+  return {};
 }

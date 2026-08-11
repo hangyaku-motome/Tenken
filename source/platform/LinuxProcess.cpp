@@ -20,11 +20,11 @@
 #include "types.h"
 
 namespace ProcessOS {
-std::vector<ProcessInfo> GetTargetProc();
+std::vector<ProcessInfo> getTargetProc();
 
 namespace {
-std::vector<int> ListPid();
-std::string ReadFileString(const std::string& path);
+std::vector<int> listPid();
+std::string readFileString(const std::string& path);
 
 class LinuxImpl : public IProcess {
   int pid_;
@@ -44,7 +44,7 @@ public:
 
   std::vector<MapInfo> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
-  bool write(uint64_t address, const std::vector<uint8_t>& value) override;
+  bool write(const std::vector<uint8_t>& value, uint64_t address) override;
   char* allocMMapDisk(uint64_t size) override;
   void unAllocMMapDisk(uint64_t address, uint64_t size) override;
   bool isAttached() override;
@@ -57,14 +57,14 @@ void LinuxImpl::unAllocMMapDisk(uint64_t address, uint64_t size) { munmap(reinte
 
 // This should be dumb. JUST get regions. Nothing else. Filtering will happen above.
 std::vector<MapInfo> LinuxImpl::getRegions() {
-  std::ifstream mapsStream;
-  mapsStream.open("/proc/" + std::to_string(pid_) + "/maps");
-  if (!mapsStream.is_open()) {
+  std::ifstream map_stream;
+  map_stream.open("/proc/" + std::to_string(pid_) + "/maps");
+  if (!map_stream.is_open()) {
     Log::error("Couldn't open maps!" + std::string(strerror(errno)));
     return {};
   }
-  std::vector<MapInfo> MapRegions;
-  std::string MapsLine;
+  std::vector<MapInfo> map_regions;
+  std::string map_line;
 
   constexpr int32_t MAX_PATH = 4096;
   char exec_name[MAX_PATH];
@@ -79,37 +79,37 @@ std::vector<MapInfo> LinuxImpl::getRegions() {
   }
 
   // okay I decided I will first do a scan of all executable files, and put them all here excluding the main exec name.
-  std::unordered_set<std::string> libraries;
+  std::unordered_set<std::string> library_modules;
 
-  while (getline(mapsStream, MapsLine)) {
-    std::istringstream SplitMapsLine(MapsLine);
+  while (getline(map_stream, map_line)) {
+    std::istringstream SplitMapsLine(map_line);
     std::string name;
     std::string unneeded;
     SplitMapsLine >> unneeded >> unneeded >> unneeded >> unneeded >> unneeded >> name;
-    libraries.insert(name);
+    library_modules.insert(name);
   }
 
-  mapsStream.clear();
-  mapsStream.seekg(0, std::ios::beg);
+  map_stream.clear();
+  map_stream.seekg(0, std::ios::beg);
 
-  while (getline(mapsStream, MapsLine)) {
-    std::istringstream SplitMapsLine(MapsLine);
+  while (getline(map_stream, map_line)) {
+    std::istringstream split_maps_line(map_line);
 
-    std::string MemoryAddresses;
+    std::string memory_adr;
     std::string perms;
     std::string name;
     std::string unneeded;
 
-    SplitMapsLine >> MemoryAddresses >> perms >> unneeded >> unneeded >> unneeded >> name;
-    if (MemoryAddresses.find('-') == std::string::npos) {
+    split_maps_line >> memory_adr >> perms >> unneeded >> unneeded >> unneeded >> name;
+    if (memory_adr.find('-') == std::string::npos) {
       // wouldn't happen but...
       continue;
     }
-    std::string StartStr = MemoryAddresses.substr(0, MemoryAddresses.find('-'));
-    std::string EndStr = MemoryAddresses.substr(MemoryAddresses.find('-') + 1);
+    std::string start_str = memory_adr.substr(0, memory_adr.find('-'));
+    std::string end_str = memory_adr.substr(memory_adr.find('-') + 1);
 
-    uint64_t start = stoull(StartStr, nullptr, 16);
-    uint64_t end = stoull(EndStr, nullptr, 16);
+    uint64_t start = stoull(start_str, nullptr, 16);
+    uint64_t end = stoull(end_str, nullptr, 16);
 
     MapType type;
 
@@ -132,7 +132,7 @@ std::vector<MapInfo> LinuxImpl::getRegions() {
       type = MapType::heap;
     } else if (name == "[vvar]" || name == "[vvar_vlock]" || name == "[vdso]" || name == "[vsyscall]") {
       type = MapType::kernelPages;
-    } else if (libraries.contains(name)) {
+    } else if (library_modules.contains(name)) {
       if (perms.find('x') != std::string::npos)
         type = MapType::sharedLibCode;
       else if (perms.find('w') != std::string::npos)
@@ -145,25 +145,25 @@ std::vector<MapInfo> LinuxImpl::getRegions() {
       type = MapType::unset;
 
     MapInfo TempMapReg = {name, start, end, type};
-    MapRegions.push_back(TempMapReg);
+    map_regions.push_back(TempMapReg);
   }
 
-  return MapRegions;
+  return map_regions;
 };
 
-std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t ReadSize) {
-  std::vector<uint8_t> read_buf(ReadSize);
+std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t read_size) {
+  std::vector<uint8_t> read_buf(read_size);
 
-  struct iovec Receive{};
-  struct iovec WriteTo{};
+  struct iovec receive{};
+  struct iovec write_to{};
 
-  Receive.iov_base = read_buf.data();
-  Receive.iov_len = ReadSize;
+  receive.iov_base = read_buf.data();
+  receive.iov_len = read_size;
 
-  WriteTo.iov_base = reinterpret_cast<void*>(address);
-  WriteTo.iov_len = ReadSize;
+  write_to.iov_base = reinterpret_cast<void*>(address);
+  write_to.iov_len = read_size;
 
-  int64_t read_amount = process_vm_readv(pid_, &Receive, 1, &WriteTo, 1, 0);
+  int64_t read_amount = process_vm_readv(pid_, &receive, 1, &write_to, 1, 0);
 
   if (read_amount == -1) {
     return {};
@@ -173,24 +173,24 @@ std::vector<uint8_t> LinuxImpl::read(const uint64_t address, const uint64_t Read
   return read_buf;
 }
 
-bool LinuxImpl::write(const uint64_t address, const std::vector<uint8_t>& value) {
-  struct iovec Receive{};
-  struct iovec WriteTo{};
+bool LinuxImpl::write(const std::vector<uint8_t>& value, const uint64_t address) {
+  struct iovec receive{};
+  struct iovec write_to{};
 
-  Receive.iov_base = const_cast<unsigned char*>(value.data());
-  Receive.iov_len = value.size();
+  receive.iov_base = const_cast<unsigned char*>(value.data());
+  receive.iov_len = value.size();
 
-  WriteTo.iov_base = reinterpret_cast<void*>(address);
-  WriteTo.iov_len = value.size();
-  int64_t write_amount = process_vm_writev(pid_, &Receive, 1, &WriteTo, 1, 0);
+  write_to.iov_base = reinterpret_cast<void*>(address);
+  write_to.iov_len = value.size();
+  int64_t write_amount = process_vm_writev(pid_, &receive, 1, &write_to, 1, 0);
 
   // checking -1 would be unncessary if we check for value size but we should be
   // explicit about that failure condition.
   return write_amount != -1 && static_cast<uint64_t>(write_amount) == value.size();
 }
 
-std::vector<int> ListPid() {
-  std::vector<int> pidList;
+std::vector<int> listPid() {
+  std::vector<int> pid_list;
 
   for (const auto& field : std::filesystem::directory_iterator("/proc")) {
     if (!field.is_directory()) continue;
@@ -198,18 +198,18 @@ std::vector<int> ListPid() {
     int pid = atoi(field.path().filename().c_str());
     if (pid == 0) continue;
 
-    pidList.push_back(pid);
+    pid_list.push_back(pid);
   }
 
-  return pidList;
+  return pid_list;
 }
 
-std::string ReadFileString(const std::string& path) {
-  std::ifstream PathStream(path);
-  if (!PathStream) return "";
-  std::stringstream readString;
-  readString << PathStream.rdbuf();
-  return readString.str();
+std::string readFileString(const std::string& path) {
+  std::ifstream path_stream(path);
+  if (!path_stream) return "";
+  std::stringstream read_string;
+  read_string << path_stream.rdbuf();
+  return read_string.str();
 }
 
 char* LinuxImpl::allocMMapDisk(uint64_t size) {
@@ -241,16 +241,16 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
 std::vector<ProcessInfo> getProcTargets() {
   std::vector<ProcessInfo> Processes;
 
-  for (int pid : ListPid()) {
+  for (int pid : listPid()) {
     std::string name;
     std::string cmdline;
 
     std::string path = "/proc/" + std::to_string(pid) + "/";
 
-    name = ReadFileString(path + "comm");
+    name = readFileString(path + "comm");
     if (name.empty()) continue;
     name.erase(name.find('\n'));
-    cmdline = ReadFileString(path + "cmdline");
+    cmdline = readFileString(path + "cmdline");
     if (cmdline.empty()) {
       continue;
       // It seems some have the cmdline as "systemd-userwork: waiting...".

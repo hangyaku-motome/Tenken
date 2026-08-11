@@ -4,7 +4,16 @@
 
 #include "Scanner.h"
 
+// TODO: In windows, some values are only there for the UI view when editing/putting in values. we should group them
+// together.
 class HexW {
+
+  struct Config {
+    uint16_t bytes_before = 256;
+    uint16_t bytes_after = 256;
+    uint16_t bytes_per_row = 16;
+  };
+
   static bool initW();
   static void endW();
 
@@ -16,9 +25,11 @@ class HexW {
   int64_t editing_index_ = -1;
 
   const Scanner* scanner_;
+  Config config_;
 
   void drawHexTable();
-  std::vector<uint8_t> readAround(const uint64_t adr);
+  ReadRegion readAround(const uint64_t adr);
+  void drawConfigPopup();
 
 public:
   explicit HexW(const Scanner& scanner)

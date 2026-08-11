@@ -19,19 +19,22 @@
 
 // TODO:some of these constexpr should be file local, not here, and arguably some classes/structs?
 
-constexpr int32_t BytesBefore = 32;
-constexpr int32_t BytesAfter = 32;
+namespace Context {
+
+static constexpr uint8_t BytesBefore = 32;
+static constexpr uint8_t BytesAfter = 32;
+
+};  // namespace Context
+
+struct ReadRegion {
+  std::vector<uint8_t> read_bytes{};
+  int64_t offset_from_adr = 0;
+};
 
 constexpr float Epsilon = 0.1F;
 constexpr char Hex[] = "0123456789ABCDEF";
 constexpr auto PopupFlags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
-
-namespace Version {
-constexpr uint8_t json_format = 1;
-constexpr uint8_t pointer_save = 1;
-
-};  // namespace Version
 
 // TODO:fix invalid and unset not being first.
 enum class TargetType : int8_t {
@@ -150,6 +153,7 @@ struct Snapshot {
 
 enum class ScanType { Nothing, Hit, HitFilter, HitRescan, Unknown, Pointer };
 
+// it doessss kind of feeel bloated and I could probably make this smaller...maybe.
 struct SessionState {
   TargetInfo target_info;
   ProcessInfo target_proc_info;
@@ -162,7 +166,7 @@ struct SessionState {
   Snapshot snapshots;
 };
 
-//
+// should I reaaally be setting defaults?
 namespace Pointer {
 constexpr uint32_t default_search_after = 2048;
 constexpr uint32_t default_search_before = 0;
@@ -188,7 +192,7 @@ constexpr uint8_t max_depth = 8;
 struct Chain {
   std::array<int64_t, Pointer::max_depth> offsets;
   uint64_t offset_in_module;
-  uint32_t module_id;
+  uint32_t module_id;  // does this really have to be an uint32_t ?
   uint8_t valid_offsets;
 };
 
@@ -201,20 +205,92 @@ struct PrettyChain {
 };  // namespace Pointer
 
 //
-//
 // Action stuff.
 
 namespace Action {
 
-struct TargetProcChosen {
-  ProcessInfo chosen_proc;
-};
+namespace Scan {
 
-struct FirstScan {
+struct StartUnknownValue {};
+
+struct StartNormal {
   TargetInfo target_info;
 };
 
-struct StartUnknownValueScan {};
+struct Restart {};
+
+struct Undo {};
+
+struct StartPointer {
+  Pointer::InitConfig init_config;
+};
+
+}  // namespace Scan
+
+namespace Hit {
+
+struct Write {
+  std::vector<uint8_t> value;
+  uint64_t index;
+};
+
+struct Rescan {
+  uint64_t index;
+};
+
+struct RescanAll {};
+
+struct RegularRefresh {
+  float seconds;
+};
+}  // namespace Hit
+
+// Favourite stuff.
+// maybe put all related structs into a namespace?
+
+namespace Favourite {
+struct Add {
+  uint64_t hitIndex;
+};
+
+struct Remove {
+  uint64_t index;
+};
+
+struct Write {
+  std::vector<uint8_t> value;
+  uint64_t index;
+};
+
+struct IsFreeze {
+  uint64_t index;
+  bool freeze;
+};
+
+struct FreezeValue {
+  std::vector<uint8_t> value;
+  uint64_t index;
+};
+
+struct Desc {
+  std::string value;
+  uint64_t index;
+};
+
+struct Rescan {
+  uint64_t index;
+};
+
+struct RegularRefresh {
+  float seconds;
+};
+
+struct RescanAll {};
+}  // namespace Favourite
+
+struct TargetProcChosen {
+  ProcessInfo chosen_proc;
+};
 
 struct FilterByValue {
   std::vector<uint8_t> value;
@@ -224,80 +300,14 @@ struct filterByStatus {
   RelativeStatus status;
 };
 
-struct WriteHit {
-  std::vector<uint8_t> value;
-  uint64_t index;
-};
-
-struct RescanHit {
-  uint64_t index;
-};
-
-struct RescanAllHits {};
-
-struct RegularRefreshHits {
-  float seconds;
-};
-
-// Favourite stuff.
-// maybe put all related structs into a namespace?
-
-struct AddFavourite {
-  uint64_t hitIndex;
-};
-
-struct RemoveFavourite {
-  uint64_t index;
-};
-
-struct WriteFavourite {
-  std::vector<uint8_t> value;
-  uint64_t index;
-};
-
-struct IsFreezeFavourite {
-  uint64_t index;
-  bool freeze;
-};
-
-struct FreezeValueFavourite {
-  std::vector<uint8_t> value;
-  uint64_t index;
-};
-
-struct DescFavourite {
-  std::string value;
-  uint64_t index;
-};
-
-struct RescanFavourite {
-  uint64_t index;
-};
-
-struct RegularRefreshFavourite {
-  float seconds;
-};
-
-struct RescanAllFavourites {};
-
-// end of favourite stuff.
-
-struct RestartScan {};
-
 struct SetTargetInfo {
   std::vector<uint8_t> value;
   std::optional<std::vector<bool>> mask;  // TODO:does this really need to be optional. maybe. will check later.
   TargetType type;
 };
 
-struct UndoScan {};
-
-struct StartPointerScan {
-  Pointer::InitConfig init_config;
-};
-
 struct ResolvePointerResult {
-  std::string exec_name;
+  std::filesystem::path save_path;
   uint64_t target_address;
 };
 
@@ -317,28 +327,28 @@ template <class... Ts> struct overloaded : Ts... {
 
 using PendingAction = std::variant<std::monostate,
                                    Action::TargetProcChosen,
-                                   Action::FirstScan,
-                                   Action::StartUnknownValueScan,
+                                   Action::Scan::StartNormal,
+                                   Action::Scan::StartUnknownValue,
+                                   Action::Scan::Undo,
+                                   Action::Scan::StartPointer,
+                                   Action::Scan::Restart,
+                                   Action::Hit::Write,
+                                   Action::Hit::Rescan,
+                                   Action::Hit::RescanAll,
+                                   Action::Hit::RegularRefresh,
+                                   Action::Favourite::Add,
+                                   Action::Favourite::Remove,
+                                   Action::Favourite::Write,
+                                   Action::Favourite::FreezeValue,
+                                   Action::Favourite::IsFreeze,
+                                   Action::Favourite::Rescan,
+                                   Action::Favourite::RescanAll,
+                                   Action::Favourite::Desc,
+                                   Action::Favourite::RegularRefresh,
+                                   Action::SetTargetInfo,
+                                   Action::ResolvePointerResult,
                                    Action::FilterByValue,
                                    Action::filterByStatus,
-                                   Action::WriteHit,
-                                   Action::AddFavourite,
-                                   Action::RemoveFavourite,
-                                   Action::WriteFavourite,
-                                   Action::FreezeValueFavourite,
-                                   Action::IsFreezeFavourite,
-                                   Action::DescFavourite,
-                                   Action::RestartScan,
-                                   Action::RegularRefreshHits,
-                                   Action::RegularRefreshFavourite,
-                                   Action::RescanHit,
-                                   Action::RescanAllHits,
-                                   Action::RescanFavourite,
-                                   Action::RescanAllFavourites,
-                                   Action::SetTargetInfo,
-                                   Action::UndoScan,
-                                   Action::StartPointerScan,
-                                   Action::ResolvePointerResult,
                                    Action::SaveTenken,
                                    Action::LoadTenken>;
 

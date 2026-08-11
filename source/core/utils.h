@@ -6,16 +6,22 @@
 
 template <typename T> RelativeStatus tagChange(T new_value, T old_value);
 
-std::vector<uint8_t> findBytesAround(uint64_t offset, const std::vector<uint8_t>& data, uint32_t size);
-
 template <typename T>
 std::vector<uint64_t>
 searchValue(const std::vector<uint8_t>& Data, const T& Target, const std::vector<bool>& mask = {});
 
-std::string targetTypeToStr(TargetType targetType);
 TargetType strToTargetType(const std::string& string);
 template <typename T> std::string dataToStr(const std::vector<uint8_t>& Bytes);
+bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask);
+
+std::string targetTypeToStr(TargetType targetType);
 std::string relativeStatusToStr(RelativeStatus Status);
+std::string hexToStr(uint8_t byte);
+std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector<bool>& mask);
+std::string mapTypeToStr(const MapType type);
+
+template <typename T> T dataToType(const std::vector<uint8_t>& data);
+template <typename T> std::vector<uint8_t> typeToData(const T& val);
 
 template <typename Func> auto dispatchType(TargetType type, Func&& func) {
   switch (type) {
@@ -48,16 +54,9 @@ template <typename Func> auto dispatchType(TargetType type, Func&& func) {
   }
 }
 
-template <typename T> T dataToType(const std::vector<uint8_t>& data);
-
-bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask);
-
-std::string hexToStr(uint8_t byte);
-
-std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector<bool>& mask);
-
-std::string mapTypeToStr(const MapType type);
-
 int64_t signedDiff(uint64_t a, uint64_t b);
 
-std::filesystem::path getLatestScan(const std::string& exec_name);
+std::filesystem::path getLatestFile(const std::filesystem::path& dir_path);
+
+std::vector<uint8_t>
+findBytesAround(const std::vector<uint8_t>& data, uint64_t offset, uint64_t bytes_before, uint64_t bytes_after);

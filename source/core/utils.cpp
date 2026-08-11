@@ -10,9 +10,11 @@
 #include <type_traits>
 #include <vector>
 
+#include "LogW.h"
 #include "misc/cpp/imgui_stdlib.h"
-#include "Platform.h"
 #include "types.h"
+
+template <typename> inline constexpr bool always_false = false;
 
 template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
   if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<uint8_t>>) {
@@ -34,9 +36,9 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
     if (new_value > old_value) return RelativeStatus::increased;
 
     return RelativeStatus::decreased;
+  } else {
+    static_assert(always_false<T>, "can't call tagChange with this...");
   }
-
-  return RelativeStatus::unset;
 }
 
 template RelativeStatus tagChange<uint8_t>(uint8_t, uint8_t);
@@ -54,15 +56,6 @@ template RelativeStatus tagChange<std::vector<uint8_t>>(std::vector<uint8_t>, st
 
 //
 
-std::vector<uint8_t> findBytesAround(const uint64_t offset, const std::vector<uint8_t>& data, const uint32_t size) {
-  uint64_t start = offset < BytesBefore ? 0 : offset - BytesBefore;
-  uint64_t end = offset + BytesAfter + size > data.size() ? data.size() : offset + BytesAfter + size;
-
-  std::vector<uint8_t> bytes(BytesBefore + BytesAfter + size);
-  memcpy(bytes.data(), &data[start], end - start);
-  return bytes;
-}
-
 // I could simplfy this my merging string path and primitive, as the only difference is size.
 template <typename T>
 std::vector<uint64_t> searchValue(const std::vector<uint8_t>& data, const T& target, const std::vector<bool>& mask) {
@@ -74,7 +67,8 @@ std::vector<uint64_t> searchValue(const std::vector<uint8_t>& data, const T& tar
     for (uint32_t i = 0; i + target.size() <= data.size(); ++i)
       if (memcmp(&data[i], target.data(), target.size()) == 0) found_offsets.push_back(i);
 
-  } else if constexpr (std::is_same_v<std::vector<uint8_t>, T>) {
+  } else if constexpr (std::is_same_v<std::vector<uint8_t>,
+                                      T>) {  // I guess I can't use std::search cause I gotta use mask too?
     for (uint32_t i = 0; i + target.size() <= data.size(); ++i) {
       bool push = true;
       for (uint32_t k = 0; k < target.size(); ++k)
@@ -246,11 +240,16 @@ template <typename T> T dataToType(const std::vector<uint8_t>& data) {
     return std::string(reinterpret_cast<const char*>(data.data()), data.size());
   } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
     return data;
-  } else {
-    T return_val;
+  } else if constexpr (std::is_arithmetic_v<T>) {
+    T return_val = '\0';
+    if (data.empty()) {
+      Log::error("This shouldn't have happened");
+      return return_val;
+    }
     memcpy(&return_val, data.data(), sizeof(T));
     return return_val;
-  }
+  } else
+    static_assert(always_false<T>, "can't call dataToType with this.........");
 }
 
 template uint8_t dataToType<uint8_t>(const std::vector<uint8_t>&);
@@ -265,6 +264,34 @@ template float dataToType<float>(const std::vector<uint8_t>&);
 template double dataToType<double>(const std::vector<uint8_t>&);
 template std::vector<uint8_t> dataToType<std::vector<uint8_t>>(const std::vector<uint8_t>&);
 template std::string dataToType<std::string>(const std::vector<uint8_t>&);
+
+//
+
+template <typename T> std::vector<uint8_t> typeToData(const T& val) {
+  if constexpr (std::is_same_v<T, std::string>) {
+    return {val.begin(), val.end()};
+  } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {  // juuust gonna do uint8_t for now.
+    return val;
+  } else if constexpr (std::is_arithmetic_v<T>) {
+    std::vector<uint8_t> data(sizeof(T));
+    memcpy(data.data(), &val, data.size());
+    return data;
+  } else
+    static_assert(always_false<T>, "can't call typeToData with this.........");
+}
+
+template std::vector<uint8_t> typeToData(const uint8_t&);
+template std::vector<uint8_t> typeToData(const uint16_t&);
+template std::vector<uint8_t> typeToData(const uint32_t&);
+template std::vector<uint8_t> typeToData(const uint64_t&);
+template std::vector<uint8_t> typeToData(const int8_t&);
+template std::vector<uint8_t> typeToData(const int16_t&);
+template std::vector<uint8_t> typeToData(const int32_t&);
+template std::vector<uint8_t> typeToData(const int64_t&);
+template std::vector<uint8_t> typeToData(const float&);
+template std::vector<uint8_t> typeToData(const double&);
+template std::vector<uint8_t> typeToData(const std::string&);
+template std::vector<uint8_t> typeToData(const std::vector<uint8_t>&);
 
 //
 
@@ -341,15 +368,25 @@ int64_t signedDiff(uint64_t a, uint64_t b) {
   return (a >= b) ? static_cast<int64_t>(a - b) : -static_cast<int64_t>(b - a);
 }
 
-std::filesystem::path getLatestScan(const std::string& exec_name) {
+std::filesystem::path getLatestFile(const std::filesystem::path& dir_path) {
   std::vector<std::filesystem::directory_entry> files;
 
-  for (const auto& file : std::filesystem::directory_iterator(Platform::getTenkenStatePath() / "Pointer" / exec_name))
+  for (const auto& file : std::filesystem::directory_iterator(dir_path))
     if (file.is_regular_file()) files.push_back(file);
 
   std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) {
-    return a.path().filename() < a.path().filename();
+    return a.last_write_time() < b.last_write_time();
   });
 
   return files.front();
+}
+
+std::vector<uint8_t>
+findBytesAround(const std::vector<uint8_t>& data, uint64_t offset, uint64_t bytes_before, uint64_t bytes_after) {
+  uint64_t start = offset < bytes_before ? 0 : offset - bytes_before;
+  uint64_t end = offset + bytes_after > data.size() ? data.size() : offset + bytes_after;
+
+  std::vector<uint8_t> bytes(bytes_after + bytes_before);
+  memcpy(bytes.data(), &data[start], end - start);
+  return bytes;
 }

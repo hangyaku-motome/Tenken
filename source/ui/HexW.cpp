@@ -14,11 +14,6 @@
 #include "misc/cpp/imgui_stdlib.h"
 #include "utils.h"
 
-constexpr int32_t context_bytes_before = 256;
-constexpr int32_t context_bytes_after = 256;
-
-constexpr int32_t bytes_per_row = 16;
-
 bool HexW::initW() { return ImGui::Begin("Hex"); }
 
 void HexW::endW() { ImGui::End(); }
@@ -45,6 +40,12 @@ void HexW::cycleW() {
   if (ImGui::Button("Refresh")) {
     shown_bytes_ = readAround(current_address_);
   }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Config")) {
+    drawConfigPopup();
+  }
+
   if (!shown_bytes_.empty()) drawHexTable();
 
   endW();
@@ -62,26 +63,27 @@ void HexW::drawHexTable() {
   }
 
   ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 120.0F);
-  for (uint32_t k = 0; k < bytes_per_row; ++k) ImGui::TableSetupColumn("00", ImGuiTableColumnFlags_WidthFixed, 25.0F);
+  for (uint32_t k = 0; k < config_.bytes_per_row; ++k)
+    ImGui::TableSetupColumn("00", ImGuiTableColumnFlags_WidthFixed, 25.0F);
 
   ImGui::TableSetupColumn("ASCII", ImGuiTableColumnFlags_WidthFixed, 130.0F);
 
-  for (uint64_t row = 0; row < (context_bytes_after + context_bytes_before) / bytes_per_row; ++row) {
+  for (uint64_t row = 0; row < (config_.bytes_before + config_.bytes_after) / config_.bytes_per_row; ++row) {
     ImGui::TableNextRow();
 
     ImGui::TableNextColumn();
 
-    uint64_t row_abs_address = signedDiff(current_address_, context_bytes_before) < 0
-                                   ? (row * bytes_per_row)
-                                   : current_address_ - context_bytes_before + (row * bytes_per_row);
+    uint64_t row_abs_address = signedDiff(current_address_, config_.bytes_before) < 0
+                                   ? (row * config_.bytes_per_row)
+                                   : current_address_ - config_.bytes_before + (row * config_.bytes_per_row);
 
     if (row_abs_address == search_address_) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 160, 100, 255));
     ImGui::Text("0x%" PRIX64, row_abs_address);
     if (row_abs_address == search_address_) ImGui::PopStyleColor();
 
-    for (int32_t hex_column = 0; hex_column < bytes_per_row; ++hex_column) {
+    for (int32_t hex_column = 0; hex_column < config_.bytes_per_row; ++hex_column) {
       ImGui::TableNextColumn();
-      int32_t hex_index = static_cast<int32_t>(row) * bytes_per_row + hex_column;
+      int32_t hex_index = static_cast<int32_t>(row) * config_.bytes_per_row + hex_column;
       if (editing_index_ == hex_index) {
         std::string shown_str = hexToStr(shown_bytes_[static_cast<uint64_t>(hex_index)]);
         ImGui::SetNextItemWidth(25.0F);
@@ -105,8 +107,8 @@ void HexW::drawHexTable() {
     ImGui::TableNextColumn();
 
     std::string print_buf;
-    for (int32_t k = 0; k < bytes_per_row; ++k) {
-      int32_t hex_index = static_cast<int32_t>(row) * bytes_per_row + k;
+    for (int32_t k = 0; k < config_.bytes_per_row; ++k) {
+      int32_t hex_index = static_cast<int32_t>(row) * config_.bytes_per_row + k;
       if (std::isprint(static_cast<uint8_t>(shown_bytes_[static_cast<uint64_t>(hex_index)])))
         print_buf += static_cast<char>(shown_bytes_[static_cast<uint64_t>(hex_index)]);
       else
@@ -118,9 +120,3 @@ void HexW::drawHexTable() {
   ImGui::EndChild();
 }
 
-// I do have something similar in DataInspector. probably might want to make it a function in scanner.
-
-std::vector<uint8_t> HexW::readAround(const uint64_t adr) {
-  uint64_t search_start = signedDiff(adr, context_bytes_before) < 0 ? 0 : adr - context_bytes_before;
-  return scanner_->readAdr(search_start, context_bytes_after + context_bytes_before);
-}

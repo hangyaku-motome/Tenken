@@ -5,8 +5,6 @@
 
 #include "types.h"
 
-//might be overengineered.......
-
 namespace ContextIntent {
 struct Rescan {
   uint64_t index;
@@ -97,21 +95,21 @@ public:
     std::visit(overloaded{
                    [&](ContextIntent::Rescan& c) -> void {
                      if (IsHitWindow)
-                       result = Action::RescanHit{c.index};
+                       result = Action::Hit::Rescan{c.index};
                      else
-                       result = Action::RescanFavourite{c.index};
+                       result = Action::Favourite::Rescan{c.index};
                    },
                    [&](ContextIntent::RescanAll&) -> void {
                      if (IsHitWindow)
-                       result = Action::RescanAllHits{};
+                       result = Action::Hit::RescanAll{};
                      else
-                       result = Action::RescanAllFavourites{};
+                       result = Action::Favourite::RescanAll{};
                    },
                    [&](ContextIntent::RegularRefresh& c) -> void {
                      if (IsHitWindow)
-                       result = Action::RegularRefreshHits{c.seconds};
+                       result = Action::Hit::RegularRefresh{c.seconds};
                      else
-                       result = Action::RegularRefreshFavourite{c.seconds};
+                       result = Action::Favourite::RegularRefresh{c.seconds};
                    },
                    [&](auto&) {},
                },

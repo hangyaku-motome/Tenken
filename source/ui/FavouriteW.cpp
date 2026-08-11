@@ -74,7 +74,7 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
     }
     if (ImGui::BeginPopupContextItem("favourite_menu")) {
       selected_row_ = static_cast<int64_t>(row);
-      if (ImGui::MenuItem("Remove from Favourites")) return_action = Action::RemoveFavourite{row};
+      if (ImGui::MenuItem("Remove from Favourites")) return_action = Action::Favourite::Remove{row};
       if (ImGui::MenuItem("Copy address to clipboard")) {
         char buf[32];
         snprintf(buf, sizeof(buf), "0x%" PRIX64, favourites[static_cast<uint64_t>(selected_row_)].location);
@@ -105,7 +105,7 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
 
       std::string strbuf = favourites[row].desc;
       if (ImGui::InputText("##Description", &strbuf, ImGuiInputTextFlags_EnterReturnsTrue)) {
-        return_action = Action::DescFavourite{strbuf, static_cast<uint64_t>(selected_row_)};
+        return_action = Action::Favourite::Desc{strbuf, static_cast<uint64_t>(selected_row_)};
         is_editing_desc_ = false;
         cancel_edit = true;
       }
@@ -149,7 +149,7 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
 
       std::vector<uint8_t> newval_buf = favourites[row].value;
       if (getTargetValue(favourites[row].type, newval_buf, ImGuiInputTextFlags_EnterReturnsTrue)) {
-        return_action = Action::WriteFavourite(newval_buf, row);
+        return_action = Action::Favourite::Write(newval_buf, row);
         is_editing_val_ = false;
         cancel_edit = true;
       }
@@ -176,7 +176,7 @@ PendingAction FavouriteW::drawFavouriteTable(const std::vector<FavouriteInfo>& f
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
     ImGui::Checkbox("##freeze", &freeze);
     if (freeze != favourites[row].frozen) {
-      return_action = Action::IsFreezeFavourite(row, freeze);
+      return_action = Action::Favourite::IsFreeze(row, freeze);
     }
     ImGui::PopStyleVar();
 

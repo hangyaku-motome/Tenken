@@ -89,9 +89,9 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
     is_on_first_window_ = false;
     if (is_unknown_value_scan_) {
       is_on_unknown_value_first_scan = true;
-      return Action::StartUnknownValueScan{};
+      return Action::Scan::StartUnknownValue{};
     }
-    return Action::FirstScan{.target_info = target_info};
+      return Action::Scan::StartNormal{.target_info = target_info};
   }
   return return_action;
 }
@@ -133,13 +133,13 @@ PendingAction SearchW::cycleSecondW(const TargetInfo& TargetInfo) {
 
   if (ImGui::Button("Undo scan.")) {
     endW();
-    return Action::UndoScan{};
+    return Action::Scan::Undo{};
   }
   ImGui::SameLine();
   if (ImGui::Button("Restart scan.", {button_w, 0})) {
     endW();
     reset();
-    return Action::RestartScan{};
+    return Action::Scan::Restart{};
   }
 
   endW();

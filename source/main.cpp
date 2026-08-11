@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <string>
 
 #include "DataInspectorW.h"
 #include "display.h"
@@ -31,9 +32,6 @@
 
 using nlohmann::json;
 
-constexpr auto file_browser_flags = ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CloseOnEsc |
-                                    ImGuiFileBrowserFlags_CreateNewDir | ImGuiFileBrowserFlags_EditPathString;
-
 void resolveActions(Scanner& scanner_obj,
                     const std::vector<PendingAction>& actions,
                     SessionState& state,
@@ -51,6 +49,8 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
 
 // TODO: This is going to be vagueposting but, there are a things we can do to make this system more robust.
 // uhhhhhhhhhhhhhhhhhh yeah we should look into that one
+// TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
+// validation?
 int main() {
   if (Platform::checkPermission() == false) {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
@@ -64,9 +64,6 @@ int main() {
   GLFWwindow* window = initaliseImgui(imgui_init_path_str);
   ImGuiIO& io = ImGui::GetIO();
   ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
-
-  ImGui::FileBrowser save_dialog(file_browser_flags);
-  ImGui::FileBrowser load_dialog(file_browser_flags);
 
   // Start up Tenken.
   SessionState state;
@@ -112,9 +109,7 @@ int main() {
     setDefaultDisplay();
 
     // Menu bar
-    // TODO:ehh we probably want to save this string inside state instead of calculating it every run.
-    actions.push_back(
-        menu_bar.cycle(state.target_proc_info.name.substr(state.target_proc_info.name.find_last_of('/') + 1)));
+    actions.push_back(menu_bar.cycle(state.target_proc_info.name));
 
     // Target popup.
     actions.push_back(target_popup.cyclePopUp());
@@ -151,10 +146,6 @@ int main() {
 
     // Pointer window.
     actions.push_back(pointer_w.cycleW(state, pointer_l));
-
-    // dialogs.
-    save_dialog.Display();
-    load_dialog.Display();
 
     // ui stuff is over.
     endFrame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y), clear_color, window);
@@ -207,15 +198,15 @@ void resolveActions(Scanner& scanner,
               state.active_regions = {};
               favourite_l.startFreezeThread(scanner);
             },
-            [&](const Action::FirstScan) {
+            [&](const Action::Scan::StartNormal) {
               ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Hit, [&]() {
                 auto hits = ScanOp::startScan(scanner, state.target_info, state.scan_progress, state.active_regions);
                 hit_l.assignNew(std::move(hits));
               });
             },
-            [&](const Action::StartUnknownValueScan) {
+            [&](const Action::Scan::StartUnknownValue) {
               state.is_unknown_value_scan =
-                  true;  // a way to know if we are doing it actively. it won't need Snapshot after scan 1.
+                  true;  // TODO:a way to know if we are doing it actively. it won't need Snapshot after scan 1.
               ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Unknown, [&]() {
                 state.snapshots = scanner.getSnapshot(state.active_regions, state.scan_progress);
               });
@@ -240,36 +231,36 @@ void resolveActions(Scanner& scanner,
                 });
               }
             },
-            [&](const Action::WriteHit& a) {
+            [&](const Action::Hit::Write& a) {
               hit_l.write(scanner, a.index, a.value);
               hit_l.rescan(scanner, a.index, state.target_info.target_type);
             },
-            [&](const Action::RescanHit& a) { hit_l.rescan(scanner, a.index, state.target_info.target_type); },
-            [&](const Action::RescanAllHits) {
+            [&](const Action::Hit::Rescan& a) { hit_l.rescan(scanner, a.index, state.target_info.target_type); },
+            [&](const Action::Hit::RescanAll) {
               ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Hit, [&]() {
                 ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
               });
             },
-            [&](const Action::RegularRefreshHits& a) { state.hit_refresh_seconds = a.seconds; },
+            [&](const Action::Hit::RegularRefresh& a) { state.hit_refresh_seconds = a.seconds; },
 
             // start of favourite stuff.
-            [&](const Action::AddFavourite& a) {
+            [&](const Action::Favourite::Add& a) {
               favourite_l.add(hit_l.getIndex(a.hitIndex), state.target_info.target_type);
             },
-            [&](const Action::RemoveFavourite& a) { favourite_l.remove(a.index); },
-            [&](const Action::WriteFavourite& a) {
+            [&](const Action::Favourite::Remove& a) { favourite_l.remove(a.index); },
+            [&](const Action::Favourite::Write& a) {
               favourite_l.write(scanner, a.index, a.value);
               favourite_l.rescan(scanner, a.index);
             },
-            [&](const Action::IsFreezeFavourite& a) { favourite_l.setFreeze(a.index, a.freeze); },
-            [&](const Action::FreezeValueFavourite& a) { favourite_l.setFreezeVal(a.index, a.value); },
-            [&](const Action::DescFavourite& a) { favourite_l.setDesc(a.index, a.value); },
-            [&](const Action::RescanFavourite& a) { favourite_l.rescan(scanner, a.index); },
-            [&](const Action::RegularRefreshFavourite& a) { state.fav_refresh_seconds = a.seconds; },
-            [&](const Action::RescanAllFavourites) { favourite_l.rescanAll(scanner); },
+            [&](const Action::Favourite::IsFreeze& a) { favourite_l.setFreeze(a.index, a.freeze); },
+            [&](const Action::Favourite::FreezeValue& a) { favourite_l.setFreezeVal(a.index, a.value); },
+            [&](const Action::Favourite::Desc& a) { favourite_l.setDesc(a.index, a.value); },
+            [&](const Action::Favourite::Rescan& a) { favourite_l.rescan(scanner, a.index); },
+            [&](const Action::Favourite::RegularRefresh& a) { state.fav_refresh_seconds = a.seconds; },
+            [&](const Action::Favourite::RescanAll) { favourite_l.rescanAll(scanner); },
             // end of favourite stuff.
 
-            [&](const Action::RestartScan) {
+            [&](const Action::Scan::Restart) {
               hit_l.reset();
               state.fav_refresh_seconds = -1;
               state.hit_refresh_seconds = -1;
@@ -281,19 +272,38 @@ void resolveActions(Scanner& scanner,
               state.target_info.value = a.value;
               if (a.mask.has_value()) state.target_info.mask = a.mask;
             },
-            [&](const Action::UndoScan) { hit_l.restore_old_hits(); },
-            [&](const Action::StartPointerScan& a) {
+            [&](const Action::Scan::Undo) { hit_l.restore_old_hits(); },
+            [&](const Action::Scan::StartPointer& a) {
               ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a.init_config]() {
-                auto path =
+                auto ok =
                     scanner.findPointerCandidates(scanner.getSnapshot(state.active_regions, state.scan_progress), info);
-                pointer_l.openFile(path);
+                if (ok)
+                  pointer_l.openFile(
+                      getLatestFile(Platform::getTenkenStatePath() / "Pointer" / state.target_proc_info.name));
               });
             },
             [&](const Action::ResolvePointerResult& a) {
-              ScanOp::runOnScannerThread(
-                  scanner_thread, state, ScanType::Pointer, [&, target_address = a.target_address]() {
-                    scanner.resolvePointerResult(target_address, {}, pointer_l);
-                  });
+              ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a]() {
+                pointer_l.openFile(info.save_path);
+
+                std::string raw_save_name = info.save_path.filename().stem();
+
+                std::string new_save_name;
+                if (raw_save_name.find("__fltr_") != std::string::npos) {
+                  auto new_iteration = std::stoi(raw_save_name.substr(raw_save_name.find_first_of("__fltr_") + 7)) + 1;
+
+                  new_save_name = raw_save_name.substr(0, raw_save_name.find_first_of("__fltr_") + 6) +
+                                  std::to_string(new_iteration) + ".tptr";
+
+                } else
+                  new_save_name = raw_save_name + "__fltr_" + std::to_string(1) + ".tptr";
+
+                std::filesystem::path new_save_path = info.save_path.parent_path() / new_save_name;
+
+                scanner.resolvePointerResult(info.target_address, new_save_path, pointer_l);
+
+                pointer_l.openFile(new_save_path);
+              });
             },
             [&](const Action::SaveTenken& a) { saveTenken(a.path, favourite_l.getAll()); },
             [&](const Action::LoadTenken& a) {
@@ -307,29 +317,28 @@ void resolveActions(Scanner& scanner,
 }
 
 bool saveTenken(const std::filesystem::path& save_path, const std::vector<FavouriteInfo>& favourites) {
-  try {
-    json save_state;
-    save_state["version"] = 1;
-    save_state["favourites"] = json::array();
-    for (const auto& favourite : favourites) {
-      json item;
+  json save_state;
+  save_state["version"] = 1;
+  save_state["favourites"] = json::array();
+  for (const auto& favourite : favourites) {
+    json item;
 
-      std::stringstream location_stream;
+    std::stringstream location_stream;
 
-      location_stream << std::hex << std::showbase << favourite.location;
-      item["location"] = location_stream.str();
-      item["value"] = favourite.value;  // raw bytes for now. should be fine.
-      item["desc"] = favourite.desc;
-      item["type"] = targetTypeToStr(favourite.type);
+    location_stream << std::hex << std::showbase << favourite.location;
+    item["location"] = location_stream.str();
+    item["value"] = favourite.value;  // raw bytes for now. should be fine.
+    item["desc"] = favourite.desc;
+    item["type"] = targetTypeToStr(favourite.type);
 
-      save_state["favourites"].push_back(item);
-    }
+    save_state["favourites"].push_back(item);
+  }
 
-    std::filesystem::create_directories(save_path.parent_path());
-    std::ofstream save_stream(save_path.string() + ".json");
-    save_stream << save_state.dump(2);
+  std::filesystem::create_directories(save_path.parent_path());
+  std::ofstream save_stream(save_path.string() + ".json");
+  save_stream << save_state.dump(2);
 
-  } catch (...) {
+  if (!save_stream) {
     Log::error("Failed to save. Noo idea why.");
     return false;
   }
@@ -338,46 +347,45 @@ bool saveTenken(const std::filesystem::path& save_path, const std::vector<Favour
 }
 
 bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInfo>& favourites) {
-  try {
-    json loaded_state;
+  json loaded_state;
 
-    std::ifstream load_file(load_path);
+  std::ifstream load_stream(load_path);
 
-    if (!load_file) {
-      Log::error("Failed to open save from path. Are you sure it exists?");
-      return false;
+  if (!load_stream) {
+    Log::error("Failed to open save from path. Are you sure it exists?");
+    return false;
+  }
+
+  loaded_state = json::parse(load_stream);
+
+  if (loaded_state.value("version", 0) != JsonSaveVersion) {
+    Log::error("Expected version and current version do not match for save file. Are you on a newer/older version than "
+               "when "
+               "you saved? If not...Yeah IDK what happened something is wrong clearly. Here is the supposed version" +
+               std::to_string(loaded_state.value("version", 0)) +
+               " . And the only reason this log file is so unnecessarily long is because I felt like it. Anyways good "
+               "luck "
+               "with this problem someone who is probably me.");
+    return false;
+  }
+  favourites.clear();
+  for (const auto& item : loaded_state.at("favourites")) {
+    FavouriteInfo favourite;
+
+    favourite.desc = item.at("desc").get<std::string>();
+    favourite.location = std::stoull(item.at("location").get<std::string>(), nullptr, 16);
+
+    std::vector<uint8_t> value;
+    for (const auto& byte : item.at("value")) {
+      value.push_back(byte);
     }
+    favourite.value = value;
+    favourite.type = strToTargetType(item["type"].get<std::string>());
 
-    loaded_state = json::parse(load_file);
+    favourites.push_back(favourite);
+  }
 
-    if (loaded_state.value("version", 0) != JsonSaveVersion) {
-      Log::error(
-          "Expected version and current version do not match for save file. Are you on a newer/older version than "
-          "when "
-          "you saved? If not...Yeah IDK what happened something is wrong clearly. Here is the supposed version" +
-          std::to_string(loaded_state.value("version", 0)) +
-          " . And the only reason this log file is so unnecessarily long is because I felt like it. Anyways good "
-          "luck "
-          "with this problem someone who is probably me.");
-      return false;
-    }
-    favourites.clear();
-    for (const auto& item : loaded_state.at("favourites")) {
-      FavouriteInfo favourite;
-
-      favourite.desc = item.at("desc").get<std::string>();
-      favourite.location = std::stoull(item.at("location").get<std::string>(), nullptr, 16);
-
-      std::vector<uint8_t> value;
-      for (const auto& byte : item.at("value")) {
-        value.push_back(byte);
-      }
-      favourite.value = value;
-      favourite.type = strToTargetType(item["type"].get<std::string>());
-
-      favourites.push_back(favourite);
-    }
-  } catch (...) {
+  if (!load_stream) {
     Log::error("Failed to load. idk why.");
     return false;
   }
