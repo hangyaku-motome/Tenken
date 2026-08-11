@@ -6,6 +6,10 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
+#include <unistd.h>
+
+#include <charconv>
+#include <system_error>
 
 #include "types.h"
 #include "utils.h"
@@ -127,12 +131,6 @@ void setDefaultDisplay() {
   ImGui::End();
 }
 
-template <typename out, typename T> std::vector<uint8_t> ValtoData(const T& val) {
-  std::vector<uint8_t> data(sizeof(out));
-  memcpy(data.data(), &val, sizeof(out));
-  return data;
-}
-
 // this is a mess. I should rewrite this.
 bool getTargetValue(const TargetType target_type, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags) {
   if (target_type == TargetType::invalid) return false;
@@ -170,21 +168,20 @@ bool getTargetValue(const TargetType target_type, std::vector<uint8_t>& write_to
       write_to = new_bytes;
       return true;
     } else {
-      try {
-        T value;
-        if constexpr (std::is_floating_point_v<T>)
-          value = static_cast<T>(std::stod(tempbuf));
-        else if constexpr (std::is_unsigned_v<T>)
-          value = static_cast<T>(std::stoull(tempbuf));
-        else
-          value = static_cast<T>(std::stoll(tempbuf));
+      T value{};
 
-        write_to = ValtoData<T>(value);
-        return true;
-      } catch (...) {
+      const char* first = tempbuf.data();
+      const char* end = tempbuf.data() + tempbuf.size();
+
+      auto [ptr, err] = std::from_chars(first, end, value);
+
+      if (err != std::error_code{} || ptr != end) {
         write_to.clear();
         return false;
       }
+
+      write_to = typeToData<T>(value);
+      return true;
     }
   });
 }
