@@ -1,5 +1,7 @@
 #include "HitW.h"
 
+#include <imgui.h>
+
 #include <algorithm>
 #include <cinttypes>
 #include <cstdint>
@@ -9,7 +11,6 @@
 
 #include "ContextDisplay.h"
 #include "display.h"
-#include "imgui.h"
 #include "types.h"
 #include "utils.h"
 
@@ -49,9 +50,8 @@ PendingAction HitW::cycleW(const std::vector<HitInfo>& hits, SessionState& state
   PendingAction context_action{};
   if (selected_row_ >= hits.size()) selected_row_ = 0;
   if (selected_row_ >= 0 && static_cast<uint64_t>(selected_row_) <= hits.size()) {
-    auto ctr = context.cycleContext(
-        static_cast<uint64_t>(selected_row_), hits[static_cast<uint64_t>(selected_row_)], state.hit_refresh_seconds);
-    context_action = context.ResolveContextIntent(ctr, true);
+    context_action = context.cycleContext<HitInfo>(
+        hits[selected_row_].bytes_around, selected_row_, hits[selected_row_].value.size(), state.hit_refresh_seconds);
   }
   endW();
 

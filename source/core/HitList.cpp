@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "LogW.h"
+#include "Log.h"
 #include "types.h"
 #include "utils.h"
 
@@ -15,22 +15,18 @@ void HitList::rescan(const Scanner& scanner, uint64_t index, const TargetType ta
   std::scoped_lock<std::mutex> lock(mutex_);
   hits_[index].previous_value = hits_[index].value;
 
-  hits_[index].bytes_around.resize(BytesBefore + BytesAfter + hits_[index].value.size());
+  hits_[index].bytes_around =
+      scanner.readAround(hits_[index].location, Context::BytesBefore, Context::BytesAfter + hits_[index].value.size());
 
-  hits_[index].bytes_around = scanner.readAdr(hits_[index].location - BytesBefore, hits_[index].bytes_around.size());
-
-  if (hits_[index].bytes_around.size() != BytesAfter + BytesBefore + hits_[index].value.size()) {
-    hits_[index].bytes_around.clear();
-    hits_[index].value = scanner.readAdr(hits_[index].location, hits_[index].value.size());
-    if (hits_[index].value.empty()) {
-      hits_.erase(hits_.begin() + static_cast<int64_t>(index));
-      return;
-    }
-  } else {
-    hits_[index].value.assign(hits_[index].bytes_around.begin() + BytesBefore,
-                              hits_[index].bytes_around.begin() + BytesBefore +
-                                  static_cast<int64_t>(hits_[index].value.size()));
+  if (hits_[index].bytes_around.read_bytes.size() < hits_[index].value.size() ||
+      hits_[index].bytes_around.read_bytes.size() == 0 || hits_[index].bytes_around.offset_from_adr > 0) {
+    hits_.erase(hits_.begin() + static_cast<int64_t>(index));
+    return;
   }
+  hits_[index].value.assign(hits_[index].bytes_around.read_bytes.begin() - hits_[index].bytes_around.offset_from_adr,
+                            hits_[index].bytes_around.read_bytes.begin() - hits_[index].bytes_around.offset_from_adr +
+                                static_cast<int64_t>(hits_[index].value.size()));
+
   if (!hits_[index].previous_value.empty())
     dispatchType(target_type, [&]<typename T> {
       hits_[index].status = tagChange(dataToType<T>(hits_[index].value), dataToType<T>(hits_[index].previous_value));
@@ -39,7 +35,7 @@ void HitList::rescan(const Scanner& scanner, uint64_t index, const TargetType ta
 
 void HitList::write(const Scanner& scanner_obj, uint64_t index, const std::vector<uint8_t>& value) {
   std::scoped_lock<std::mutex> lock(mutex_);
-  scanner_obj.writeAdr(hits_[index].location, value);
+  scanner_obj.writeAdr(value, hits_[index].location);
 }
 
 void HitList::filter(RelativeStatus keep_type) {

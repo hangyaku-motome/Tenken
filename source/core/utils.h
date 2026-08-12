@@ -58,5 +58,5 @@ int64_t signedDiff(uint64_t a, uint64_t b);
 
 std::filesystem::path getLatestFile(const std::filesystem::path& dir_path);
 
-std::vector<uint8_t>
-findBytesAround(const std::vector<uint8_t>& data, uint64_t offset, uint64_t bytes_before, uint64_t bytes_after);
+ReadBlock
+findBytesAround(const std::vector<uint8_t>& data, int32_t offset, uint32_t bytes_before, uint32_t bytes_after);

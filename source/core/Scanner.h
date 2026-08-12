@@ -8,13 +8,6 @@
 #include "PointerList.h"
 #include "types.h"
 
-namespace Context {
-
-static constexpr uint8_t bytes_before = 32;
-static constexpr uint8_t bytes_after = 32;
-
-};  // namespace Context
-
 // TODO: explicit unattach for ProcessOS and Scanner.
 class Scanner {
   static constexpr uint64_t data_region_flag = uint64_t{1} << 63;
@@ -49,7 +42,11 @@ public:
   void init(int pid) { proc_ = ProcessOS::attach(pid); }
 
   std::vector<uint8_t> readAdr(uint64_t address, uint64_t read_size) const;
-  ReadRegion readAround(uint64_t adr, uint64_t bytes_before, uint64_t bytes_after) const;
+
+  // TODO: maybee instead of calling syscalls after every interval, we make a function labeled isValid() that returns
+  // whether or not that address is in mapped memory. Would have to debate how expensive it is comparatively, and
+  // whether to use it on other small one off operations.
+  ReadBlock readAround(uint64_t adr, uint64_t bytes_before, uint64_t bytes_after) const;
 
   bool writeAdr(const std::vector<uint8_t>& value, uint64_t address) const;
 

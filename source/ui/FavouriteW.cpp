@@ -25,10 +25,10 @@ PendingAction FavouriteW::cycleW(const std::vector<FavouriteInfo>& favourites, S
 
   PendingAction context_action;
   if (selected_row_ >= 0 && selected_row_ < static_cast<int64_t>(favourites.size())) {
-    auto cta = context.cycleContext(static_cast<uint64_t>(selected_row_),
-                                    favourites[static_cast<uint64_t>(selected_row_)],
-                                    state.fav_refresh_seconds);
-    context_action = context.ResolveContextIntent(cta, false);
+    context_action = context.cycleContext<FavouriteInfo>(favourites[selected_row_].bytes_around,
+                                                         selected_row_,
+                                                         favourites[selected_row_].value.size(),
+                                                         state.hit_refresh_seconds);
   }
 
   endW();

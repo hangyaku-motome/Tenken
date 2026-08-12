@@ -4,7 +4,7 @@
 #include <type_traits>
 
 #include "HitList.h"
-#include "LogW.h"
+#include "Log.h"
 #include "Scanner.h"
 #include "types.h"
 #include "utils.h"
@@ -23,6 +23,8 @@ void ScanOp::rescanAllHits(const Scanner& scanner,
 }
 
 // here too...won't std::move for now.
+// ?
+// I guess I was refering to active_region? yeah don't eat it up.
 std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
                                        const TargetInfo& target_info,
                                        std::atomic<float>& scan_progress,
@@ -45,11 +47,10 @@ std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
         for (const auto rel_offset : searchValue(data, target_info.value, target_info.mask.value())) {
           HitInfo push_hit;
           push_hit.location = maps[i].start + rel_offset;
-          push_hit.bytes_around = findBytesAround(rel_offset, data, static_cast<uint32_t>(target_info.value.size()));
-          std::vector<uint8_t> value(push_hit.bytes_around.begin() + BytesBefore,
-                                     push_hit.bytes_around.begin() + BytesBefore +
-                                         static_cast<int64_t>(target_info.value.size()));
-          push_hit.value = value;
+          push_hit.value = target_info.value;  // reallllyy didn't gotta make it all that complicated like before
+          push_hit.bytes_around =
+              findBytesAround(data, rel_offset, Context::BytesBefore, Context::BytesAfter + target_info.value.size());
+          printf("%i\n\n", push_hit.bytes_around.offset_from_adr);
           return_hits.push_back(push_hit);
         }
       } else {
@@ -62,11 +63,10 @@ std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
         for (const auto rel_offset : searchValue(data, target)) {
           HitInfo push_hit;
           push_hit.location = maps[i].start + rel_offset;
-          push_hit.bytes_around = findBytesAround(rel_offset, data, static_cast<uint32_t>(target_info.value.size()));
-          std::vector<uint8_t> value(push_hit.bytes_around.begin() + BytesBefore,
-                                     push_hit.bytes_around.begin() + BytesBefore +
-                                         static_cast<int64_t>(target_info.value.size()));
-          push_hit.value = value;
+          push_hit.value = target_info.value;
+          push_hit.bytes_around =
+              findBytesAround(data, rel_offset, Context::BytesBefore, Context::BytesAfter + target_info.value.size());
+          printf("%i\n\n", push_hit.bytes_around.offset_from_adr);
           return_hits.push_back(push_hit);
         }
       }

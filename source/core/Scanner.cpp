@@ -13,7 +13,7 @@
 #include <iterator>
 #include <string>
 
-#include "LogW.h"
+#include "Log.h"
 #include "Platform.h"
 #include "types.h"
 #include "utils.h"
@@ -42,6 +42,7 @@ std::vector<uint8_t> Scanner::readAdr(uint64_t address, uint64_t read_size) cons
 //  edit. what was I talking about up there? will look at this later...
 //  noo idea
 //  I'll have an idea soon enough
+//  probably
 Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::atomic<float>& progress) const {
   if (not isAttached()) return {};
   std::vector<MapInfo> maps = active_regions;
@@ -103,7 +104,7 @@ Scanner::filterSnapshot(const Snapshot& snapshot, RelativeStatus keep_types, Tar
 
           HitInfo hit;
           hit.location = snapshot.regions[i].map.start + k;
-          hit.bytes_around = findBytesAround(new_data, k, Context::bytes_before, Context::bytes_after);
+          hit.bytes_around = findBytesAround(new_data, k, Context::BytesBefore, Context::BytesAfter + sizeof(T));
           hit.value.resize(sizeof(T));
           memcpy(hit.value.data(), &new_value, sizeof(T));
           hit.status = status;
@@ -345,7 +346,7 @@ void Scanner::resolvePointerResult(const uint64_t target_address,
 
 // so it won't try to read a smaller region, it will just try to change it's offset until it can read. should be okay
 // for now.
-ReadRegion Scanner::readAround(uint64_t adr, uint64_t bytes_before, uint64_t bytes_after) const {
+ReadBlock Scanner::readAround(uint64_t adr, uint64_t bytes_before, uint64_t bytes_after) const {
   uint64_t search_start = signedDiff(adr, bytes_before) < 0 ? 0 : adr - bytes_after;
 
   for (uint32_t i = 0; i < 8; ++i) {

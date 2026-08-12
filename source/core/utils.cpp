@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "LogW.h"
+#include "Log.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include "types.h"
 
@@ -331,6 +331,7 @@ bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask) {
   return true;
 }
 
+// ?
 std::string hexToStr(const uint8_t byte) { return std::string({Hex[(byte >> 4)], Hex[(byte & 0xF)]}); }
 
 std::string mapTypeToStr(const MapType type) {
@@ -381,12 +382,12 @@ std::filesystem::path getLatestFile(const std::filesystem::path& dir_path) {
   return files.front();
 }
 
-std::vector<uint8_t>
-findBytesAround(const std::vector<uint8_t>& data, uint64_t offset, uint64_t bytes_before, uint64_t bytes_after) {
-  uint64_t start = offset < bytes_before ? 0 : offset - bytes_before;
-  uint64_t end = offset + bytes_after > data.size() ? data.size() : offset + bytes_after;
+ReadBlock
+findBytesAround(const std::vector<uint8_t>& data, int32_t offset, uint32_t bytes_before, uint32_t bytes_after) {
+  int32_t start = offset < bytes_before ? 0 : offset - bytes_before;
+  uint32_t end = offset + bytes_after > data.size() ? data.size() : offset + bytes_after;
 
   std::vector<uint8_t> bytes(bytes_after + bytes_before);
   memcpy(bytes.data(), &data[start], end - start);
-  return bytes;
+  return {.read_bytes = bytes, .offset_from_adr = start - offset};
 }
