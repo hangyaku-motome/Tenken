@@ -7,7 +7,6 @@
 // TODO: In windows, some values are only there for the UI view when editing/putting in values. we should group them
 // together.
 class HexW {
-
   struct Config {
     uint16_t bytes_before = 256;
     uint16_t bytes_after = 256;
@@ -17,10 +16,12 @@ class HexW {
   static bool initW();
   static void endW();
 
-  uint64_t search_address_ = 0;
+  uint64_t search_address_buf = 0;
+  std::string edit_str_buf;
+
   uint64_t current_address_ = 0;
 
-  std::vector<uint8_t> shown_bytes_;
+  ReadBlock read_region_;
 
   int64_t editing_index_ = -1;
 
@@ -28,7 +29,7 @@ class HexW {
   Config config_;
 
   void drawHexTable();
-  ReadRegion readAround(const uint64_t adr);
+  int32_t drawRow(const std::vector<uint8_t>& bytes, const int32_t hex_index);
   void drawConfigPopup();
 
 public:

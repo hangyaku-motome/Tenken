@@ -28,20 +28,21 @@ void DataInspectorW::cycleW() {
     return;
   }
 
-  ImGui::InputScalar("Go to:", ImGuiDataType_U64, &addressbuffer_, nullptr, nullptr, "%016lx");
+  ImGui::InputScalar("Go to:", ImGuiDataType_U64, &address_buf, nullptr, nullptr, "%016lx");
   ImGui::SameLine();
   if (ImGui::Button("Go")) {
-    current_address_ = addressbuffer_;
-    bytes_ = readAround(current_address_);
+    read_region_ = scanner_->readAround(address_buf, bytes_before, bytes_after);
+    current_address_ = address_buf;
   }
   if (ImGui::Button("Refresh")) {
-    bytes_ = readAround(current_address_);
+    read_region_ = scanner_->readAround(address_buf, bytes_before, bytes_after);
+    current_address_ = address_buf;
   }
   if (ImGui::Button("Config")) popup_clicked_ = true;
 
-  typePopUp();
+  configPopup();
 
-  if (!bytes_.empty()) renderTable();
+  if (!read_region_.read_bytes.empty()) renderTable();
 
   endW();
 }
@@ -49,7 +50,10 @@ void DataInspectorW::cycleW() {
 void DataInspectorW::renderTable() {
   float avail = ImGui::GetContentRegionAvail().y;
   float context_height = std::clamp(avail * 0.1F, 50.0F, 150.0F);
-  if (!ImGui::BeginChild("inspectortable", {0, avail - context_height})) return;
+  if (!ImGui::BeginChild("inspectortable", {0, avail - context_height})) {
+    ImGui::EndChild();
+    return;
+  }
 
   int enabled_count = types_.f64 + types_.u8 + types_.u16 + types_.u32 + types_.u64 + types_.s8 + types_.s16 +
                       types_.s32 + types_.s64 + types_.f32 + types_.string + types_.ptr + 1;  // 1 for offset.
@@ -59,7 +63,7 @@ void DataInspectorW::renderTable() {
     return;
   }
 
-  int32_t offset = -BytesBefore;
+  int32_t offset = read_region_.offset_from_adr;
 
   ImGui::TableSetupColumn("Offset");
   if (types_.u8) ImGui::TableSetupColumn("u8");
@@ -77,7 +81,7 @@ void DataInspectorW::renderTable() {
   ImGui::TableHeadersRow();
 
   // there is a much shorter way to do this but I will deal with that later. wayy later.
-  for (uint32_t row = 0; row + limit_ < bytes_.size(); ++row) {
+  for (uint32_t row = 0; row + limit_ < read_region_.read_bytes.size(); ++row) {
     ImGui::TableNextRow();
 
     ImGui::TableNextColumn();
@@ -85,59 +89,69 @@ void DataInspectorW::renderTable() {
 
     if (types_.u8) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<uint8_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(uint8_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<uint8_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                            read_region_.read_bytes.begin() + row + sizeof(uint8_t)))
+                                 .c_str());
     }
     if (types_.u16) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<uint16_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(uint16_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<uint16_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                             read_region_.read_bytes.begin() + row + sizeof(uint16_t)))
+                                 .c_str());
     }
     if (types_.u32) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<uint32_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(uint32_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<uint32_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                             read_region_.read_bytes.begin() + row + sizeof(uint32_t)))
+                                 .c_str());
     }
     if (types_.u64) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<uint64_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(uint64_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<uint64_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                             read_region_.read_bytes.begin() + row + sizeof(uint64_t)))
+                                 .c_str());
     }
     if (types_.s8) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<int8_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(int8_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<int8_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                           read_region_.read_bytes.begin() + row + sizeof(int8_t)))
+                                 .c_str());
     }
     if (types_.s16) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<int16_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(int16_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<int16_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                            read_region_.read_bytes.begin() + row + sizeof(int16_t)))
+                                 .c_str());
     }
     if (types_.s32) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<int32_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(int32_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<int32_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                            read_region_.read_bytes.begin() + row + sizeof(int32_t)))
+                                 .c_str());
     }
     if (types_.s64) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<int64_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(int64_t))).c_str());
+      ImGui::TextUnformatted(dataToStr<int64_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                            read_region_.read_bytes.begin() + row + sizeof(int64_t)))
+                                 .c_str());
     }
     if (types_.f32) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<float>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(float))).c_str());
+      ImGui::TextUnformatted(dataToStr<float>(std::vector(read_region_.read_bytes.begin() + row,
+                                                          read_region_.read_bytes.begin() + row + sizeof(float)))
+                                 .c_str());
     }
     if (types_.f64) {
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          dataToStr<double>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(double))).c_str());
+      ImGui::TextUnformatted(dataToStr<double>(std::vector(read_region_.read_bytes.begin() + row,
+                                                           read_region_.read_bytes.begin() + row + sizeof(double)))
+                                 .c_str());
     }
     if (types_.string) {
       std::string printbuf;
       for (int32_t i = 0; i < limit_; ++i) {
-        if (std::isprint(static_cast<uint8_t>(bytes_[row + static_cast<uint32_t>(i)])))
-          printbuf += static_cast<char>(bytes_[row +static_cast<uint32_t>(i)]);
+        if (std::isprint(static_cast<uint8_t>(read_region_.read_bytes[row + static_cast<uint32_t>(i)])))
+          printbuf += static_cast<char>(read_region_.read_bytes[row + static_cast<uint32_t>(i)]);
         else
           printbuf += '.';
       }
@@ -147,7 +161,8 @@ void DataInspectorW::renderTable() {
     if (types_.ptr) {
       ImGui::TableNextColumn();
       ImGui::Text("%lx",
-                  dataToType<uint64_t>(std::vector(bytes_.begin() + row, bytes_.begin() + row + sizeof(double))));
+                  dataToType<uint64_t>(std::vector(read_region_.read_bytes.begin() + row,
+                                                   read_region_.read_bytes.begin() + row + sizeof(double))));
     }
 
     ++offset;
@@ -156,12 +171,7 @@ void DataInspectorW::renderTable() {
   ImGui::EndChild();
 }
 
-std::vector<uint8_t> DataInspectorW::readAround(const uint64_t adr) {
-  uint64_t search_start = adr - BytesBefore < 0 ? 0 : adr - BytesBefore;
-  return scanner_->readAdr(search_start, BytesAfter + BytesBefore);
-}
-
-void DataInspectorW::typePopUp() {
+void DataInspectorW::configPopup() {
   if (popup_clicked_) {
     ImGui::OpenPopup("Target List");
     popup_clicked_ = false;

@@ -14,8 +14,8 @@ class DataInspectorW {
   struct EnabledTypes {
     bool u8 = false;
     bool u16 = false;
-    bool u32 = true;
-    bool u64 = true;
+    bool u32 = false;
+    bool u64 = false;
 
     bool s8 = false;
     bool s16 = false;
@@ -30,21 +30,20 @@ class DataInspectorW {
     bool ptr = false;  // uint64_t but in hex.
   };
 
-  static constexpr int16_t bytes_before_ = 256;
-  static constexpr int16_t bytes_after_ = 256;
+  uint16_t bytes_before = 64;
+  uint16_t bytes_after = 72;
 
   bool initW();
   void endW();
 
   void renderTable();
-  void typePopUp();
+  void configPopup();
 
-  std::vector<uint8_t> readAround(uint64_t adr);
   static constexpr int32_t limit_ = 8;
 
-  std::vector<uint8_t> bytes_{};
+  ReadBlock read_region_;
   uint64_t current_address_ = 0;
-  uint64_t addressbuffer_ = 0;
+  uint64_t address_buf = 0;
 
   const Scanner* scanner_;
 
@@ -56,7 +55,7 @@ public:
   explicit DataInspectorW(const Scanner& scanner)
       : scanner_(&scanner) {}
 
-  bool enabled_ = false;
+  bool enabled_ = true;
 
   void cycleW();
 };
