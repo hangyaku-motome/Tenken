@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "LogW.h"
+#include "Log.h"
 #include "types.h"
 #include "version.h"
 

@@ -1,11 +1,12 @@
 #include "SearchW.h"
 
+#include <imgui.h>
+
 #include <cstdint>
 #include <string>
 #include <vector>
 
 #include "display.h"
-#include "imgui.h"
 #include "LogW.h"
 #include "types.h"
 #include "utils.h"
@@ -91,7 +92,7 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
       is_on_unknown_value_first_scan = true;
       return Action::Scan::StartUnknownValue{};
     }
-      return Action::Scan::StartNormal{.target_info = target_info};
+    return Action::Scan::StartNormal{.target_info = target_info};
   }
   return return_action;
 }

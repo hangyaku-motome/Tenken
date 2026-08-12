@@ -44,6 +44,7 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
 
   if (pointer_list.total_chains_ == 0) chains_.clear();
 
+  // TODO: GOTTA GET IN PIECES WHEN IT'S A LOT
   if (chains_.empty()) chains_ = pointer_list.getFrom(0, pointer_list.total_chains_);
   if (chains_.empty()) {
     ImGui::Text("I couldn't extract the pointers for some reason. maybe log has details.");
