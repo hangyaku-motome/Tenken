@@ -50,8 +50,6 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
 // uhhhhhhhhhhhhhhhhhh yeah we should look into that one
 // TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
 // validation?
-// TODO: maybee make some Log info and error independent of ui/ stuff? might wanna prefer to put in scanner or other
-// core/ things instead of ui/
 int main() {
   if (Platform::checkPermission() == false) {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
