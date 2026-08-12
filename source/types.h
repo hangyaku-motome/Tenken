@@ -1,5 +1,7 @@
 #pragma once
 
+#include <imgui.h>
+
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -9,8 +11,6 @@
 #include <variant>
 #include <vector>
 
-#include "imgui.h"
-
 #ifdef _WIN32
   #include <windows.h>
 #else
@@ -19,17 +19,17 @@
 
 // TODO:some of these constexpr should be file local, not here, and arguably some classes/structs?
 
+struct ReadBlock {
+  std::vector<uint8_t> read_bytes{};
+  int64_t offset_from_adr = 0;
+};
+
 namespace Context {
 
 static constexpr uint8_t BytesBefore = 32;
 static constexpr uint8_t BytesAfter = 32;
 
 };  // namespace Context
-
-struct ReadRegion {
-  std::vector<uint8_t> read_bytes{};
-  int64_t offset_from_adr = 0;
-};
 
 constexpr float Epsilon = 0.1F;
 constexpr char Hex[] = "0123456789ABCDEF";
@@ -56,10 +56,10 @@ enum class TargetType : int8_t {
 enum class RelativeStatus : int8_t { unchanged, changed, increased, decreased, unset };
 
 struct HitInfo {
-  uint64_t location;
+  ReadBlock bytes_around;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
-  std::vector<uint8_t> bytes_around;
+  uint64_t location;
   RelativeStatus status = RelativeStatus::unset;
 };
 
@@ -95,16 +95,16 @@ struct ProcessInfo {
 
 struct TargetInfo {
   std::vector<uint8_t> value{};
-  std::optional<std::vector<bool>> mask;
+  std::optional<std::vector<bool>> mask;  // does this reaaaaly have to be optional?
   TargetType target_type = TargetType::invalid;
 };
 
 struct FavouriteInfo {
+  ReadBlock bytes_around;
   std::vector<uint8_t> value;
   std::vector<uint8_t> previous_value;
-  std::string desc;
-  std::vector<uint8_t> bytes_around;
   std::vector<uint8_t> frozen_value;
+  std::string desc;
   uint64_t location;
   float freeze_duration = -1;  // TODO:could merge frozen and freeze_duration but meh.
   TargetType type;
@@ -157,13 +157,12 @@ enum class ScanType { Nothing, Hit, HitFilter, HitRescan, Unknown, Pointer };
 struct SessionState {
   TargetInfo target_info;
   ProcessInfo target_proc_info;
+  std::vector<MapInfo> active_regions;
+  Snapshot snapshots;
   std::atomic<ScanType> scan_type;
   std::atomic<float> scan_progress;
   float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
   float fav_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
-  std::vector<MapInfo> active_regions;
-  std::atomic<bool> is_unknown_value_scan = false;
-  Snapshot snapshots;
 };
 
 // should I reaaally be setting defaults?
@@ -205,6 +204,7 @@ struct PrettyChain {
 };  // namespace Pointer
 
 //
+//
 // Action stuff.
 
 namespace Action {
@@ -244,9 +244,6 @@ struct RegularRefresh {
   float seconds;
 };
 }  // namespace Hit
-
-// Favourite stuff.
-// maybe put all related structs into a namespace?
 
 namespace Favourite {
 struct Add {
