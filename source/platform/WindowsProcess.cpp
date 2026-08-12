@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "LogW.h"
+#include "Log.h"
 #include "ProcessOS.h"
 #include "types.h"
 

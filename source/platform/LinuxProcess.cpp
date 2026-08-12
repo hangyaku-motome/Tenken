@@ -15,7 +15,7 @@
 #include <string>
 #include <unordered_set>
 
-#include "LogW.h"
+#include "Log.h"
 #include "ProcessOS.h"
 #include "types.h"
 

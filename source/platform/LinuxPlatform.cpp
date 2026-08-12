@@ -30,7 +30,6 @@ std::filesystem::path Platform::getTenkenStatePath() {
   char* user = getenv("SUDO_USER") ? getenv("SUDO_USER") : getenv("USER");
   std::filesystem::path path = std::filesystem::path("/home") / user / ".local" / "state" / "Tenken";
   std::filesystem::create_directories(path);
-  std::cout << path << " tenken save path?\n";
   return path;
 }
 
