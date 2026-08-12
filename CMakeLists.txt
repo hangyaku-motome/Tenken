@@ -49,6 +49,15 @@ endif()
 
 add_executable(Tenken
     source/main.cpp
+
+    source/core/Scanner.cpp
+    source/core/HitList.cpp
+    source/core/FavouriteList.cpp
+    source/core/scan_ops.cpp
+    source/core/utils.cpp
+    source/core/PointerList.cpp
+    source/core/Log.cpp
+
     source/ui/display.cpp
     source/ui/LogW.cpp
     source/ui/TargetPopUp.cpp
@@ -61,12 +70,6 @@ add_executable(Tenken
     source/ui/DataInspectorW.cpp
     source/ui/PointerW.cpp
     source/ui/MainMenuBar.cpp
-    source/core/Scanner.cpp
-    source/core/HitList.cpp
-    source/core/FavouriteList.cpp
-    source/core/scan_ops.cpp
-    source/core/utils.cpp
-    source/core/PointerList.cpp
 )
 target_include_directories(Tenken PRIVATE
     source
