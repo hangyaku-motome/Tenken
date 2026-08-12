@@ -267,6 +267,7 @@ bool Scanner::resolveChain(const Pointer::Chain& chain,
     std::vector<uint8_t> read_bytes;
     read_bytes = readAdr(ptr + chain.offsets[i], sizeof(uint64_t));
     if (read_bytes.empty()) return false;
+    if (chain.valid_offsets == i + 1) break;
     ptr = dataToType<uint64_t>(read_bytes);
     // there is a lot of other filtering we could do but whatever for now
     if (ptr == 0) return false;
@@ -353,7 +354,6 @@ ReadBlock Scanner::readAround(uint64_t adr, uint64_t bytes_before, uint64_t byte
     auto read_bytes = readAdr(search_start, bytes_after + bytes_before);
 
     if (!read_bytes.empty()) return {.read_bytes = read_bytes, .offset_from_adr = signedDiff(search_start, adr)};
-
     if (adr > search_start)
       search_start += bytes_before / 4;
     else
