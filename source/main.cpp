@@ -16,6 +16,7 @@
 #include "HexW.h"
 #include "HitList.h"
 #include "HitW.h"
+#include "Log.h"
 #include "LogW.h"
 #include "MainMenuBar.h"
 #include "MapPopUp.h"
@@ -45,12 +46,12 @@ void resolveActions(Scanner& scanner_obj,
 bool saveTenken(const std::filesystem::path& save_path, const std::vector<FavouriteInfo>& favourites);
 bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInfo>& favourites);
 
-// bool savePtrScanResult(const std::vector<PointerChain>& chains, const std::string& exec_name);
-
 // TODO: This is going to be vagueposting but, there are a things we can do to make this system more robust.
 // uhhhhhhhhhhhhhhhhhh yeah we should look into that one
 // TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
 // validation?
+// TODO: maybee make some Log info and error independent of ui/ stuff? might wanna prefer to put in scanner or other
+// core/ things instead of ui/
 int main() {
   if (Platform::checkPermission() == false) {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
@@ -135,6 +136,9 @@ int main() {
     } else
       actions.push_back(favourite_w.cycleW({}, state));
 
+    // Pointer window.
+    actions.push_back(pointer_w.cycleW(state, pointer_l));
+
     // Log window.
     log_w.cycleW();
 
@@ -143,9 +147,6 @@ int main() {
 
     // Data Inspector window.
     data_inspector_w.cycleW();
-
-    // Pointer window.
-    actions.push_back(pointer_w.cycleW(state, pointer_l));
 
     // ui stuff is over.
     endFrame(static_cast<int32_t>(io.DisplaySize.x), static_cast<int32_t>(io.DisplaySize.y), clear_color, window);
@@ -205,8 +206,7 @@ void resolveActions(Scanner& scanner,
               });
             },
             [&](const Action::Scan::StartUnknownValue) {
-              state.is_unknown_value_scan =
-                  true;  // TODO:a way to know if we are doing it actively. it won't need Snapshot after scan 1.
+              state.scan_type = ScanType::Unknown;
               ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Unknown, [&]() {
                 state.snapshots = scanner.getSnapshot(state.active_regions, state.scan_progress);
               });
@@ -218,10 +218,10 @@ void resolveActions(Scanner& scanner,
               });
             },
             [&](const Action::filterByStatus& a) {
-              if (state.is_unknown_value_scan) {
+              if (state.scan_type == ScanType::Unknown) {
                 ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, status = a.status]() {
                   hit_l.assignNew(scanner.filterSnapshot(state.snapshots, status, state.target_info.target_type));
-                  state.is_unknown_value_scan = false;
+                  state.scan_type = ScanType::Nothing;
                   state.snapshots = {};
                 });
               } else {
