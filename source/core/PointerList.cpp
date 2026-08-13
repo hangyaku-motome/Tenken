@@ -6,8 +6,7 @@
 #include "types.h"
 #include "version.h"
 
-// TODO:we couldd also just check is_file_open instead of returning a bool but..will look into this later
-bool PointerList::openFile(const std::filesystem::path& path) {
+void PointerList::openFile(const std::filesystem::path& path) {
   if (stream_.is_open()) stream_.close();
 
   stream_.open(path, std::ifstream::in | std::ifstream::binary);
@@ -20,26 +19,32 @@ bool PointerList::openFile(const std::filesystem::path& path) {
   stream_.read(reinterpret_cast<char*>(&magic_bytes), sizeof(magic_bytes));
   if (magic_bytes != Pointer::magic_bytes) {
     Log::error("This is not the right file type. \".tptr\" files onlyyy...");
-    return false;
+    status_ = -1;
+    return;
   };
 
   stream_.read(reinterpret_cast<char*>(&file_version), sizeof(file_version));
   if (file_version != PointerResultVersion) {
     Log::error("This is from another version. Sorry, can't parse.");
-    return false;
+    status_ = -1;
+    return;
   };
 
   stream_.read(reinterpret_cast<char*>(&entry_size), sizeof(entry_size));
   if (entry_size != sizeof(Pointer::Chain)) {
-    Log::error("Entry size and pointer chain do not line up. This is most definitely a bug. OR, you got this result "
-               "on a different platform/system and now tried to use it in another one.");
-    return false;
+    Log::error(
+        "Entry size and pointer chain do not line up. This is most definitely a bug. OR, you got this result "
+        "on a different platform/system and now tried to use it in another one.");  // we might wanna force formatting
+                                                                                    // for Pointer::Chain
+    status_ = -1;
+    return;
   };
 
   stream_.read(reinterpret_cast<char*>(&entry_start_point), sizeof(entry_start_point));
   if (entry_start_point == 0) {
     Log::error("Header size is 0. How...Well this means there were no pointers in the file or there's a bug.");
-    return false;
+    status_ = -1;
+    return;
   }
 
   // after this should be headers.
@@ -61,8 +66,9 @@ bool PointerList::openFile(const std::filesystem::path& path) {
   }
 
   if (data_module_names_.empty()) {
+    status_ = -1;
     Log::error("No module names found in file...This is most probably a bug.");  // NOTE: what do when no pointer?
-    return false;
+    return;
   }
 
   stream_.seekg(0, std::ios::end);
@@ -72,15 +78,18 @@ bool PointerList::openFile(const std::filesystem::path& path) {
   entry_start_point_ = entry_start_point;
 
   if (!stream_) {
+    status_ = -1;
     Log::error("Reading file failed.");
-    return false;
+    return;
   }
 
-  stream_.clear();
-  return true;
+  status_ = 1;
+  just_opened_ = true;
+  return;
 }
 
 std::vector<Pointer::PrettyChain> PointerList::getFrom(uint64_t start_index, uint64_t read_count) {
+  if (status_ != 1) return {};  // kind of redundant since getFromRaw calls it but let's be explicit.
   auto chains_raw = getFromRaw(start_index, read_count);
   if (chains_raw.empty()) return {};
 
@@ -97,18 +106,23 @@ std::vector<Pointer::PrettyChain> PointerList::getFrom(uint64_t start_index, uin
 }
 
 std::vector<Pointer::Chain> PointerList::getFromRaw(uint64_t start_index, uint64_t read_count) {
-  if (!stream_.is_open()) return {};
+  if (status_ != 1) return {};
   std::vector<Pointer::Chain> chains(read_count);
   stream_.seekg(entry_start_point_ + static_cast<std::streamoff>(start_index) * sizeof(Pointer::Chain));
   stream_.read(reinterpret_cast<char*>(chains.data()), chains.size() * sizeof(Pointer::Chain));
   if (!stream_) {
     Log::error("couldn't get from file...");
-    // maybee clear stream_ or not.
+    status_ = -1;
     return {};
   }
 
-  // chain.valid_offset being 0 would be a problem with the file but things can get wonky if it ever ends up here
-  for (auto& chain : chains) std::reverse(chain.offsets.begin(), chain.offsets.begin() + chain.valid_offsets);
+  for (auto& chain : chains)
+    if (chain.valid_offsets > 0) std::reverse(chain.offsets.begin(), chain.offsets.begin() + chain.valid_offsets);
 
   return chains;
 }
+
+void PointerList::close() {
+  status_ = 0;
+  stream_.close();
+};

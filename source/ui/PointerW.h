@@ -20,8 +20,6 @@ class PointerW {
   int64_t prev_display_start_ = -1;
   int64_t prev_display_end_ = -1;
 
-  bool is_all_chains_ = false;
-
   ImGui::FileBrowser file_browser_{file_browser_flags};
 
   PendingAction cycleSearchW();
@@ -33,9 +31,7 @@ class PointerW {
 public:
   PointerW() {
     std::filesystem::create_directory(Platform::getTenkenStatePath() / "Pointer");
-
     // TODO: at the start of program, create all directories that might be used.
-
     file_browser_.SetDirectory(Platform::getTenkenStatePath() / "Pointer");
   };
 

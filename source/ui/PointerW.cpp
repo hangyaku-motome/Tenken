@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "Log.h"
 #include "types.h"
 
 bool PointerW::initW() { return ImGui::Begin("Pointer"); }
@@ -36,18 +37,23 @@ PendingAction PointerW::cycleSearchW() {
 }
 
 void PointerW::cyclePointerListW(PointerList& pointer_list) {
-  if (pointer_list.failed()) {
+  if (pointer_list.getStatus() == -1) {
     ImGui::Text("I couldn't parse the save file. Check logs for details (if there are any (hopefully there is )).");
     if (ImGui::Button("Go back")) pointer_list.close();
     return endW();
   }
 
-  if (pointer_list.total_chains_ == 0) chains_.clear();
+  if (pointer_list.just_opened_) {
+    Log::info("just opened");
+    chains_.clear();
+    pointer_list.just_opened_ = false;
+  }
 
   // TODO: GOTTA GET IN PIECES WHEN IT'S A LOT
   if (chains_.empty()) chains_ = pointer_list.getFrom(0, pointer_list.total_chains_);
   if (chains_.empty()) {
-    ImGui::Text("I couldn't extract the pointers for some reason. maybe log has details.");
+    ImGui::Text(
+        "I couldn't extract the pointers for some reason. maybe log has details. Or there are no chains in file?");
     if (ImGui::Button("Load in another result")) file_browser_.Open();
     ImGui::SameLine();
     if (ImGui::Button("Go back")) {
@@ -71,7 +77,7 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
   ImGui::TableSetupColumn("offset in module");
 
   // TODO: should be as much as biggest valid offsets in loaded file, not max depth....but calculating that might be
-  // tricky.
+  // tricky. To add to this, maybe we add scan_depth in file. (wait this make so much hold up I'll do it)
   for (int i = 0; i < Pointer::max_depth; ++i)
     ImGui::TableSetupColumn((std::string("offset ") + std::to_string(i)).c_str());
 
@@ -103,8 +109,6 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
   return endW();
 }
 
-// SOME stuff to handle: I try to open from somewhere else, it neeeds to show me that screen instead of the search one
-// still. basically if a request was made to open a file, it should switch to that window.
 PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_list) {
   if (not enabled_) return {};
   if (!initW()) {
@@ -112,13 +116,12 @@ PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_l
     return {};
   };
 
+  file_browser_.Display();
+
   if (file_browser_.HasSelected()) {
     pointer_list.openFile(file_browser_.GetSelected());
-    chains_.clear();
     file_browser_.Close();
   }
-
-  file_browser_.Display();
 
   // TODO: make it possible to do hit scanning and pointer scanning at the same time.
   if (state.scan_type == ScanType::Pointer) {
@@ -127,7 +130,7 @@ PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_l
     return {};
   }
 
-  if (!pointer_list.isOpen()) return cycleSearchW();
+  if (pointer_list.getStatus() == 0) return cycleSearchW();
 
   cyclePointerListW(pointer_list);
   return {};

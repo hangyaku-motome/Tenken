@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <vector>
 
 #include "Scanner.h"
 

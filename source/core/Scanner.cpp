@@ -194,7 +194,7 @@ void Scanner::buildPointers(const std::vector<PointerData>& pointers,
                               .valid_offsets = static_cast<uint8_t>(depth + 1)};
       save_stream.write(reinterpret_cast<const char*>(&chain), sizeof(Pointer::Chain));
       // I removed continue because on further experimenting and thought...what if something from data points to another
-      // thing to data? we shouldn't those pointers off.
+      // thing to data? we shouldn't throw those pointers off.
     }
     if (depth + 1 == config.scan_depth) continue;
     stack[depth] = signedDiff(it->points_to, address);
