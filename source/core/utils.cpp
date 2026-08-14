@@ -10,9 +10,10 @@
 #include <type_traits>
 #include <vector>
 
-#include "Log.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include "types.h"
+
+constexpr float Epsilon = 0.1F;
 
 template <typename> inline constexpr bool always_false = false;
 
@@ -54,9 +55,6 @@ template RelativeStatus tagChange<double>(double, double);
 template RelativeStatus tagChange<std::string>(std::string, std::string);
 template RelativeStatus tagChange<std::vector<uint8_t>>(std::vector<uint8_t>, std::vector<uint8_t>);
 
-//
-
-// I could simplfy this my merging string path and primitive, as the only difference is size.
 template <typename T>
 std::vector<uint64_t> searchValue(const std::vector<uint8_t>& data, const T& target, const std::vector<bool>& mask) {
   std::vector<uint64_t> found_offsets;
@@ -241,9 +239,8 @@ template <typename T> T dataToType(const std::vector<uint8_t>& data) {
   } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
     return data;
   } else if constexpr (std::is_arithmetic_v<T>) {
-    T return_val = '\0';
-    if (data.empty()) {
-      Log::error("This shouldn't have happened");
+    T return_val = 0;
+    if (data.size() < sizeof(T)) {
       return return_val;
     }
     memcpy(&return_val, data.data(), sizeof(T));
@@ -331,7 +328,8 @@ bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask) {
   return true;
 }
 
-// ?
+constexpr char Hex[] = "0123456789ABCDEF";
+
 std::string hexToStr(const uint8_t byte) { return std::string({Hex[(byte >> 4)], Hex[(byte & 0xF)]}); }
 
 std::string mapTypeToStr(const MapType type) {
@@ -375,11 +373,13 @@ std::filesystem::path getLatestFile(const std::filesystem::path& dir_path) {
   for (const auto& file : std::filesystem::directory_iterator(dir_path))
     if (file.is_regular_file()) files.push_back(file);
 
-  std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) {
+  auto it = std::max_element(files.begin(), files.end(), [](const auto& a, const auto& b) {
     return a.last_write_time() < b.last_write_time();
   });
 
-  return files.front();
+  if (it == files.end()) return {};
+
+  return it->path();
 }
 
 ReadBlock
