@@ -176,7 +176,7 @@ void DataInspectorW::configPopup() {
     ImGui::OpenPopup("Target List");
     popup_clicked_ = false;
   }
-  if (!ImGui::BeginPopupModal("Target List", nullptr, PopupFlags)) return;
+  if (!ImGui::BeginPopupModal("Target List", nullptr, DefaultPopupFlags)) return;
 
   ImGui::Checkbox("unsigned 1 byte", &types_.u8);
   ImGui::Checkbox("unsigned 2 byte", &types_.u16);

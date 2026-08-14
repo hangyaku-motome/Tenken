@@ -77,7 +77,7 @@ PendingAction MainMenuBar::cyclePointerPopup(const std::string& exec_name) {
     ptr_resolve_popup = false;
   }
 
-  if (!ImGui::BeginPopupModal("Pointer Resolving", nullptr, PopupFlags)) return {};
+  if (!ImGui::BeginPopupModal("Pointer Resolving", nullptr, DefaultPopupFlags)) return {};
 
   if (exec_name.empty()) {
     ImGui::Text(

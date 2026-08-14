@@ -31,9 +31,7 @@ static constexpr uint8_t BytesAfter = 32;
 
 };  // namespace Context
 
-constexpr float Epsilon = 0.1F;
-constexpr char Hex[] = "0123456789ABCDEF";
-constexpr auto PopupFlags =
+constexpr auto DefaultPopupFlags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
 
 // TODO:fix invalid and unset not being first.
@@ -106,45 +104,57 @@ struct FavouriteInfo {
   std::vector<uint8_t> frozen_value;
   std::string desc;
   uint64_t location;
-  float freeze_duration = -1;  // TODO:could merge frozen and freeze_duration but meh.
+  float freeze_duration = -1;  // TODO: should merge frozen and frreeze duration
   TargetType type;
   RelativeStatus status = RelativeStatus::unset;
   bool frozen = false;
   bool is_ptr_backed = false;
 };
 
-struct MappedRegion {
+struct Region {
+  MapInfo map;
   char* ptr = nullptr;
-  uint64_t size = 0;
 
-  MappedRegion() = default;
+  uint64_t size() const { return map.end - map.start; };
 
-  MappedRegion(char* p, uint64_t s)
-      : ptr(p),
-        size(s) {}
+  Region() = default;
 
-  ~MappedRegion() {
-    if (ptr)
+  Region(const MapInfo& m, char* p)
+      : map(m),
+        ptr(p) {}
+
+  ~Region() {
+    if (ptr) {
 #ifdef _WIN32
       VirtualFree(ptr, 0, MEM_RELEASE);
 #else
-      munmap(ptr, size);
+      munmap(ptr, map.end - map.start);
 #endif
-  }
+    }
+  };
 
-  MappedRegion(MappedRegion&& o) noexcept
-      : ptr(o.ptr),
-        size(o.size) {
-    o.ptr = nullptr;
-  }
+  Region(const Region&) = delete;
+  Region& operator=(const Region&) = delete;
 
-  MappedRegion& operator=(MappedRegion&&) = delete;
-  MappedRegion(const MappedRegion&) = delete;
-};
+  Region(Region&& r) noexcept
+      : map(r.map),
+        ptr(r.ptr) {
+    r.ptr = nullptr;
+  };
 
-struct Region {
-  MappedRegion mapped_region;
-  MapInfo map;
+  Region& operator=(Region&& r) noexcept {
+    if (ptr) {
+#ifdef _WIN32
+      VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+      munmap(ptr, map.end - map.start);
+#endif
+    }
+    ptr = r.ptr;
+    map = r.map;
+    r.ptr = nullptr;
+    return *this;
+  };
 };
 
 struct Snapshot {
@@ -158,7 +168,7 @@ struct SessionState {
   TargetInfo target_info;
   ProcessInfo target_proc_info;
   std::vector<MapInfo> active_regions;
-  Snapshot snapshots;
+  Snapshot snapshot;
   std::atomic<ScanType> scan_type;
   std::atomic<float> scan_progress;
   float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
@@ -182,8 +192,6 @@ struct InitConfig {
   ScanInfo info;
 };
 
-constexpr int32_t size = 8;
-
 constexpr uint64_t magic_bytes = 0xEE32BE81AAAAFEAF;
 constexpr uint8_t max_depth = 8;
 
@@ -194,6 +202,14 @@ struct Chain {
   uint32_t module_id;  // does this really have to be an uint32_t ?
   uint8_t valid_offsets;
 };
+
+// miiiiiight as well
+
+static_assert(offsetof(Chain, offsets) == 0);
+static_assert(offsetof(Chain, offset_in_module) == 64);
+static_assert(offsetof(Chain, module_id) == 72);
+static_assert(offsetof(Chain, valid_offsets) == 76);
+static_assert(sizeof(Chain) == 80);
 
 // this is how they'll look when loaded in.
 struct PrettyChain {

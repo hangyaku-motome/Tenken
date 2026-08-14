@@ -18,7 +18,7 @@ void TargetPopUp::initPopUp() {
 PendingAction TargetPopUp::cyclePopUp() {
   if (clicked_) initPopUp();
 
-  if (!ImGui::BeginPopupModal("Target List", nullptr, PopupFlags)) return {};
+  if (!ImGui::BeginPopupModal("Target List", nullptr, DefaultPopupFlags)) return {};
 
   PendingAction return_action{};
 
