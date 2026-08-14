@@ -32,13 +32,12 @@ class Scanner {
   bool initPointerSaveFile(const std::vector<MapInfo>& data_regions,
                            std::ofstream& save_stream,
                            uint8_t filter_index,
-                           uint8_t depth) const;
+                           uint8_t depth,
+                           TargetType target_type) const;
 
   std::vector<Pointer::Chain> resolveChains(const std::vector<Pointer::Chain>& chains,
                                             const std::vector<uint64_t>& region_starts,
                                             uint64_t target_address) const;
-  bool
-  resolveChain(const Pointer::Chain& chain, const std::vector<uint64_t>& region_starts, uint64_t target_address) const;
 
   std::unique_ptr<ProcessOS::IProcess> proc_ = nullptr;
 
@@ -61,6 +60,7 @@ public:
 
   bool isAttached() const;
 
-  bool findPointerCandidates(const Snapshot& snapshot, const Pointer::InitConfig& config) const;
-  void resolvePointerResult(const uint64_t target_address, PointerList& pointer_list) const;
+  bool findInitialChains(const Snapshot& snapshot, const Pointer::InitConfig& config) const;
+  void resolveChainResult(PointerList& pointer_list, uint64_t target_address) const;
+  uint64_t resolveChain(const Pointer::Chain& chain, uint64_t region_start) const;
 };

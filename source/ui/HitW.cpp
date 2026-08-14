@@ -18,7 +18,7 @@ bool HitW::initW() { return ImGui::Begin("Hits"); }
 
 void HitW::endW() { ImGui::End(); }
 
-PendingAction HitW::cycleW(const std::vector<HitInfo>& hits, SessionState& state) {
+PendingAction HitW::cycleW(const std::vector<HitInfo>& hits, State& state) {
   if (!initW()) {
     endW();
     return {};

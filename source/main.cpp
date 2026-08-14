@@ -3,6 +3,7 @@
 #include <imgui_impl_glfw.h>
 #include <X11/Xdefs.h>
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -35,7 +36,7 @@ using nlohmann::json;
 
 void resolveActions(Scanner& scanner_obj,
                     const std::vector<PendingAction>& actions,
-                    SessionState& state,
+                    State& state,
                     std::thread& scanner_thread,
                     HitList& hit_l,
                     FavouriteList& favourite_l,
@@ -49,7 +50,7 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
 // TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
 // validation?
 // TODO: maybe a resetVolatile() for each window to reset buffers and temporary data?
-// WARNING: pointer_l might go through
+// WARNING: pointer_l might go through (ooops forgot to finish this warning) a data race
 int main() {
   if (Platform::checkPermission() == false) {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
@@ -65,7 +66,7 @@ int main() {
   ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
 
   // Start up Tenken.
-  SessionState state;
+  State state;
 
   Scanner scanner;
   std::thread scanner_thread;
@@ -181,128 +182,158 @@ int main() {
 
 void resolveActions(Scanner& scanner,
                     const std::vector<PendingAction>& actions,
-                    SessionState& state,
+                    State& state,
                     std::thread& scanner_thread,
                     HitList& hit_l,
                     FavouriteList& favourite_l,
                     PointerList& pointer_l) {
-  for (auto& Pending : actions) {
+  for (auto& pending : actions) {
     std::visit(
-        overloaded{[&](const Action::TargetProcChosen& a) {
-                     hit_l.reset();
-                     favourite_l.reset();
-                     scanner.init(a.chosen_proc.pid);
-                     state.target_proc_info = a.chosen_proc;
-                     state.active_regions = {};
-                     favourite_l.startFreezeThread(scanner);
-                   },
-                   [&](const Action::Scan::StartNormal) {
-                     ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Hit, [&]() {
-                       auto hits =
-                           ScanOp::startScan(scanner, state.target_info, state.scan_progress, state.active_regions);
-                       hit_l.assignNew(std::move(hits));
-                     });
-                   },
-                   [&](const Action::Scan::StartUnknownValue) {
-                     state.scan_type = ScanType::Unknown;
-                     ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Unknown, [&]() {
-                       state.snapshot = scanner.getSnapshot(state.active_regions, state.scan_progress);
-                     });
-                   },
-                   [&](const Action::FilterByValue& a) {
-                     ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, value = a.value]() {
-                       ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
-                       hit_l.filter(value);
-                     });
-                   },
-                   [&](const Action::filterByStatus& a) {
-                     if (state.scan_type == ScanType::Unknown) {
-                       ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, status = a.status]() {
-                         hit_l.assignNew(scanner.filterSnapshot(state.snapshot, status, state.target_info.target_type));
-                         state.scan_type = ScanType::Nothing;
-                         state.snapshot = {};
-                       });
-                     } else {
-                       ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, status = a.status]() {
-                         ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
-                         hit_l.filter(status);
-                       });
-                     }
-                   },
-                   [&](const Action::Hit::Write& a) {
-                     hit_l.write(scanner, a.index, a.value);
-                     hit_l.rescan(scanner, a.index, state.target_info.target_type);
-                   },
-                   [&](const Action::Hit::Rescan& a) { hit_l.rescan(scanner, a.index, state.target_info.target_type); },
-                   [&](const Action::Hit::RescanAll) {
-                     ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Hit, [&]() {
-                       ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
-                     });
-                   },
-                   [&](const Action::Hit::RegularRefresh& a) { state.hit_refresh_seconds = a.seconds; },
+        overloaded{
+            [&](const Action::TargetProcChosen& a) {
+              hit_l.reset();
+              favourite_l.reset();
+              scanner.init(a.chosen_proc.pid);
+              state.target_proc_info = a.chosen_proc;
+              state.active_regions = {};
+              favourite_l.startFreezeThread(scanner);
+            },
+            [&](const Action::Scan::StartNormal) {
+              ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Hit, [&]() {
+                auto hits = ScanOp::startScan(scanner, state.target_info, state.scan_progress, state.active_regions);
+                hit_l.assignNew(std::move(hits));
+              });
+            },
+            [&](const Action::Scan::StartUnknownValue) {
+              state.scan_type = ScanType::Unknown;
+              ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Unknown, [&]() {
+                state.snapshot = scanner.getSnapshot(state.active_regions, state.scan_progress);
+              });
+            },
+            [&](const Action::FilterByValue& a) {
+              ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, value = a.value]() {
+                ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
+                hit_l.filter(value);
+              });
+            },
+            [&](const Action::filterByStatus& a) {
+              if (state.scan_type == ScanType::Unknown) {
+                ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, status = a.status]() {
+                  hit_l.assignNew(scanner.filterSnapshot(state.snapshot, status, state.target_info.target_type));
+                  state.scan_type = ScanType::Nothing;
+                  state.snapshot = {};
+                });
+              } else {
+                ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, status = a.status]() {
+                  ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
+                  hit_l.filter(status);
+                });
+              }
+            },
+            [&](const Action::Hit::Write& a) {
+              hit_l.write(scanner, a.index, a.value);
+              hit_l.rescan(scanner, a.index, state.target_info.target_type);
+            },
+            [&](const Action::Hit::Rescan& a) { hit_l.rescan(scanner, a.index, state.target_info.target_type); },
+            [&](const Action::Hit::RescanAll) {
+              ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Hit, [&]() {
+                ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
+              });
+            },
+            [&](const Action::Hit::RegularRefresh& a) { state.hit_refresh_seconds = a.seconds; },
 
-                   // start of favourite stuff.
-                   [&](const Action::Favourite::AddHit& a) {
-                     favourite_l.add(hit_l.getIndex(a.index), state.target_info.target_type);
-                   },
-                   [&](const Action::Favourite::Remove& a) { favourite_l.remove(a.index); },
-                   [&](const Action::Favourite::Write& a) {
-                     favourite_l.write(scanner, a.index, a.value);
-                     favourite_l.rescan(scanner, a.index);
-                   },
-                   [&](const Action::Favourite::IsFreeze& a) { favourite_l.setFreeze(a.index, a.freeze); },
-                   [&](const Action::Favourite::FreezeValue& a) { favourite_l.setFreezeVal(a.index, a.value); },
-                   [&](const Action::Favourite::Desc& a) { favourite_l.setDesc(a.index, a.value); },
-                   [&](const Action::Favourite::Rescan& a) { favourite_l.rescan(scanner, a.index); },
-                   [&](const Action::Favourite::RegularRefresh& a) { state.fav_refresh_seconds = a.seconds; },
-                   [&](const Action::Favourite::RescanAll) { favourite_l.rescanAll(scanner); },
-                   // end of favourite stuff.
+            // start of favourite stuff.
+            [&](const Action::Favourite::AddHit& a) {
+              favourite_l.add(hit_l.getIndex(a.index), state.target_info.target_type);
+            },
+            [&](const Action::Favourite::AddChain& a) {
+              auto chain = pointer_l.get(a.index);
+              auto region = scanner.getMapRegions();
 
-                   [&](const Action::Scan::Restart) {
-                     hit_l.reset();
-                     state.fav_refresh_seconds = -1;
-                     state.hit_refresh_seconds = -1;
-                     state.target_info.target_type = TargetType::invalid;
-                     state.target_info.value = {};
-                   },
-                   [&](const Action::SetTargetInfo& a) {
-                     state.target_info.target_type = a.type;
-                     state.target_info.value = a.value;
-                     if (a.mask.has_value()) state.target_info.mask = a.mask;
-                   },
-                   [&](const Action::Scan::Undo) { hit_l.restore_old_hits(); },
-                   [&](const Action::Scan::StartPointer& a) {
-                     ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a.init_config]() {
-                       auto ok = scanner.findPointerCandidates(
-                           scanner.getSnapshot(state.active_regions, state.scan_progress), info);
-                       if (ok)
-                         pointer_l.openFile(
-                             getLatestFile(Platform::getTenkenStatePath() / "Pointer" / state.target_proc_info.name));
-                     });
-                   },
-                   [&](const Action::ResolvePointerResult& a) {
-                     ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a]() {
-                       pointer_l.openFile(info.save_path);
+              auto first = std::find_if(region.begin(), region.end(), [&](const auto& r) {
+                return r.name == chain.module_name && r.type == MapType::mainExecData;
+              });
 
-                       scanner.resolvePointerResult(info.target_address, pointer_l);
+              if (first == region.end()) {
+                Log::error("I couldn't find the module this pointer was supposed to be in.......weird.");
+                return;
+              }
+              if (std::find_if(region.begin(), region.end(), [&](const auto& r) {
+                    return r.name == chain.module_name && r.type == MapType::mainExecData;
+                  }) == region.end()) {
+                Log::error(
+                    "If you have seen this error message, PLEASE let me personally know. In conclusion, I cannot save "
+                    "this pointer. But hey, if you tell me about this, I'll be more inclined to fix this!");
+                return;
+              }
 
-                       pointer_l.openFile(getLatestFile(info.save_path.parent_path()));
-                     });
-                   },
-                   [&](const Action::SaveTenken& a) { saveTenken(a.path, favourite_l.getAll()); },
-                   [&](const Action::LoadTenken& a) {
-                     std::vector<FavouriteInfo> new_favourites;
-                     loadTenken(a.path, new_favourites);
-                     favourite_l.assignNew(new_favourites);
-                   },
-                   [&](const std::monostate&) {}},
-        Pending);
+              auto adr = scanner.resolveChain(pointer_l.getRaw(a.index), first->start);
+              if (adr == 0) {
+                Log::error("I couldn't resolve the pointer you just tried to save..");
+                return;
+              }
+
+              favourite_l.add(chain, adr, a.target_type);
+            },
+
+            [&](const Action::Favourite::Remove& a) { favourite_l.remove(a.index); },
+            [&](const Action::Favourite::Write& a) {
+              favourite_l.write(scanner, a.index, a.value);
+              favourite_l.rescan(scanner, a.index);
+            },
+            [&](const Action::Favourite::IsFreeze& a) { favourite_l.setFreeze(a.index, a.freeze); },
+            [&](const Action::Favourite::FreezeValue& a) { favourite_l.setFreezeVal(a.index, a.value); },
+            [&](const Action::Favourite::Desc& a) { favourite_l.setDesc(a.index, a.value); },
+            [&](const Action::Favourite::Rescan& a) { favourite_l.rescan(scanner, a.index); },
+            [&](const Action::Favourite::RegularRefresh& a) { state.fav_refresh_seconds = a.seconds; },
+            [&](const Action::Favourite::RescanAll) { favourite_l.rescanAll(scanner); },
+            // end of favourite stuff.
+
+            [&](const Action::Scan::Restart) {
+              hit_l.reset();
+              state.fav_refresh_seconds = -1;
+              state.hit_refresh_seconds = -1;
+              state.target_info.target_type = TargetType::invalid;
+              state.target_info.value = {};
+            },
+            [&](const Action::SetTargetInfo& a) {
+              state.target_info.target_type = a.type;
+              state.target_info.value = a.value;
+              if (a.mask.has_value()) state.target_info.mask = a.mask;
+            },
+            [&](const Action::Scan::Undo) { hit_l.restore_old_hits(); },
+            [&](const Action::Scan::StartPointer& a) {
+              ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a.init_config]() {
+                auto ok =
+                    scanner.findInitialChains(scanner.getSnapshot(state.active_regions, state.scan_progress), info);
+                if (ok)
+                  pointer_l.openFile(
+                      getLatestFile(Platform::getTenkenStatePath() / "Pointer" / state.target_proc_info.name));
+              });
+            },
+            [&](const Action::ResolvePointerResult& a) {
+              ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a]() {
+                pointer_l.openFile(info.save_path);
+
+                scanner.resolveChainResult(pointer_l, a.target_address);
+
+                pointer_l.openFile(getLatestFile(info.save_path.parent_path()));
+              });
+            },
+            [&](const Action::SaveTenken& a) { saveTenken(a.path, favourite_l.getAll()); },
+            [&](const Action::LoadTenken& a) {
+              std::vector<FavouriteInfo> new_favourites;
+              loadTenken(a.path, new_favourites);
+              favourite_l.assignNew(new_favourites);
+            },
+            [&](const std::monostate&) {}},
+        pending);
   }
 }
 
 bool saveTenken(const std::filesystem::path& save_path, const std::vector<FavouriteInfo>& favourites) {
   json save_state;
-  save_state["version"] = 1;
+  save_state["version"] = JsonSaveVersion;
   save_state["favourites"] = json::array();
   for (const auto& favourite : favourites) {
     json item;
@@ -314,6 +345,15 @@ bool saveTenken(const std::filesystem::path& save_path, const std::vector<Favour
     item["value"] = favourite.value;  // raw bytes for now. should be fine.
     item["desc"] = favourite.desc;
     item["type"] = targetTypeToStr(favourite.type);
+
+    if (favourite.chain.has_value()) {
+      json chain;
+      chain["offset in module"] = favourite.chain->offset_in_module;
+      chain["module name"] = favourite.chain->module_name;
+      chain["offsets"] = favourite.chain->offsets;
+
+      item["chain"] = chain;
+    }
 
     save_state["favourites"].push_back(item);
   }
@@ -330,6 +370,7 @@ bool saveTenken(const std::filesystem::path& save_path, const std::vector<Favour
   return true;
 }
 
+// this could probably just return favourites...
 bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInfo>& favourites) {
   json loaded_state;
 
@@ -364,6 +405,14 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
     }
     favourite.value = value;
     favourite.type = strToTargetType(item["type"].get<std::string>());
+
+    if (item.contains("chain")) {
+      Pointer::PrettyChain chain;
+      chain.module_name = item["chain"]["module name"];
+      chain.offset_in_module = item["chain"]["offset in module"];
+      chain.offsets = item["chain"]["offsets"].get<std::vector<int64_t>>();
+      favourite.chain = chain;
+    }
 
     favourites.push_back(favourite);
   }

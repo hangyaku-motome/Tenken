@@ -15,3 +15,5 @@ void setDefaultDisplay();
 bool getTargetValue(TargetType target_type, std::vector<uint8_t>& write_to, ImGuiInputTextFlags flags = 0);
 
 void printData(const std::vector<uint8_t>& data, TargetType target_type);
+
+TargetType getTargetType(TargetType old_type);

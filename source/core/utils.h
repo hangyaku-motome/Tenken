@@ -60,3 +60,10 @@ std::filesystem::path getLatestFile(const std::filesystem::path& dir_path);
 
 ReadBlock
 findBytesAround(const std::vector<uint8_t>& data, int32_t offset, uint32_t bytes_before, uint32_t bytes_after);
+
+
+
+
+
+
+

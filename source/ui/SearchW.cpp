@@ -14,44 +14,13 @@ bool SearchW::initW() { return ImGui::Begin("Search"); }
 
 void SearchW::endW() { ImGui::End(); }
 
-bool SearchW::getTargetType(TargetType& new_type) {
-  bool changed = false;
-
-  if (ImGui::Combo("Type", &tmp_target_type, "int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0")) {
-    new_type = static_cast<TargetType>(tmp_target_type + 4);
-    Log::info("Chosen target type: {}", targetTypeToStr(new_type));
-    changed = true;
-  }
-
-  bool is_int = (static_cast<int>(new_type) <= 7);
-  ImGui::BeginDisabled(!is_int);
-  if (!is_int) is_unsigned_ = false;
-
-  bool tmp_is_unsigned = is_unsigned_;
-  ImGui::Checkbox("Unsigned", &is_unsigned_);
-  if (tmp_is_unsigned != is_unsigned_) {
-    if (is_unsigned_) {
-      Log::info("Will search as unsigned.\n");
-      new_type = static_cast<TargetType>(static_cast<int>(new_type) - 4);
-    } else {
-      Log::info("Will search as signed.\n");
-      new_type = static_cast<TargetType>(tmp_target_type + 4);
-    }
-    changed = true;
-  }
-
-  ImGui::EndDisabled();
-
-  return changed;
-}
-
 PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
   initW();
 
   PendingAction return_action{};
 
-  TargetType temp_type = target_info.target_type;
-  if (getTargetType(temp_type)) return_action = Action::SetTargetInfo{{}, {}, temp_type};
+  auto type = getTargetType(target_info.target_type);
+  if (type != TargetType::invalid) return_action = Action::SetTargetInfo{{}, {}, type};
 
   if (target_info.target_type == TargetType::aob) {
     std::vector<uint8_t> bytes = target_info.value;
@@ -75,7 +44,7 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
       tmp_val_.clear();
     }
 
-  if (is_unknown_value_scan_ && temp_type == TargetType::string) {
+  if (is_unknown_value_scan_ && target_info.target_type == TargetType::string) {
     ImGui::Text("Unknown value scanning with type string\nis not supported.");
     ImGui::BeginDisabled();
   } else

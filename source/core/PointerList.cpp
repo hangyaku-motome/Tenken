@@ -1,5 +1,7 @@
 #include "PointerList.h"
 
+#include <fcntl.h>
+
 #include <algorithm>
 
 #include "Log.h"
@@ -17,6 +19,7 @@ void PointerList::openFile(const std::filesystem::path& path) {
   uint64_t entry_start_point = 0;
   int8_t filter_index = -1;
   uint8_t depth = 0;
+  TargetType target_type = TargetType::invalid;
 
   stream_.read(reinterpret_cast<char*>(&magic_bytes), sizeof(magic_bytes));
   if (magic_bytes != Pointer::MagicBytes) {
@@ -51,6 +54,15 @@ void PointerList::openFile(const std::filesystem::path& path) {
     Log::error("Save index couldn't be read...Uhm...Well, this one doesn't actually matter that much so I'll let it "
                "slide. I'll just set it to 0.");
     filter_index_ = 0;
+  }
+
+  stream_.read(reinterpret_cast<char*>(&target_type), sizeof(target_type));
+  if (target_type == TargetType::invalid) {
+    Log::error(
+        "Target type couldn't be read...This is not pointer logic breaking, however you won't be able to edit it's "
+        "value or...really even view it when you add it to favourites. For now, this translates to \"I can't parse!\"");
+    status_ = -1;
+    return;
   }
 
   stream_.read(reinterpret_cast<char*>(&entry_start_point), sizeof(entry_start_point));
@@ -116,6 +128,27 @@ std::vector<Pointer::PrettyChain> PointerList::getFrom(uint64_t start_index, uin
   }
 
   return chains;
+}
+
+Pointer::PrettyChain PointerList::get(uint64_t index) {
+  if (status_ != 1) return {};
+  auto chains = getFromRaw(index, 1);
+
+  if (chains.empty()) return {};
+
+  std::vector<int64_t> vec(chains[0].offsets.begin(), chains[0].offsets.begin() + chains[0].valid_offsets);
+  return {.offsets = vec,
+          .module_name = data_module_names_[chains[0].module_id],
+          .offset_in_module = chains[0].offset_in_module};
+}
+
+Pointer::Chain PointerList::getRaw(uint64_t index) {
+  if (status_ != 1) return {};
+  auto chains = getFromRaw(index, 1);
+
+  if (chains.empty()) return {};
+
+  return chains.front();
 }
 
 std::vector<Pointer::Chain> PointerList::getFromRaw(uint64_t start_index, uint64_t read_count) {

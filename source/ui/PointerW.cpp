@@ -6,26 +6,40 @@
 
 #include <string>
 
+#include "display.h"
 #include "types.h"
 
 bool PointerW::initW() { return ImGui::Begin("Pointer"); }
 
 void PointerW::endW() { ImGui::End(); }
 
-PendingAction PointerW::cycleSearchW() {
-  ImGui::InputScalar("Points near:", ImGuiDataType_U64, &init_config.address, nullptr, nullptr, "%016lx");
+PendingAction PointerW::cycleSearchW(const State& state) {
+  ImGui::InputScalar("Points near:", ImGuiDataType_U64, &init_config_.address, nullptr, nullptr, "%016lx");
 
   ImGui::NewLine();
 
   ImGui::Text("don't change unless you can't find the one you are looking for.");
-  ImGui::InputScalar("Scan before:", ImGuiDataType_S32, &init_config.info.search_before, nullptr, nullptr, nullptr);
-  ImGui::InputScalar("Scan after:", ImGuiDataType_S32, &init_config.info.search_after, nullptr, nullptr, nullptr);
-  ImGui::InputScalar("depth:", ImGuiDataType_U8, &init_config.info.scan_depth, nullptr, nullptr, nullptr);
+  ImGui::InputScalar("Scan before:", ImGuiDataType_S32, &init_config_.info.search_before, nullptr, nullptr, nullptr);
+  ImGui::InputScalar("Scan after:", ImGuiDataType_S32, &init_config_.info.search_after, nullptr, nullptr, nullptr);
+  ImGui::InputScalar("depth:", ImGuiDataType_U8, &init_config_.info.scan_depth, nullptr, nullptr, nullptr);
 
+  ImGui::NewLine();
+  ImGui::NewLine();
+  ImGui::TextDisabled("(?)");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("Target type is inferred from latest done scan type by default, so it is likely correct.\nChange "
+                      "it if it's wrong.");
+  ImGui::SameLine();
+
+  if (init_config_.target_type == TargetType::invalid) init_config_.target_type = state.target_info.target_type;
+  auto new_type = getTargetType(init_config_.target_type);
+  if (new_type != TargetType::invalid) init_config_.target_type = new_type;
+  ImGui::BeginDisabled(init_config_.target_type == TargetType::invalid);
   if (ImGui::Button("Scan")) {
     endW();
-    return Action::Scan::StartPointer{.init_config = init_config};
+    return Action::Scan::StartPointer{.init_config = init_config_};
   }
+  ImGui::EndDisabled();
 
   ImGui::NewLine();
   ImGui::Text("Or...If you have a result to load in");
@@ -112,7 +126,7 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
   return endW();
 }
 
-PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_list) {
+PendingAction PointerW::cycleW(const State& state, PointerList& pointer_list) {
   if (not enabled_) return {};
   if (!initW()) {
     endW();
@@ -133,7 +147,7 @@ PendingAction PointerW::cycleW(const SessionState& state, PointerList& pointer_l
     return {};
   }
 
-  if (pointer_list.getStatus() == 0) return cycleSearchW();
+  if (pointer_list.getStatus() == 0) return cycleSearchW(state);
 
   cyclePointerListW(pointer_list);
   return {};

@@ -1,5 +1,6 @@
 #include "ContextDisplay.h"
 
+// all of this look so ugly
 void ContextDisplay::alignButtons() {
   button_h_ = ImGui::GetFrameHeight();
   button_w_ = 150.0F;
@@ -32,9 +33,8 @@ float ContextDisplay::drawRefreshInterval(const float RefreshDuration) {
   ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - 50);
 
   ImGui::TextDisabled("(?)");
-  if (ImGui::IsItemHovered()) {
-    ImGui::SetTooltip("Will regularly refresh entry each given duration.\n");
-  }
+  if (ImGui::IsItemHovered()) ImGui::SetTooltip("Will regularly refresh entry each given duration.\n");
+
   ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - slider_w_ - checkbox_w_);
   ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - 50);
   if (ImGui::Checkbox("##Regular Refresh", &is_refresh_)) {

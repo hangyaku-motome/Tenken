@@ -4,6 +4,6 @@
 
 constexpr auto TenkenVersion = "@PROJECT_VERSION@";
 
-constexpr uint8_t JsonSaveVersion = 1;
+constexpr uint8_t JsonSaveVersion = 2;
 
 constexpr uint8_t PointerResultVersion = 2;

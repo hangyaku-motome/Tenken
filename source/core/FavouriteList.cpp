@@ -11,15 +11,27 @@ void FavouriteList::assignNew(std::vector<FavouriteInfo> new_list) {
 
 void FavouriteList::add(const HitInfo& hit, TargetType target_type) {
   std::scoped_lock<std::mutex> lock(mutex_);
-  FavouriteInfo push_favourite;
   favourites_.push_back({.bytes_around = hit.bytes_around,
+                         .chain = {},
                          .value = hit.value,
                          .previous_value = hit.previous_value,
                          .frozen_value = hit.value,
                          .desc = "",
                          .location = hit.location,
-                         .type = target_type,
-                         .is_ptr_backed = false});
+                         .type = target_type});
+}
+
+void FavouriteList::add(const Pointer::PrettyChain& chain, uint64_t adr, TargetType target_type) {
+  std::scoped_lock<std::mutex> lock(mutex_);
+
+  favourites_.push_back({.bytes_around = {},
+                         .chain = chain,
+                         .value = {},
+                         .previous_value = {},
+                         .frozen_value = {},
+                         .desc = "",
+                         .location = adr,
+                         .type = target_type});
 }
 
 void FavouriteList::remove(uint64_t index) {

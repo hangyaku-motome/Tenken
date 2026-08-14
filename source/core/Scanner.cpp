@@ -122,7 +122,7 @@ std::vector<MapInfo> Scanner::getMapRegions() const {
 
 /// also, heaptrack thing or whatever. try it out.
 
-bool Scanner::findPointerCandidates(const Snapshot& snapshot, const Pointer::InitConfig& init_config) const {
+bool Scanner::findInitialChains(const Snapshot& snapshot, const Pointer::InitConfig& init_config) const {
   if (not isAttached()) return {};
   std::vector<PointerData> potential_pointers;
   for (uint64_t i = 0; i < snapshot.regions.size(); ++i) {
@@ -155,8 +155,8 @@ bool Scanner::findPointerCandidates(const Snapshot& snapshot, const Pointer::Ini
 
   auto save_path = makePointerSavePath(main_module);
   std::ofstream save_stream(save_path, std::ios::binary | std::ios::trunc);
-  if (!initPointerSaveFile(data_regions, save_stream, 0, init_config.info.scan_depth)) {
-    Log::error("Couldn't initialize pointer save file, tried to save it at %s", save_path.string());
+  if (!initPointerSaveFile(data_regions, save_stream, 0, init_config.info.scan_depth, init_config.info.)) {
+    Log::error("Couldn't initialize pointer save file, tried to save it at {}", save_path.string());
     return false;
   };
 
@@ -217,12 +217,14 @@ std::filesystem::path Scanner::makePointerSavePath(const std::string& exec_name)
 bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions,
                                   std::ofstream& save_stream,
                                   uint8_t filter_index,
-                                  uint8_t depth) const {
+                                  uint8_t depth,
+                                  TargetType target_type) const {
   save_stream.write(reinterpret_cast<const char*>(&Pointer::MagicBytes), sizeof(Pointer::MagicBytes));
   save_stream.write(reinterpret_cast<const char*>(&PointerResultVersion), sizeof(PointerResultVersion));
   save_stream.write(reinterpret_cast<const char*>(&Pointer::ChainSize), sizeof(Pointer::Chain));
   save_stream.write(reinterpret_cast<const char*>(&depth), sizeof(depth));
   save_stream.write(reinterpret_cast<const char*>(&filter_index), sizeof(filter_index));
+  save_stream.write(reinterpret_cast<const char*>(&target_type), sizeof(target_type));
 
   auto entry_start_point_seek = save_stream.tellp();  // header size unknown right now.
 
@@ -254,34 +256,28 @@ std::vector<Pointer::Chain> Scanner::resolveChains(const std::vector<Pointer::Ch
   new_chains.reserve(chains.size());
 
   std::copy_if(chains.begin(), chains.end(), std::back_inserter(new_chains), [&](const Pointer::Chain& c) {
-    return resolveChain(c, region_starts, target_address);
+    return resolveChain(c, region_starts[c.module_id]) == target_address;
   });
 
   return new_chains;
 }
 
-// it works.......
-bool Scanner::resolveChain(const Pointer::Chain& chain,
-                           const std::vector<uint64_t>& region_starts,
-                           const uint64_t target_address) const {
-  if (region_starts[chain.module_id] == 0) return false;
+uint64_t Scanner::resolveChain(const Pointer::Chain& chain, const uint64_t region_start) const {
+  if (region_start == 0) return false;
   uint64_t ptr;
 
-  ptr = dataToType<uint64_t>(readAdr(region_starts[chain.module_id] + chain.offset_in_module, sizeof(uint64_t)));
+  ptr = dataToType<uint64_t>(readAdr(region_start + chain.offset_in_module, sizeof(uint64_t)));
 
   for (int32_t i = 0; i < chain.valid_offsets - 1; ++i) {
     ptr = dataToType<uint64_t>(readAdr(ptr + chain.offsets[i], sizeof(uint64_t)));
-    if (ptr == 0) return false;
+    if (ptr == 0) return 0;
   }
-
-  if (ptr + chain.offsets[chain.valid_offsets - 1] == target_address) return true;
-
-  return false;
+  return ptr + chain.offsets[chain.valid_offsets - 1];
 }
 
 // uhh let's hope this all conveniently works the first time and I won't be stuck debugging.
 // ^^ disturbingly loud incorrect buzzer
-void Scanner::resolvePointerResult(const uint64_t target_address, PointerList& pointer_list) const {
+void Scanner::resolveChainResult(PointerList& pointer_list, uint64_t target_address) const {
   if (not isAttached()) return;
   std::vector<MapInfo> data_regions;
   std::string main_module_name;

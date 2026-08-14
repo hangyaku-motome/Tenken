@@ -19,8 +19,7 @@ public:
   void assignNew(std::vector<FavouriteInfo> new_list);
 
   void add(const HitInfo& hit, TargetType target_type);
-  void add(const Pointer::PrettyChain& chain, TargetType target_type);
-  void add(const std::vector<Pointer::PrettyChain>& chain, TargetType target_type);
+  void add(const Pointer::PrettyChain& chain, uint64_t adr, TargetType target_type);
 
   void remove(uint64_t index);
 

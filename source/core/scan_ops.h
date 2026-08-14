@@ -11,7 +11,7 @@ namespace ScanOp {
 void rescanAllHits(const Scanner& scanner, HitList& hit, std::atomic<float>& progress, TargetType target_type);
 
 template <typename F>
-void runOnScannerThread(std::thread& scanner_thread, SessionState& state, ScanType scan_type, F&& task) {
+void runOnScannerThread(std::thread& scanner_thread, State& state, ScanType scan_type, F&& task) {
   if (scanner_thread.joinable()) scanner_thread.join();
   state.scan_type = scan_type;
   scanner_thread = std::thread([&state, task = std::forward<F>(task)]() {

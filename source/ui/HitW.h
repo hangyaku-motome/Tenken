@@ -19,5 +19,5 @@ private:
   ContextDisplay context;
 
 public:
-  PendingAction cycleW(const std::vector<HitInfo>& hits, SessionState& state);
+  PendingAction cycleW(const std::vector<HitInfo>& hits, State& state);
 };

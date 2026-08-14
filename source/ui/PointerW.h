@@ -12,18 +12,17 @@ class PointerW {
   bool initW();
   void endW();
 
-  static constexpr auto file_browser_flags = ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CloseOnEsc |
-                                             ImGuiFileBrowserFlags_CreateNewDir | ImGuiFileBrowserFlags_EditPathString;
+  static constexpr auto FileBrowserFlags = ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CloseOnEsc |
+                                           ImGuiFileBrowserFlags_CreateNewDir | ImGuiFileBrowserFlags_EditPathString;
 
-  Pointer::InitConfig init_config;
+  Pointer::InitConfig init_config_{};
 
   int64_t prev_display_start_ = -1;
   int64_t prev_display_end_ = -1;
 
-  ImGui::FileBrowser file_browser_{file_browser_flags};
+  ImGui::FileBrowser file_browser_{FileBrowserFlags};
 
-  PendingAction cycleSearchW();
-
+  PendingAction cycleSearchW(const State& state);
   void cyclePointerListW(PointerList& pointer_list);
 
   std::vector<Pointer::PrettyChain> chains_;
@@ -36,5 +35,5 @@ public:
   };
 
   bool enabled_ = true;
-  PendingAction cycleW(const SessionState& state, PointerList& pointer_list);
+  PendingAction cycleW(const State& state, PointerList& pointer_list);
 };

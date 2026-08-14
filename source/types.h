@@ -32,8 +32,8 @@ static constexpr uint8_t BytesAfter = 32;
 constexpr auto DefaultPopupFlags =
     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_HorizontalScrollbar;
 
-// TODO:fix invalid and unset not being first.
 enum class TargetType : int8_t {
+  invalid,
   uInt8,
   uInt16,
   uInt32,
@@ -45,11 +45,10 @@ enum class TargetType : int8_t {
   f32,
   f64,
   string,
-  aob,
-  invalid
+  aob
 };
 
-enum class RelativeStatus : int8_t { unchanged, changed, increased, decreased, unset };
+enum class RelativeStatus : int8_t { unset, unchanged, changed, increased, decreased };
 
 struct HitInfo {
   ReadBlock bytes_around;
@@ -93,20 +92,6 @@ struct TargetInfo {
   std::vector<uint8_t> value{};
   std::optional<std::vector<bool>> mask;  // does this reaaaaly have to be optional?
   TargetType target_type = TargetType::invalid;
-};
-
-struct FavouriteInfo {
-  ReadBlock bytes_around;
-  std::vector<uint8_t> value;
-  std::vector<uint8_t> previous_value;
-  std::vector<uint8_t> frozen_value;
-  std::string desc;
-  uint64_t location;
-  float freeze_duration = -1;  // TODO: should merge frozen and frreeze duration
-  TargetType type;
-  RelativeStatus status = RelativeStatus::unset;
-  bool frozen = false;
-  bool is_ptr_backed = false;
 };
 
 struct Region {
@@ -161,18 +146,6 @@ struct Snapshot {
 
 enum class ScanType { Nothing, Hit, HitFilter, HitRescan, Unknown, Pointer };
 
-// it doessss kind of feeel bloated and I could probably make this smaller...maybe.
-struct SessionState {
-  TargetInfo target_info;
-  ProcessInfo target_proc_info;
-  std::vector<MapInfo> active_regions;
-  Snapshot snapshot;
-  std::atomic<ScanType> scan_type;
-  std::atomic<float> scan_progress;
-  float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
-  float fav_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
-};
-
 // should I reaaally be setting defaults?
 namespace Pointer {
 constexpr uint32_t DefaultSearchAfter = 2048;
@@ -188,8 +161,9 @@ struct ScanInfo {
 };
 
 struct InitConfig {
+  ScanInfo info{};
   uint64_t address = 0;
-  ScanInfo info;
+  TargetType target_type = TargetType::invalid;
 };
 
 // this is how they are saved to file.
@@ -217,6 +191,33 @@ struct PrettyChain {
   uint64_t offset_in_module;
 };
 };  // namespace Pointer
+
+// it doessss kind of feeel bloated and I could probably make this smaller...maybe.
+struct State {
+  TargetInfo target_info;
+  ProcessInfo target_proc_info;
+  std::vector<MapInfo> active_regions;
+  std::vector<std::pair<Pointer::PrettyChain, uint64_t>> saved_chains;
+  Snapshot snapshot;
+  std::atomic<ScanType> scan_type;
+  std::atomic<float> scan_progress;
+  float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
+  float fav_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
+};
+
+struct FavouriteInfo {
+  ReadBlock bytes_around;
+  std::optional<Pointer::PrettyChain> chain;
+  std::vector<uint8_t> value;
+  std::vector<uint8_t> previous_value;
+  std::vector<uint8_t> frozen_value;
+  std::string desc;
+  uint64_t location;
+  float freeze_duration = -1;  // TODO: should merge frozen and freeze duration
+  TargetType type;
+  RelativeStatus status = RelativeStatus::unset;
+  bool frozen = false;
+};
 
 //
 //
@@ -263,6 +264,11 @@ struct RegularRefresh {
 namespace Favourite {
 struct AddHit {
   uint64_t index;
+};
+
+struct AddChain {
+  uint64_t index;
+  TargetType target_type;
 };
 
 struct Remove {

@@ -10,7 +10,6 @@ class SearchW {
   static bool initW();
   static void endW();
 
-  bool getTargetType(TargetType& write_to);
   std::string getHitFilter(TargetInfo& target_info);
 
   bool is_init_value_given_ = false;

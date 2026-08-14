@@ -11,6 +11,7 @@
 #include <charconv>
 #include <system_error>
 
+#include "Log.h"
 #include "types.h"
 #include "utils.h"
 
@@ -186,9 +187,22 @@ bool getTargetValue(const TargetType target_type, std::vector<uint8_t>& write_to
   });
 }
 
+// Log::info("Chosen target type: {}", targetTypeToStr(new_type));
+// Log::info("Will search as signed.\n");
 void printData(const std::vector<uint8_t>& data, TargetType target_type) {
   if (data.empty() || target_type == TargetType::invalid) return;
 
   std::string print_str = dispatchType(target_type, [&]<typename T>() { return dataToStr<T>(data); });
   ImGui::TextUnformatted(print_str.c_str());
+}
+
+// I'm just gonna make it simpler now. no unsigned check mark. Because I don't feel like it anymore
+TargetType getTargetType(TargetType old_type) {
+  int32_t type_buf = static_cast<int32_t>(old_type) == 0 ? -1 : static_cast<int32_t>(old_type);
+  if (ImGui::Combo("Type",
+                   &type_buf,
+                   "uint8\0uint16\0uint32\0uint64\0int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0"))
+    return static_cast<TargetType>(type_buf + 1);
+
+  return {};
 }

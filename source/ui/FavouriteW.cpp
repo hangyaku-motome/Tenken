@@ -16,7 +16,7 @@ bool FavouriteW::initW() { return ImGui::Begin("Favourite"); }
 
 void FavouriteW::endW() { ImGui::End(); }
 
-PendingAction FavouriteW::cycleW(const std::vector<FavouriteInfo>& favourites, SessionState& state) {
+PendingAction FavouriteW::cycleW(const std::vector<FavouriteInfo>& favourites, State& state) {
   if (!initW()) {
     endW();
     return {};
