@@ -11,7 +11,8 @@ class PointerList {
   uint64_t entry_start_point_;
 
   // 0 when closed, 1 when open and valid, -1 when open but error.
-  int32_t status_ = 0;
+  int8_t status_ = 0;
+  uint8_t save_index_ = 0;  // which iteration? first scan, 1st filter, 2nd filter, 3rd filter..........
 
 public:
   void openFile(const std::filesystem::path& path);
@@ -19,6 +20,8 @@ public:
   void close();
 
   int32_t getStatus() { return status_; };
+
+  uint8_t getSaveIndex() { return save_index_; };
 
   // set when a file is closed and another one is opened right after. couldn't figure out another way to express this.
   // After being acknowledged should be set to false.

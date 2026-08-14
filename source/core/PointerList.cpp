@@ -15,6 +15,7 @@ void PointerList::openFile(const std::filesystem::path& path) {
   uint8_t file_version = 0;
   uint8_t entry_size = 0;
   uint64_t entry_start_point = 0;
+  int8_t save_index = -1;
 
   stream_.read(reinterpret_cast<char*>(&magic_bytes), sizeof(magic_bytes));
   if (magic_bytes != Pointer::magic_bytes) {
@@ -32,22 +33,27 @@ void PointerList::openFile(const std::filesystem::path& path) {
 
   stream_.read(reinterpret_cast<char*>(&entry_size), sizeof(entry_size));
   if (entry_size != sizeof(Pointer::Chain)) {
-    Log::error(
-        "Entry size and pointer chain do not line up. This is most definitely a bug. OR, you got this result "
-        "on a different platform/system and now tried to use it in another one.");  // we might wanna force formatting
-                                                                                    // for Pointer::Chain
+    Log::error("Entry size and pointer chain do not line up....Something's fishy here!");
     status_ = -1;
     return;
   };
 
   stream_.read(reinterpret_cast<char*>(&entry_start_point), sizeof(entry_start_point));
   if (entry_start_point == 0) {
-    Log::error("Header size is 0. How...Well this means there were no pointers in the file or there's a bug.");
+    Log::error("Header size is 0. That should be impossible.");
     status_ = -1;
     return;
   }
 
-  // after this should be headers.
+  stream_.read(reinterpret_cast<char*>(&save_index), sizeof(save_index));
+
+  if (save_index < 0) {
+    Log::error("Save index couldn't be read...Uhm...Well, this one doesn't actually matter that much so I'll let it "
+               "slide. I'll just set it to 0.");
+    save_index_ = 0;
+  }
+
+  // after this should be module headers.
 
   uint64_t table_size = entry_start_point - static_cast<uint64_t>(stream_.tellg());
 
@@ -67,7 +73,7 @@ void PointerList::openFile(const std::filesystem::path& path) {
 
   if (data_module_names_.empty()) {
     status_ = -1;
-    Log::error("No module names found in file...This is most probably a bug.");  // NOTE: what do when no pointer?
+    Log::error("No module names found in file...");
     return;
   }
 
@@ -89,7 +95,7 @@ void PointerList::openFile(const std::filesystem::path& path) {
 }
 
 std::vector<Pointer::PrettyChain> PointerList::getFrom(uint64_t start_index, uint64_t read_count) {
-  if (status_ != 1) return {};  // kind of redundant since getFromRaw calls it but let's be explicit.
+  if (status_ != 1) return {};  // redundant since getFromRaw calls it but let's be explicit.
   auto chains_raw = getFromRaw(start_index, read_count);
   if (chains_raw.empty()) return {};
 

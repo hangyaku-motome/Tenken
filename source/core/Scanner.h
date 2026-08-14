@@ -28,7 +28,8 @@ class Scanner {
                      uint8_t depth) const;
 
   std::filesystem::path makePointerSavePath(const std::string& exec_name) const;
-  bool initPointerSaveFile(const std::vector<MapInfo>& data_regions, std::ofstream& save_stream) const;
+  bool
+  initPointerSaveFile(const std::vector<MapInfo>& data_regions, std::ofstream& save_stream, uint8_t filter_index) const;
 
   std::vector<Pointer::Chain> resolveChains(const std::vector<Pointer::Chain>& chains,
                                             const std::vector<uint64_t>& region_starts,
@@ -58,7 +59,5 @@ public:
   bool isAttached() const;
 
   bool findPointerCandidates(const Snapshot& snapshot, const Pointer::InitConfig& config) const;
-  void resolvePointerResult(const uint64_t target_address,
-                            const std::filesystem::path& save_file_path,
-                            PointerList& pointer_list) const;
+  void resolvePointerResult(const uint64_t target_address, PointerList& pointer_list) const;
 };
