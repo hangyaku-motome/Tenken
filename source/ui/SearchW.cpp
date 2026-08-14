@@ -3,11 +3,10 @@
 #include <imgui.h>
 
 #include <cstdint>
-#include <string>
 #include <vector>
 
 #include "display.h"
-#include "LogW.h"
+#include "Log.h"
 #include "types.h"
 #include "utils.h"
 
@@ -20,7 +19,7 @@ bool SearchW::getTargetType(TargetType& new_type) {
 
   if (ImGui::Combo("Type", &tmp_target_type, "int8\0int16\0int32\0int64\0float\0double\0string\0AOB search\0\0")) {
     new_type = static_cast<TargetType>(tmp_target_type + 4);
-    Log::info("Chosen target type:" + targetTypeToStr(new_type) + "\n");
+    Log::info("Chosen target type: {}", targetTypeToStr(new_type));
     changed = true;
   }
 

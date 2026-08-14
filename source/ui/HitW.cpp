@@ -110,7 +110,7 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
       if (ImGui::BeginPopupContextItem("hit_popup_menu")) {
         selected_row_ = row;
         if (ImGui::MenuItem("Add to Favourites"))
-          return_action = Action::Favourite::Add{static_cast<uint64_t>(selected_row_)};
+          return_action = Action::Favourite::AddHit{static_cast<uint64_t>(selected_row_)};
         if (ImGui::MenuItem("Copy address to clipboard")) {
           char buf[32];
           snprintf(buf, sizeof(buf), "0x%" PRIX64, hits[static_cast<uint64_t>(selected_row_)].location);

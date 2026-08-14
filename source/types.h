@@ -17,8 +17,6 @@
   #include <sys/mman.h>
 #endif
 
-// TODO:some of these constexpr should be file local, not here, and arguably some classes/structs?
-
 struct ReadBlock {
   std::vector<uint8_t> read_bytes{};
   int64_t offset_from_adr = 0;
@@ -177,14 +175,16 @@ struct SessionState {
 
 // should I reaaally be setting defaults?
 namespace Pointer {
-constexpr uint32_t default_search_after = 2048;
-constexpr uint32_t default_search_before = 0;
-constexpr uint8_t default_scan_depth = 5;
+constexpr uint32_t DefaultSearchAfter = 2048;
+constexpr uint32_t DefaultSearchBefore = 0;
+constexpr uint8_t DefaultScanDepth = 5;
+constexpr uint64_t MagicBytes = 0xEE32BE81AAAAFEAF;
+constexpr uint8_t MaxDepth = 8;
 
 struct ScanInfo {
-  uint32_t search_after = default_search_after;
-  uint32_t search_before = default_search_before;
-  uint8_t scan_depth = default_scan_depth;
+  uint32_t search_after = DefaultSearchAfter;
+  uint32_t search_before = DefaultSearchBefore;
+  uint8_t scan_depth = DefaultScanDepth;
 };
 
 struct InitConfig {
@@ -192,16 +192,15 @@ struct InitConfig {
   ScanInfo info;
 };
 
-constexpr uint64_t magic_bytes = 0xEE32BE81AAAAFEAF;
-constexpr uint8_t max_depth = 8;
-
 // this is how they are saved to file.
 struct Chain {
-  std::array<int64_t, Pointer::max_depth> offsets;
+  std::array<int64_t, Pointer::MaxDepth> offsets;
   uint64_t offset_in_module;
   uint32_t module_id;  // does this really have to be an uint32_t ?
   uint8_t valid_offsets;
 };
+
+constexpr uint8_t ChainSize{sizeof(Pointer::Chain)};
 
 // miiiiiight as well
 
@@ -262,8 +261,8 @@ struct RegularRefresh {
 }  // namespace Hit
 
 namespace Favourite {
-struct Add {
-  uint64_t hitIndex;
+struct AddHit {
+  uint64_t index;
 };
 
 struct Remove {
@@ -349,7 +348,7 @@ using PendingAction = std::variant<std::monostate,
                                    Action::Hit::Rescan,
                                    Action::Hit::RescanAll,
                                    Action::Hit::RegularRefresh,
-                                   Action::Favourite::Add,
+                                   Action::Favourite::AddHit,
                                    Action::Favourite::Remove,
                                    Action::Favourite::Write,
                                    Action::Favourite::FreezeValue,

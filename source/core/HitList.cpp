@@ -57,8 +57,8 @@ void HitList::filter(RelativeStatus keep_type) {
                                return hit.status != keep_type && hit.status != KeepType2 && hit.status != KeepType3;
                              }),
               hits_.end());
-  Log::info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
-            " filtered.)");
+
+  Log::info("{} hits left. ({} filtered)", hits_.size(), init_amount - hits_.size());
 }
 
 void HitList::filter(const std::vector<uint8_t>& keep_value) {
@@ -75,8 +75,8 @@ void HitList::filter(const std::vector<uint8_t>& keep_value) {
                                ;
                              }),
               hits_.end());
-  Log::info(std::to_string(hits_.size()) + " Hits left. (" + std::to_string(init_amount - hits_.size()) +
-            " filtered.)");
+
+  Log::info("{} hits left. ({} filtered)", hits_.size(), init_amount - hits_.size());
 }
 
 uint64_t HitList::count() {

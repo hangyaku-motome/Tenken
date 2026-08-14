@@ -3,14 +3,14 @@
 #include <string>
 
 #include "imgui.h"
-#include "LogW.h"
+#include "Log.h"
 #include "misc/cpp/imgui_stdlib.cpp"
 #include "platform/ProcessOS.h"
 #include "types.h"
 
 void TargetPopUp::initPopUp() {
   processes_ = ProcessOS::getProcTargets();
-  Log::info("Found PID count: " + std::to_string(processes_.size()) + "\n");
+  Log::info("Found process count: {}", processes_.size());
   ImGui::OpenPopup("Target List");
   clicked_ = false;
 }
@@ -41,8 +41,7 @@ PendingAction TargetPopUp::cyclePopUp() {
     ImGui::SameLine();
     if (ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns)) {
       return_action = Action::TargetProcChosen{target};
-      Log::info("...Chosen PID: " + std::to_string(target.pid) + "   Target name:" + target.name +
-                "   Target cmdline:" + target.cmdline + "\n");
+      Log::info("...Chosen PID: {}, Target name:{}, Target cmdline:{}", target.pid, target.name, target.cmdline);
     }
     ImGui::PopID();
   }
@@ -52,7 +51,7 @@ PendingAction TargetPopUp::cyclePopUp() {
 
   if (ImGui::Button("Refresh")) {
     processes_ = ProcessOS::getProcTargets();
-    Log::info("Found PID count: " + std::to_string(processes_.size()) + "\n");
+    Log::info("Found process count: {}", processes_.size());
   }
 
   ImGui::EndPopup();

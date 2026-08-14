@@ -32,7 +32,7 @@ std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
   std::vector<MapInfo> maps = active_region;
   if (maps.empty()) return {};
 
-  std::vector<HitInfo> return_hits;
+  std::vector<HitInfo> hits;
 
   for (uint64_t i = 0; i < maps.size(); ++i) {
     scan_progress = static_cast<float>(i) / static_cast<float>(maps.size());
@@ -50,8 +50,7 @@ std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
           push_hit.value = target_info.value;  // reallllyy didn't gotta make it all that complicated like before
           push_hit.bytes_around =
               findBytesAround(data, rel_offset, Context::BytesBefore, Context::BytesAfter + target_info.value.size());
-          printf("%i\n\n", push_hit.bytes_around.offset_from_adr);
-          return_hits.push_back(push_hit);
+          hits.push_back(push_hit);
         }
       } else {
         T target;
@@ -61,17 +60,16 @@ std::vector<HitInfo> ScanOp::startScan(const Scanner& scanner,
         } else
           memcpy(&target, target_info.value.data(), sizeof(T));
         for (const auto rel_offset : searchValue(data, target)) {
-          HitInfo push_hit;
-          push_hit.location = maps[i].start + rel_offset;
-          push_hit.value = target_info.value;
-          push_hit.bytes_around =
+          HitInfo hit;
+          hit.location = maps[i].start + rel_offset;
+          hit.value = target_info.value;
+          hit.bytes_around =
               findBytesAround(data, rel_offset, Context::BytesBefore, Context::BytesAfter + target_info.value.size());
-          printf("%i\n\n", push_hit.bytes_around.offset_from_adr);
-          return_hits.push_back(push_hit);
+          hits.push_back(hit);
         }
       }
     });
   }
-  Log::info(std::to_string(return_hits.size()) + " hits found.");
-  return return_hits;
+  Log::info("{} hits found.", hits.size());
+  return hits;
 }

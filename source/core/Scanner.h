@@ -23,13 +23,16 @@ class Scanner {
                      const std::vector<MapInfo>& data_regions,
                      const Pointer::ScanInfo& config,
                      std::ofstream& save_stream,
-                     std::array<int64_t, Pointer::max_depth>& stack,
+                     std::array<int64_t, Pointer::MaxDepth>& stack,
                      uint64_t address,
                      uint8_t depth) const;
 
   std::filesystem::path makePointerSavePath(const std::string& exec_name) const;
-  bool
-  initPointerSaveFile(const std::vector<MapInfo>& data_regions, std::ofstream& save_stream, uint8_t filter_index) const;
+
+  bool initPointerSaveFile(const std::vector<MapInfo>& data_regions,
+                           std::ofstream& save_stream,
+                           uint8_t filter_index,
+                           uint8_t depth) const;
 
   std::vector<Pointer::Chain> resolveChains(const std::vector<Pointer::Chain>& chains,
                                             const std::vector<uint64_t>& region_starts,

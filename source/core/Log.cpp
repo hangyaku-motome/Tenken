@@ -13,30 +13,24 @@ namespace {
 std::mutex mutex_;
 std::vector<std::string> logs;
 std::ofstream stream_;
+
 }  // namespace
+
+void Sink::writeLog(std::string msg, bool is_error) {
+  std::scoped_lock<std::mutex> lock(mutex_);
+
+  if (is_error) msg.insert(0, "ERR: ");
+  logs.push_back(msg);
+
+  if (!stream_.is_open()) return;
+  stream_.write(reinterpret_cast<const char*>(msg.data()), static_cast<int64_t>(msg.size()));
+  stream_.put('\n');
+  stream_.flush();
+}
 
 std::vector<std::string> getLogText() {
   std::scoped_lock<std::mutex> lock(mutex_);
   return logs;
-}
-
-void info(const std::string& written_string) {
-  std::scoped_lock<std::mutex> lock(mutex_);
-  logs.push_back(written_string);
-  if (!stream_.is_open()) return;
-
-  stream_.write(reinterpret_cast<const char*>(written_string.data()), written_string.size());
-  stream_.put('\n');
-  stream_.flush();
-}
-
-void error(const std::string& written_string) {
-  std::scoped_lock<std::mutex> lock(mutex_);
-  logs.push_back("ERROR: " + written_string);
-  if (!stream_.is_open()) return;
-  stream_.write(reinterpret_cast<const char*>(written_string.data()), written_string.size());
-  stream_.put('\n');
-  stream_.flush();
 }
 
 void openStream() {
@@ -50,7 +44,7 @@ void openStream() {
   if (!stream_)
     Log::error("A problem when trying to open save path, logs will not be mirrored to file.");
   else
-    Log::info("This log is being saved to " + save_path.string());
+    Log::info("This log is being saved to {}", save_path.string());
 }
 
 }  // namespace Log

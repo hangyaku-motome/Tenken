@@ -53,14 +53,14 @@ Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::a
     progress = static_cast<float>(i) / static_cast<float>(maps.size());
     char* ptr = proc_->allocMMapDisk(maps[i].end - maps[i].start);
     if (ptr == nullptr) {
-      Log::error("mmap failed for region " + std::to_string(i + 1) + " will skip.");  // still wonky but whatever.
+      Log::error("mmap failed for region %i will skip.", i + 1);  // still wonky but whatever.
       maps.erase(maps.begin() + static_cast<int64_t>(i));
       --i;
       continue;
     }
     auto data = proc_->read(maps[i].start, maps[i].end - maps[i].start);
     if (data.size() != maps[i].end - maps[i].start) {
-      Log::error("partial read for region " + std::to_string(i) + " will skip.");
+      Log::error("partial read for region %i will skip.", i);
       proc_->unAllocMMapDisk(reinterpret_cast<uint64_t>(ptr), maps[i].end - maps[i].start);
       maps.erase(maps.begin() + static_cast<int64_t>(i));
       --i;
@@ -155,12 +155,12 @@ bool Scanner::findPointerCandidates(const Snapshot& snapshot, const Pointer::Ini
 
   auto save_path = makePointerSavePath(main_module);
   std::ofstream save_stream(save_path, std::ios::binary | std::ios::trunc);
-  if (!initPointerSaveFile(data_regions, save_stream, 0)) {
-    Log::error("Couldn't initialize pointer save file, tried to save it at " + save_path.string());
+  if (!initPointerSaveFile(data_regions, save_stream, 0, init_config.info.scan_depth)) {
+    Log::error("Couldn't initialize pointer save file, tried to save it at %s", save_path.string());
     return false;
   };
 
-  std::array<int64_t, Pointer::max_depth> stack{};
+  std::array<int64_t, Pointer::MaxDepth> stack{};
   buildPointers(potential_pointers, data_regions, init_config.info, save_stream, stack, init_config.address, 0);
 
   return true;
@@ -171,7 +171,7 @@ void Scanner::buildPointers(const std::vector<PointerData>& pointers,
                             const std::vector<MapInfo>& data_regions,
                             const Pointer::ScanInfo& config,
                             std::ofstream& save_stream,
-                            std::array<int64_t, Pointer::max_depth>& stack,
+                            std::array<int64_t, Pointer::MaxDepth>& stack,
                             uint64_t address,
                             uint8_t depth) const {
   auto it = std::lower_bound(pointers.begin(), pointers.end(), address, [config](const auto& ptr, const uint64_t adr) {
@@ -216,17 +216,17 @@ std::filesystem::path Scanner::makePointerSavePath(const std::string& exec_name)
 // - filter_index (0 for initial scan, +1 for every filter done) uint8_t
 bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions,
                                   std::ofstream& save_stream,
-                                  uint8_t filter_index) const {
-  save_stream.write(reinterpret_cast<const char*>(&Pointer::magic_bytes), sizeof(Pointer::magic_bytes));
+                                  uint8_t filter_index,
+                                  uint8_t depth) const {
+  save_stream.write(reinterpret_cast<const char*>(&Pointer::MagicBytes), sizeof(Pointer::MagicBytes));
   save_stream.write(reinterpret_cast<const char*>(&PointerResultVersion), sizeof(PointerResultVersion));
-  uint8_t entry_size = sizeof(Pointer::Chain);
-  save_stream.write(reinterpret_cast<const char*>(&entry_size), sizeof(entry_size));
+  save_stream.write(reinterpret_cast<const char*>(&Pointer::ChainSize), sizeof(Pointer::Chain));
+  save_stream.write(reinterpret_cast<const char*>(&depth), sizeof(depth));
+  save_stream.write(reinterpret_cast<const char*>(&filter_index), sizeof(filter_index));
 
   auto entry_start_point_seek = save_stream.tellp();  // header size unknown right now.
 
   save_stream.seekp(sizeof(uint64_t), std::ios::cur);
-
-  save_stream.write(reinterpret_cast<const char*>(&filter_index), sizeof(filter_index));
 
   for (const auto& reg : data_regions) {
     save_stream.put(static_cast<int8_t>(reg.name.length()));
@@ -317,7 +317,7 @@ void Scanner::resolvePointerResult(const uint64_t target_address, PointerList& p
   std::ofstream save_stream(makePointerSavePath(main_module_name), std::ios::binary | std::ios::trunc);
 
   // pointer scanning at the start. because it literally just...includes them all, no?
-  initPointerSaveFile(data_regions, save_stream, pointer_list.getSaveIndex());
+  initPointerSaveFile(data_regions, save_stream, pointer_list.getSaveIndex(), pointer_list.getDepth());
 
   // not battle tested at alllllllll
   for (uint64_t i = 0; i < pointer_list.total_chains_;) {

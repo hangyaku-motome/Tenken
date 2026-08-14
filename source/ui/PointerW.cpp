@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include "Log.h"
 #include "types.h"
 
 bool PointerW::initW() { return ImGui::Begin("Pointer"); }
@@ -44,7 +43,6 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
   }
 
   if (pointer_list.just_opened_) {
-    Log::info("just opened");
     chains_.clear();
     pointer_list.just_opened_ = false;
   }
@@ -63,7 +61,14 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
     return endW();
   }
 
+  ImGui::Text("%lu chains in loaded file", pointer_list.total_chains_);
   ImGui::Text("%s", (std::to_string(pointer_list.total_chains_) + " chains in loaded file").c_str());
+  ImGui::SameLine();
+  if (pointer_list.getSaveIndex() == 0)
+    ImGui::Text("First scan results.");
+  else
+    ImGui::Text("%ddth filter", pointer_list.getSaveIndex());
+  ;
   if (ImGui::Button("Load in another result")) file_browser_.Open();
   ImGui::SameLine();
   if (ImGui::Button("Go back")) {
@@ -71,15 +76,13 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
     return endW();
   }
 
-  if (!ImGui::BeginTable("Pointer Table", 2 + Pointer::max_depth, ImGuiTableFlags_ScrollY)) return;
+  if (!ImGui::BeginTable("Pointer Table", 2 + Pointer::MaxDepth, ImGuiTableFlags_ScrollY)) return;
 
   ImGui::TableSetupColumn("module");
   ImGui::TableSetupColumn("offset in module");
 
-  // TODO: should be as much as biggest valid offsets in loaded file, not max depth....but calculating that might be
-  // tricky. To add to this, maybe we add scan_depth in file. (wait this make so much hold up I'll do it)
-  for (int i = 0; i < Pointer::max_depth; ++i)
-    ImGui::TableSetupColumn((std::string("offset ") + std::to_string(i)).c_str());
+  for (int32_t i = 0; i < pointer_list.getDepth(); ++i)
+    ImGui::TableSetupColumn((std::string("offset ") + std::to_string(i + 1)).c_str());
 
   ImGui::TableHeadersRow();
 
@@ -96,7 +99,7 @@ void PointerW::cyclePointerListW(PointerList& pointer_list) {
       ImGui::TableNextColumn();
       ImGui::Text("%s", std::to_string(chains_[i].offset_in_module).c_str());
 
-      for (int k = 0; k < Pointer::max_depth; ++k) {
+      for (int32_t k = 0; k < pointer_list.getDepth(); ++k) {
         ImGui::TableNextColumn();
         if (k < chains_[i].offsets.size())
           ImGui::Text("%s", std::to_string(chains_[i].offsets[k]).c_str());

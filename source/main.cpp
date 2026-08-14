@@ -46,10 +46,10 @@ void resolveActions(Scanner& scanner_obj,
 bool saveTenken(const std::filesystem::path& save_path, const std::vector<FavouriteInfo>& favourites);
 bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInfo>& favourites);
 
-// TODO: This is going to be vagueposting but, there are a things we can do to make this system more robust.
-// uhhhhhhhhhhhhhhhhhh yeah we should look into that one
 // TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
 // validation?
+// TODO: maybe a resetVolatile() for each window to reset buffers and temporary data?
+// WARNING: pointer_l might go through
 int main() {
   if (Platform::checkPermission() == false) {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
@@ -242,8 +242,8 @@ void resolveActions(Scanner& scanner,
                    [&](const Action::Hit::RegularRefresh& a) { state.hit_refresh_seconds = a.seconds; },
 
                    // start of favourite stuff.
-                   [&](const Action::Favourite::Add& a) {
-                     favourite_l.add(hit_l.getIndex(a.hitIndex), state.target_info.target_type);
+                   [&](const Action::Favourite::AddHit& a) {
+                     favourite_l.add(hit_l.getIndex(a.index), state.target_info.target_type);
                    },
                    [&](const Action::Favourite::Remove& a) { favourite_l.remove(a.index); },
                    [&](const Action::Favourite::Write& a) {
@@ -343,13 +343,12 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
   loaded_state = json::parse(load_stream);
 
   if (loaded_state.value("version", 0) != JsonSaveVersion) {
-    Log::error("Expected version and current version do not match for save file. Are you on a newer/older version than "
-               "when "
-               "you saved? If not...Yeah IDK what happened something is wrong clearly. Here is the supposed version" +
-               std::to_string(loaded_state.value("version", 0)) +
-               " . And the only reason this log file is so unnecessarily long is because I felt like it. Anyways good "
-               "luck "
-               "with this problem someone who is probably me.");
+    Log::error(
+        "Expected version and current version do not match for save file. Are you on a newer/older version than when "
+        "you saved? If not...Yeah IDK what happened something is wrong clearly. Here is the supposed version:{}. And "
+        "the only reason this log file is so unnecessarily long is because I felt like it. Anyways good "
+        "luck with this one.",
+        loaded_state.value<int32_t>("version", 0));
     return false;
   }
   favourites.clear();

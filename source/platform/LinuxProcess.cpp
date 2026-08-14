@@ -60,7 +60,7 @@ std::vector<MapInfo> LinuxImpl::getRegions() {
   std::ifstream map_stream;
   map_stream.open("/proc/" + std::to_string(pid_) + "/maps");
   if (!map_stream.is_open()) {
-    Log::error("Couldn't open maps!" + std::string(strerror(errno)));
+    Log::error("Couldn't open maps! %s", strerror(errno));
     return {};
   }
   std::vector<MapInfo> map_regions;
@@ -221,7 +221,7 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
   fileoffset_ += aligned_size;
 
   if (ftruncate(fd_, static_cast<int64_t>(fileoffset_)) == -1) {
-    Log::error("allocating disk space failed" + std::string(strerror(errno)));
+    Log::error("allocating disk space failed %s", strerror(errno));
     fileoffset_ -= aligned_size;
     return nullptr;
   }
@@ -230,7 +230,7 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
       mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, static_cast<int64_t>(curr_offset)));
 
   if (ptr == MAP_FAILED) {
-    Log::error("mmap failed." + std::string(strerror(errno)));
+    Log::error("mmap failed. %s", strerror(errno));
     return nullptr;
   }
   return ptr;

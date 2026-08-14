@@ -5,7 +5,7 @@
 #include <cinttypes>
 #include <string>
 
-#include "LogW.h"
+#include "Log.h"
 #include "types.h"
 #include "utils.h"
 
@@ -18,7 +18,7 @@ void MapsPopUp::initPopUp() {
 
 void MapsPopUp::updateRegions() {
   regions_ = scanner_->getMapRegions();
-  Log::info(std::to_string(regions_.size()) + " regions found.");
+  Log::info("{} regions found.", regions_.size());
 }
 
 void MapsPopUp::renderTable() {
@@ -70,13 +70,13 @@ void MapsPopUp::renderTable() {
 
 void MapsPopUp::cyclePopUp(std::vector<MapInfo>& active_regions) {
   if (clicked_) initPopUp();
-   if (active_regions.empty() && scanner_->isAttached()) {
+  if (active_regions.empty() && scanner_->isAttached()) {
     updateRegions();
     applyDefaultFilters();
     active_regions = buildFilteredMap();
   }
 
- if (!ImGui::BeginPopupModal("Regions List", nullptr, DefaultPopupFlags)) return;
+  if (!ImGui::BeginPopupModal("Regions List", nullptr, DefaultPopupFlags)) return;
 
   if (not scanner_->isAttached()) {
     ImGui::Text("Nothing! Obviously! No targets! Go choose one.");
@@ -173,6 +173,6 @@ std::vector<MapInfo> MapsPopUp::buildFilteredMap() {
   for (const auto& region : regions_) {
     if (active_addresses_.contains(region.start)) maps.push_back(region);
   }
-  Log::info(std::to_string(maps.size()) + " regions in filtered list.");
+  Log::info("%lu regions in filtered list.", maps.size());
   return maps;
 }

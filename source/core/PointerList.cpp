@@ -15,10 +15,11 @@ void PointerList::openFile(const std::filesystem::path& path) {
   uint8_t file_version = 0;
   uint8_t entry_size = 0;
   uint64_t entry_start_point = 0;
-  int8_t save_index = -1;
+  int8_t filter_index = -1;
+  uint8_t depth = 0;
 
   stream_.read(reinterpret_cast<char*>(&magic_bytes), sizeof(magic_bytes));
-  if (magic_bytes != Pointer::magic_bytes) {
+  if (magic_bytes != Pointer::MagicBytes) {
     Log::error("This is not the right file type. \".tptr\" files onlyyy...");
     status_ = -1;
     return;
@@ -33,24 +34,30 @@ void PointerList::openFile(const std::filesystem::path& path) {
 
   stream_.read(reinterpret_cast<char*>(&entry_size), sizeof(entry_size));
   if (entry_size != sizeof(Pointer::Chain)) {
-    Log::error("Entry size and pointer chain do not line up....Something's fishy here!");
+    Log::error("Entry size and pointer chain do not line up....Something's fishy here! Can't parse it.");
     status_ = -1;
     return;
   };
 
-  stream_.read(reinterpret_cast<char*>(&entry_start_point), sizeof(entry_start_point));
-  if (entry_start_point == 0) {
-    Log::error("Header size is 0. That should be impossible.");
-    status_ = -1;
-    return;
+  stream_.read(reinterpret_cast<char*>(&depth), sizeof(depth));
+  if (depth > Pointer::MaxDepth || depth == 0) {
+    Log::error(
+        "Depth is invalid...Not the end of the world. I'm setting it to max depth so your table will look ugly!");
+    depth_ = Pointer::MaxDepth;
   }
 
-  stream_.read(reinterpret_cast<char*>(&save_index), sizeof(save_index));
-
-  if (save_index < 0) {
+  stream_.read(reinterpret_cast<char*>(&filter_index), sizeof(filter_index));
+  if (filter_index == -1) {
     Log::error("Save index couldn't be read...Uhm...Well, this one doesn't actually matter that much so I'll let it "
                "slide. I'll just set it to 0.");
-    save_index_ = 0;
+    filter_index_ = 0;
+  }
+
+  stream_.read(reinterpret_cast<char*>(&entry_start_point), sizeof(entry_start_point));
+  if (entry_start_point == 0) {
+    Log::error("Entry start point being 0 should not be possible..Can't parse.");
+    status_ = -1;
+    return;
   }
 
   // after this should be module headers.
