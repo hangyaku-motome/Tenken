@@ -164,6 +164,7 @@ struct InitConfig {
   ScanInfo info{};
   uint64_t address = 0;
   TargetType target_type = TargetType::invalid;
+  uint8_t target_size;
 };
 
 // this is how they are saved to file.
@@ -268,6 +269,7 @@ struct AddHit {
 
 struct AddChain {
   uint64_t index;
+  uint8_t target_size;  // for arithmetic, can be deduced from target_type. Not for strings and vectors though.
   TargetType target_type;
 };
 
@@ -355,6 +357,7 @@ using PendingAction = std::variant<std::monostate,
                                    Action::Hit::RescanAll,
                                    Action::Hit::RegularRefresh,
                                    Action::Favourite::AddHit,
+                                   Action::Favourite::AddChain,
                                    Action::Favourite::Remove,
                                    Action::Favourite::Write,
                                    Action::Favourite::FreezeValue,

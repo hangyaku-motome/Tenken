@@ -33,9 +33,11 @@ class Scanner {
                            std::ofstream& save_stream,
                            uint8_t filter_index,
                            uint8_t depth,
-                           TargetType target_type) const;
+                           TargetType target_type,
+                           uint8_t target_size) const;
 
-  std::vector<Pointer::Chain> resolveChains(const std::vector<Pointer::Chain>& chains,
+  uint64_t resolveRawChain(const Pointer::Chain& chain, uint64_t region_start) const;
+  std::vector<Pointer::Chain> resolveRawChains(const std::vector<Pointer::Chain>& chains,
                                             const std::vector<uint64_t>& region_starts,
                                             uint64_t target_address) const;
 
@@ -62,5 +64,5 @@ public:
 
   bool findInitialChains(const Snapshot& snapshot, const Pointer::InitConfig& config) const;
   void resolveChainResult(PointerList& pointer_list, uint64_t target_address) const;
-  uint64_t resolveChain(const Pointer::Chain& chain, uint64_t region_start) const;
+  uint64_t resolveChain(const Pointer::PrettyChain& chain, uint64_t region_start) const;
 };

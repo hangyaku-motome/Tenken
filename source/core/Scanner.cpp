@@ -155,7 +155,12 @@ bool Scanner::findInitialChains(const Snapshot& snapshot, const Pointer::InitCon
 
   auto save_path = makePointerSavePath(main_module);
   std::ofstream save_stream(save_path, std::ios::binary | std::ios::trunc);
-  if (!initPointerSaveFile(data_regions, save_stream, 0, init_config.info.scan_depth, init_config.info.)) {
+  if (!initPointerSaveFile(data_regions,
+                           save_stream,
+                           0,
+                           init_config.info.scan_depth,
+                           init_config.target_type,
+                           init_config.target_size)) {
     Log::error("Couldn't initialize pointer save file, tried to save it at {}", save_path.string());
     return false;
   };
@@ -218,13 +223,15 @@ bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions,
                                   std::ofstream& save_stream,
                                   uint8_t filter_index,
                                   uint8_t depth,
-                                  TargetType target_type) const {
+                                  TargetType target_type,
+                                  uint8_t target_size) const {
   save_stream.write(reinterpret_cast<const char*>(&Pointer::MagicBytes), sizeof(Pointer::MagicBytes));
   save_stream.write(reinterpret_cast<const char*>(&PointerResultVersion), sizeof(PointerResultVersion));
-  save_stream.write(reinterpret_cast<const char*>(&Pointer::ChainSize), sizeof(Pointer::Chain));
+  save_stream.write(reinterpret_cast<const char*>(&Pointer::ChainSize), sizeof(Pointer::ChainSize));
   save_stream.write(reinterpret_cast<const char*>(&depth), sizeof(depth));
   save_stream.write(reinterpret_cast<const char*>(&filter_index), sizeof(filter_index));
   save_stream.write(reinterpret_cast<const char*>(&target_type), sizeof(target_type));
+  save_stream.write(reinterpret_cast<const char*>(&target_size), sizeof(target_size));
 
   auto entry_start_point_seek = save_stream.tellp();  // header size unknown right now.
 
@@ -249,21 +256,21 @@ bool Scanner::initPointerSaveFile(const std::vector<MapInfo>& data_regions,
   return true;
 }
 
-std::vector<Pointer::Chain> Scanner::resolveChains(const std::vector<Pointer::Chain>& chains,
-                                                   const std::vector<uint64_t>& region_starts,
-                                                   const uint64_t target_address) const {
+std::vector<Pointer::Chain> Scanner::resolveRawChains(const std::vector<Pointer::Chain>& chains,
+                                                      const std::vector<uint64_t>& region_starts,
+                                                      const uint64_t target_address) const {
   std::vector<Pointer::Chain> new_chains;
   new_chains.reserve(chains.size());
 
   std::copy_if(chains.begin(), chains.end(), std::back_inserter(new_chains), [&](const Pointer::Chain& c) {
-    return resolveChain(c, region_starts[c.module_id]) == target_address;
+    return resolveRawChain(c, region_starts[c.module_id]) == target_address;
   });
 
   return new_chains;
 }
 
-uint64_t Scanner::resolveChain(const Pointer::Chain& chain, const uint64_t region_start) const {
-  if (region_start == 0) return false;
+uint64_t Scanner::resolveRawChain(const Pointer::Chain& chain, const uint64_t region_start) const {
+  if (region_start == 0) return 0;
   uint64_t ptr;
 
   ptr = dataToType<uint64_t>(readAdr(region_start + chain.offset_in_module, sizeof(uint64_t)));
@@ -313,7 +320,12 @@ void Scanner::resolveChainResult(PointerList& pointer_list, uint64_t target_addr
   std::ofstream save_stream(makePointerSavePath(main_module_name), std::ios::binary | std::ios::trunc);
 
   // pointer scanning at the start. because it literally just...includes them all, no?
-  initPointerSaveFile(data_regions, save_stream, pointer_list.getSaveIndex(), pointer_list.getDepth());
+  initPointerSaveFile(data_regions,
+                      save_stream,
+                      pointer_list.getSaveIndex() + 1,
+                      pointer_list.getDepth(),
+                      pointer_list.getTargetType(),
+                      pointer_list.getTargetSize());
 
   // not battle tested at alllllllll
   for (uint64_t i = 0; i < pointer_list.total_chains_;) {
@@ -325,7 +337,7 @@ void Scanner::resolveChainResult(PointerList& pointer_list, uint64_t target_addr
         return std::find(invalid_module_ids.begin(), invalid_module_ids.end(), c.module_id) == invalid_module_ids.end();
       });
 
-    chains = resolveChains(chains, region_starts, target_address);
+    chains = resolveRawChains(chains, region_starts, target_address);
 
     if (!invalid_module_ids.empty())
       for (auto& chain : chains) {
@@ -356,4 +368,17 @@ ReadBlock Scanner::readAround(uint64_t adr, uint64_t bytes_before, uint64_t byte
       search_start += bytes_after / 4;
   }
   return {};
+}
+
+uint64_t Scanner::resolveChain(const Pointer::PrettyChain& chain, uint64_t region_start) const {
+  if (region_start == 0) return 0;
+  uint64_t ptr;
+
+  ptr = dataToType<uint64_t>(readAdr(region_start + chain.offset_in_module, sizeof(uint64_t)));
+
+  for (int32_t i = 0; i < chain.offsets.size() - 1; ++i) {
+    ptr = dataToType<uint64_t>(readAdr(ptr + chain.offsets[i], sizeof(uint64_t)));
+    if (ptr == 0) return 0;
+  }
+  return ptr + chain.offsets[chain.offsets.size() - 1];
 }

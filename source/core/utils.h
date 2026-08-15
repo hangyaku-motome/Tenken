@@ -8,17 +8,19 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value);
 
 template <typename T>
 std::vector<uint64_t>
-searchValue(const std::vector<uint8_t>& Data, const T& Target, const std::vector<bool>& mask = {});
+searchValue(const std::vector<uint8_t>& data, const T& target, const std::vector<bool>& mask = {});
 
 TargetType strToTargetType(const std::string& string);
 template <typename T> std::string dataToStr(const std::vector<uint8_t>& Bytes);
 bool strToAOBInfo(std::vector<uint8_t>& bytes, std::vector<bool>& mask);
 
-std::string targetTypeToStr(TargetType targetType);
-std::string relativeStatusToStr(RelativeStatus Status);
+std::string targetTypeToStr(TargetType target_type);
+std::string relativeStatusToStr(RelativeStatus status);
 std::string hexToStr(uint8_t byte);
 std::string dataToMaskedStr(const std::vector<uint8_t>& bytes, const std::vector<bool>& mask);
 std::string mapTypeToStr(const MapType type);
+
+uint8_t targetTypeToSize(TargetType target_type);
 
 template <typename T> T dataToType(const std::vector<uint8_t>& data);
 template <typename T> std::vector<uint8_t> typeToData(const T& val);
@@ -60,10 +62,3 @@ std::filesystem::path getLatestFile(const std::filesystem::path& dir_path);
 
 ReadBlock
 findBytesAround(const std::vector<uint8_t>& data, int32_t offset, uint32_t bytes_before, uint32_t bytes_after);
-
-
-
-
-
-
-

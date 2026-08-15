@@ -20,7 +20,11 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
   PendingAction return_action{};
 
   auto type = getTargetType(target_info.target_type);
-  if (type != TargetType::invalid) return_action = Action::SetTargetInfo{{}, {}, type};
+
+  if (type != TargetType::invalid) {
+    Log::info("Chosen target type: {}", targetTypeToStr(type));
+    return_action = Action::SetTargetInfo{{}, {}, type};
+  };
 
   if (target_info.target_type == TargetType::aob) {
     std::vector<uint8_t> bytes = target_info.value;
@@ -60,6 +64,7 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
       is_on_unknown_value_first_scan = true;
       return Action::Scan::StartUnknownValue{};
     }
+    dispatchType(target_info.target_type, [&]<typename T> { Log::info("Target value: {}", dataToStr<T>(tmp_val_)); });
     return Action::Scan::StartNormal{.target_info = target_info};
   }
   return return_action;

@@ -63,7 +63,7 @@ void DataInspectorW::renderTable() {
     return;
   }
 
-  int32_t offset = read_region_.offset_from_adr;
+  int64_t offset = read_region_.offset_from_adr;
 
   ImGui::TableSetupColumn("Offset");
   if (types_.u8) ImGui::TableSetupColumn("u8");
@@ -85,7 +85,7 @@ void DataInspectorW::renderTable() {
     ImGui::TableNextRow();
 
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(std::to_string(offset).c_str());
+    ImGui::Text("%li", offset);
 
     if (types_.u8) {
       ImGui::TableNextColumn();

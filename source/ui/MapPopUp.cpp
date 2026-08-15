@@ -173,6 +173,6 @@ std::vector<MapInfo> MapsPopUp::buildFilteredMap() {
   for (const auto& region : regions_) {
     if (active_addresses_.contains(region.start)) maps.push_back(region);
   }
-  Log::info("%lu regions in filtered list.", maps.size());
+  Log::info("{} regions in filtered list.", maps.size());
   return maps;
 }

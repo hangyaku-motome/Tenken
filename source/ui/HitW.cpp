@@ -94,13 +94,15 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
 
       ImGui::TableNextColumn();
 
-      ImGui::Text("%d", ImGui::TableGetRowIndex());
+      ImGui::Text(
+          "%d",
+          ImGui::TableGetRowIndex());  // wait...if there's an inbuilt function for index...do we need things like row?
 
-      ImGui::TableNextColumn();
-
+      ImGui::SameLine();
       if (ImGui::Selectable("##selectable",
                             selected_row_ == row,
-                            ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
+                            ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick |
+                                ImGuiSelectableFlags_AllowOverlap)) {
         selected_row_ = row;
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
           is_editing_ = true;
@@ -119,6 +121,7 @@ PendingAction HitW::drawHitTable(const std::vector<HitInfo>& hits, const TargetI
         ImGui::EndPopup();
       }
 
+      ImGui::TableNextColumn();
       ImGui::SameLine();
       ImGui::Text("0x%" PRIX64, hits[static_cast<uint64_t>(row)].location);
 

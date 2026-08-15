@@ -32,7 +32,7 @@ PendingAction TargetPopUp::cyclePopUp() {
     if (!search_.empty() && target.name.find(search_) == std::string::npos) continue;
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(std::to_string(target.pid).c_str());
+    ImGui::Text("%i", target.pid);
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(target.name.c_str());
     ImGui::TableNextColumn();

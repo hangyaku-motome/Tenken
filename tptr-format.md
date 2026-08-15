@@ -5,6 +5,7 @@
 - depth (what depth the scan was done) uint8_t
 - filter_index (0 for initial scan, +1 for every filter done) uint8_t
 - Target type uint8_t
+- Target size uint8_t
 - entry_start_point (offset chains start) uint64_t
 
 - Module headers.

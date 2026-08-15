@@ -49,8 +49,9 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
 
 // TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
 // validation?
-// TODO: maybe a resetVolatile() for each window to reset buffers and temporary data?
-// WARNING: pointer_l might go through (ooops forgot to finish this warning) a data race
+// TODO: maybe a resetVolatile() for each window to reset buffers and temporary data? Whenever a window makes a finished
+// request, it can reset itself with it.
+// WARNING: pointer_l might go through a data race
 int main() {
   if (Platform::checkPermission() == false) {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
@@ -156,8 +157,9 @@ int main() {
 
     // regular refresh fav
     if (state.fav_refresh_seconds >= 0.3) {
-      auto favouriterefresh = std::chrono::duration_cast<std::chrono::milliseconds>(loop_time - favourite_refresh_time);
-      if (favouriterefresh.count() >= static_cast<int64_t>(state.fav_refresh_seconds * 1000)) {
+      auto favourite_refresh =
+          std::chrono::duration_cast<std::chrono::milliseconds>(loop_time - favourite_refresh_time);
+      if (favourite_refresh.count() >= static_cast<int64_t>(state.fav_refresh_seconds * 1000)) {
         favourite_l.rescanAll(scanner);
         favourite_refresh_time = loop_time;
       }
@@ -165,8 +167,8 @@ int main() {
 
     // regular refresh hit
     if (state.hit_refresh_seconds >= 0.3) {
-      auto hitrefresh = std::chrono::duration_cast<std::chrono::milliseconds>(loop_time - hit_refresh_time);
-      if (hitrefresh.count() >= static_cast<int64_t>(state.hit_refresh_seconds * 1000)) {
+      auto hit_refresh = std::chrono::duration_cast<std::chrono::milliseconds>(loop_time - hit_refresh_time);
+      if (hit_refresh.count() >= static_cast<int64_t>(state.hit_refresh_seconds * 1000)) {
         ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitRescan, [&]() {
           ScanOp::rescanAllHits(scanner, hit_l, state.scan_progress, state.target_info.target_type);
         });
@@ -267,22 +269,25 @@ void resolveActions(Scanner& scanner,
                 return;
               }
 
-              auto adr = scanner.resolveChain(pointer_l.getRaw(a.index), first->start);
+              auto adr = scanner.resolveChain(chain, first->start);
               if (adr == 0) {
                 Log::error("I couldn't resolve the pointer you just tried to save..");
                 return;
               }
 
-              favourite_l.add(chain, adr, a.target_type);
+              favourite_l.add(chain, adr, a.target_type, a.target_size);
             },
 
             [&](const Action::Favourite::Remove& a) { favourite_l.remove(a.index); },
             [&](const Action::Favourite::Write& a) {
               favourite_l.write(scanner, a.index, a.value);
               favourite_l.rescan(scanner, a.index);
+              favourite_l.setFreezeVal(a.index, a.value);
             },
             [&](const Action::Favourite::IsFreeze& a) { favourite_l.setFreeze(a.index, a.freeze); },
-            [&](const Action::Favourite::FreezeValue& a) { favourite_l.setFreezeVal(a.index, a.value); },
+            [&](const Action::Favourite::FreezeValue& a) {
+              favourite_l.setFreezeVal(a.index, a.value);
+            },  // I think this is never actually used...
             [&](const Action::Favourite::Desc& a) { favourite_l.setDesc(a.index, a.value); },
             [&](const Action::Favourite::Rescan& a) { favourite_l.rescan(scanner, a.index); },
             [&](const Action::Favourite::RegularRefresh& a) { state.fav_refresh_seconds = a.seconds; },
@@ -322,9 +327,41 @@ void resolveActions(Scanner& scanner,
             },
             [&](const Action::SaveTenken& a) { saveTenken(a.path, favourite_l.getAll()); },
             [&](const Action::LoadTenken& a) {
-              std::vector<FavouriteInfo> new_favourites;
-              loadTenken(a.path, new_favourites);
-              favourite_l.assignNew(new_favourites);
+              std::vector<FavouriteInfo> favourites;
+              loadTenken(a.path, favourites);
+              for (int32_t i = 0; i < favourites.size(); ++i) {
+                if (!favourites[i].chain.has_value()) continue;
+
+                auto region = scanner.getMapRegions();
+
+                auto first = std::find_if(region.begin(), region.end(), [&](const auto& r) {
+                  return r.name == favourites[i].chain->module_name && r.type == MapType::mainExecData;
+                });
+
+                if (first == region.end()) {
+                  Log::error("I couldn't find the module favourite {} was supposed to be in..deleting.", i);
+                  favourites.erase(favourites.begin() + i);
+                  continue;
+                }
+                if (std::find_if(region.begin(), region.end(), [&](const auto& r) {
+                      return r.name == favourites[i].chain->module_name && r.type == MapType::mainExecData;
+                    }) == region.end()) {
+                  Log::error(
+                      "If you have seen this error message, let me personally know. In conclusion, I cannot "
+                      "load these favourites. But hey, if you tell me about this, I'll be more inclined to fix this!");
+                  return;
+                }
+
+                // TODO:Thinking of embedding region_start itself into Pointer::PrettyChain...
+                auto adr = scanner.resolveChain(favourites[i].chain.value(), first->start);
+                if (adr == 0) {
+                  Log::error("It seems like I couldn't resolve favourite index {}, will not be adding it.", i);
+                  favourites.erase(favourites.begin() + i);
+                }
+
+                favourites[i].location = adr;
+              }
+              favourite_l.assignNew(favourites);
             },
             [&](const std::monostate&) {}},
         pending);
@@ -341,7 +378,6 @@ bool saveTenken(const std::filesystem::path& save_path, const std::vector<Favour
     std::stringstream location_stream;
 
     location_stream << std::hex << std::showbase << favourite.location;
-    item["location"] = location_stream.str();
     item["value"] = favourite.value;  // raw bytes for now. should be fine.
     item["desc"] = favourite.desc;
     item["type"] = targetTypeToStr(favourite.type);
@@ -353,7 +389,8 @@ bool saveTenken(const std::filesystem::path& save_path, const std::vector<Favour
       chain["offsets"] = favourite.chain->offsets;
 
       item["chain"] = chain;
-    }
+    } else
+      item["location"] = location_stream.str();
 
     save_state["favourites"].push_back(item);
   }
@@ -397,7 +434,6 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
     FavouriteInfo favourite;
 
     favourite.desc = item.at("desc").get<std::string>();
-    favourite.location = std::stoull(item.at("location").get<std::string>(), nullptr, 16);
 
     std::vector<uint8_t> value;
     for (const auto& byte : item.at("value")) {
@@ -412,7 +448,8 @@ bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInf
       chain.offset_in_module = item["chain"]["offset in module"];
       chain.offsets = item["chain"]["offsets"].get<std::vector<int64_t>>();
       favourite.chain = chain;
-    }
+    } else
+      favourite.location = std::stoull(item.at("location").get<std::string>(), nullptr, 16);
 
     favourites.push_back(favourite);
   }

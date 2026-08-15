@@ -15,6 +15,7 @@ class PointerList {
   uint8_t filter_index_ = 0;  // which iteration? first scan, 1st filter, 2nd filter, 3rd filter..........
   uint8_t depth_ = 0;
   TargetType target_type_ = TargetType::invalid;
+  uint8_t target_size_ = 0;
 
 public:
   void openFile(const std::filesystem::path& path);
@@ -28,6 +29,8 @@ public:
   uint8_t getDepth() { return depth_; };
 
   TargetType getTargetType() { return target_type_; }
+
+  uint8_t getTargetSize() { return target_size_; }
 
   // set when a file is closed and another one is opened right after. couldn't figure out another way to express this.
   // After being acknowledged should be set to false.

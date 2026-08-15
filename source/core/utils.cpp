@@ -169,8 +169,8 @@ template std::string dataToStr<std::vector<uint8_t>>(const std::vector<uint8_t>&
 
 //
 
-std::string targetTypeToStr(const TargetType targetType) {
-  switch (targetType) {
+std::string targetTypeToStr(const TargetType target_type) {
+  switch (target_type) {
     case TargetType::uInt8:
       return "uInt8";
     case TargetType::uInt16:
@@ -390,4 +390,37 @@ findBytesAround(const std::vector<uint8_t>& data, int32_t offset, uint32_t bytes
   std::vector<uint8_t> bytes(bytes_after + bytes_before);
   memcpy(bytes.data(), &data[start], end - start);
   return {.read_bytes = bytes, .offset_from_adr = start - offset};
+}
+
+uint8_t targetTypeToSize(TargetType target_type) {
+  switch (target_type) {
+    case TargetType::uInt8:
+      return 1;
+    case TargetType::uInt16:
+      return 2;
+    case TargetType::uInt32:
+      return 4;
+    case TargetType::uInt64:
+      return 8;
+    case TargetType::int8:
+      return 1;
+    case TargetType::int16:
+      return 2;
+    case TargetType::int32:
+      return 4;
+    case TargetType::int64:
+      return 8;
+    case TargetType::f32:
+      return 4;
+    case TargetType::f64:
+      return 8;
+    case TargetType::string:
+      throw;
+    case TargetType::invalid:
+      throw;
+    case TargetType::aob:
+      throw;
+    default:
+      return 0;
+  }
 }

@@ -14,12 +14,13 @@ void PointerList::openFile(const std::filesystem::path& path) {
   stream_.open(path, std::ifstream::in | std::ifstream::binary);
 
   uint64_t magic_bytes = 0;
+  uint64_t entry_start_point = 0;
   uint8_t file_version = 0;
   uint8_t entry_size = 0;
-  uint64_t entry_start_point = 0;
   int8_t filter_index = -1;
   uint8_t depth = 0;
   TargetType target_type = TargetType::invalid;
+  uint8_t target_size = 0;
 
   stream_.read(reinterpret_cast<char*>(&magic_bytes), sizeof(magic_bytes));
   if (magic_bytes != Pointer::MagicBytes) {
@@ -48,6 +49,7 @@ void PointerList::openFile(const std::filesystem::path& path) {
         "Depth is invalid...Not the end of the world. I'm setting it to max depth so your table will look ugly!");
     depth_ = Pointer::MaxDepth;
   }
+  depth_ = depth;
 
   stream_.read(reinterpret_cast<char*>(&filter_index), sizeof(filter_index));
   if (filter_index == -1) {
@@ -55,6 +57,7 @@ void PointerList::openFile(const std::filesystem::path& path) {
                "slide. I'll just set it to 0.");
     filter_index_ = 0;
   }
+  filter_index_ = filter_index;
 
   stream_.read(reinterpret_cast<char*>(&target_type), sizeof(target_type));
   if (target_type == TargetType::invalid) {
@@ -64,6 +67,15 @@ void PointerList::openFile(const std::filesystem::path& path) {
     status_ = -1;
     return;
   }
+  target_type_ = target_type;
+
+  stream_.read(reinterpret_cast<char*>(&target_size), sizeof(target_size));
+  if (target_size == 0) {
+    Log::error("Target size is invalid...Won't parsee");
+    status_ = -1;
+    return;
+  }
+  target_size_ = target_size;
 
   stream_.read(reinterpret_cast<char*>(&entry_start_point), sizeof(entry_start_point));
   if (entry_start_point == 0) {

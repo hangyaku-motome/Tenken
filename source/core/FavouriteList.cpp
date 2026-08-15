@@ -21,12 +21,13 @@ void FavouriteList::add(const HitInfo& hit, TargetType target_type) {
                          .type = target_type});
 }
 
-void FavouriteList::add(const Pointer::PrettyChain& chain, uint64_t adr, TargetType target_type) {
+void FavouriteList::add(const Pointer::PrettyChain& chain, uint64_t adr, TargetType target_type, uint8_t target_size) {
   std::scoped_lock<std::mutex> lock(mutex_);
 
+  std::vector<uint8_t> value(target_size);
   favourites_.push_back({.bytes_around = {},
                          .chain = chain,
-                         .value = {},
+                         .value = value,
                          .previous_value = {},
                          .frozen_value = {},
                          .desc = "",
@@ -85,11 +86,8 @@ void FavouriteList::rescanAll(const Scanner& scanner) {
 }
 
 void FavouriteList::write(const Scanner& scanner, uint64_t index, const std::vector<uint8_t>& value) {
-  {
-    std::scoped_lock<std::mutex> lock(mutex_);
-    scanner.writeAdr(value, favourites_[index].location);
-  }
-  setFreezeVal(index, value);
+  std::scoped_lock<std::mutex> lock(mutex_);
+  scanner.writeAdr(value, favourites_[index].location);
 }
 
 void FavouriteList::setFreezeVal(uint64_t index, const std::vector<uint8_t>& set_to) {

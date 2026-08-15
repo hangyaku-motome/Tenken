@@ -17,15 +17,14 @@ class PointerW {
 
   Pointer::InitConfig init_config_{};
 
-  int64_t prev_display_start_ = -1;
-  int64_t prev_display_end_ = -1;
-
   ImGui::FileBrowser file_browser_{FileBrowserFlags};
 
   PendingAction cycleSearchW(const State& state);
-  void cyclePointerListW(PointerList& pointer_list);
+  PendingAction cyclePointerListW(PointerList& pointer_list);
 
   std::vector<Pointer::PrettyChain> chains_;
+
+  int64_t favourite_index = -1;
 
 public:
   PointerW() {
