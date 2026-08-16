@@ -2,7 +2,6 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <X11/Xdefs.h>
 
 #include <format>
 #include <string>

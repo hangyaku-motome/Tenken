@@ -11,7 +11,6 @@
 #include <charconv>
 #include <system_error>
 
-#include "Log.h"
 #include "types.h"
 #include "utils.h"
 
@@ -19,7 +18,7 @@ static void glfw_error_callback(int error, const char* description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow* initaliseImgui(const std::string& imgui_init_path_str) {
+GLFWwindow* initaliseImgui(std::string& imgui_init_path_str) {
   glfwSetErrorCallback(glfw_error_callback);
 
   if (glfwInit() == 0) exit(1);
@@ -45,6 +44,9 @@ GLFWwindow* initaliseImgui(const std::string& imgui_init_path_str) {
   if (!imgui_init_path_str.empty()) {
     if (!std::filesystem::path(imgui_init_path_str).has_parent_path())
       std::filesystem::create_directories(std::filesystem::path(imgui_init_path_str).parent_path());
+    auto ini_path = std::filesystem::path(imgui_init_path_str);
+    auto u8 = ini_path.u8string();
+    imgui_init_path_str = std::string(reinterpret_cast<const char*>(u8.data()), u8.size());
     io.IniFilename = imgui_init_path_str.c_str();
   }
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

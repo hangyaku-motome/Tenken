@@ -6,7 +6,7 @@
 #include "GLFW/glfw3.h"
 #include "types.h"
 
-GLFWwindow* initaliseImgui(const std::string& imgui_init_path_str);
+GLFWwindow* initaliseImgui(std::string& imgui_init_path_str);
 void exitImgui(GLFWwindow* window);
 void start_frame();
 void endFrame(int display_w, int display_h, ImVec4 clear_color, GLFWwindow* window);

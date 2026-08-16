@@ -62,9 +62,11 @@ PendingAction SearchW::cycleFirstW(const TargetInfo& target_info) {
     is_on_first_window_ = false;
     if (is_unknown_value_scan_) {
       is_on_unknown_value_first_scan = true;
+      Log::info("Will start unknown value scan.");
       return Action::Scan::StartUnknownValue{};
     }
     dispatchType(target_info.target_type, [&]<typename T> { Log::info("Target value: {}", dataToStr<T>(tmp_val_)); });
+    Log::info("Will start normal value scan.");
     return Action::Scan::StartNormal{.target_info = target_info};
   }
   return return_action;
@@ -91,7 +93,7 @@ PendingAction SearchW::cycleSecondW(const TargetInfo& TargetInfo) {
     if (tmp_filter_type_ == 4)
       return Action::FilterByValue{tmp_buf_};
     else {
-      return Action::filterByStatus(static_cast<RelativeStatus>(tmp_filter_type_));
+      return Action::filterByStatus(static_cast<RelativeStatus>(tmp_filter_type_ + 1));
     }
   }
   ImGui::EndDisabled();

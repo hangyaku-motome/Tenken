@@ -41,7 +41,10 @@ PendingAction TargetPopUp::cyclePopUp() {
     ImGui::SameLine();
     if (ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns)) {
       return_action = Action::TargetProcChosen{target};
-      Log::info("...Chosen PID: {}, Target name:{}, Target cmdline:{}", target.pid, target.name, target.cmdline);
+      if (target.cmdline.empty())
+        Log::info("...Chosen PID: {}, Target name:{}", target.pid, target.name);
+      else
+        Log::info("...Chosen PID: {}, Target name:{}, Target cmdline:{}", target.pid, target.name, target.cmdline);
     }
     ImGui::PopID();
   }

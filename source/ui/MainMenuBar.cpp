@@ -102,8 +102,13 @@ PendingAction MainMenuBar::cyclePointerPopup(const std::string& exec_name) {
   PendingAction action;
 
   if (ImGui::Button("Latest")) {
-    action = Action::ResolvePointerResult{
-        .save_path = getLatestFile(Platform::getTenkenStatePath() / "Pointer" / exec_name), .target_address = adr_buf_};
+    if (exec_name.empty())
+      action = Action::ResolvePointerResult{.save_path = Platform::getTenkenStatePath() / "Pointer" / "Default",
+                                            .target_address = adr_buf_};
+    else
+      action = Action::ResolvePointerResult{.save_path =
+                                                getLatestFile(Platform::getTenkenStatePath() / "Pointer" / exec_name),
+                                            .target_address = adr_buf_};
     ImGui::CloseCurrentPopup();
   }
 
