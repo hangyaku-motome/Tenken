@@ -1,7 +1,6 @@
 #include <imgui-filebrowser/imfilebrowser.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
-#include <X11/Xdefs.h>
 
 #include <algorithm>
 #include <chrono>
@@ -47,11 +46,12 @@ void resolveActions(Scanner& scanner_obj,
 bool saveTenken(const std::filesystem::path& save_path, const std::vector<FavouriteInfo>& favourites);
 bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInfo>& favourites);
 
+// TODO: I don't really like how the whole .tptr save/load works. it's too wonky.
 // TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
 // validation?
 // TODO: maybe a resetVolatile() for each window to reset buffers and temporary data? Whenever a window makes a finished
 // request, it can reset itself with it.
-// WARNING: pointer_l might go through a data race
+// WARNING: pointer_l might go through a data race idk
 int main() {
   if (Platform::checkPermission() == false) {
     printf("Please give the necessary permissions to run this program. Consult the README for details.\n");
@@ -61,8 +61,10 @@ int main() {
   // TODO: make sure directories are all created.
 
   // Start up Dear ImGui.
-  std::string imgui_init_path_str = Platform::getImguiInitPath();
-  GLFWwindow* window = initaliseImgui(imgui_init_path_str);
+  std::filesystem::path path = Platform::getImguiInitPath();
+  std::u8string u8 = path.u8string();
+  std::string imgui_init_str(reinterpret_cast<const char*>(u8.data()), u8.size());  // named, outlives context
+  GLFWwindow* window = initaliseImgui(imgui_init_str);                              // by reference
   ImGuiIO& io = ImGui::GetIO();
   ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
 
@@ -75,6 +77,8 @@ int main() {
   HitList hit_l;
   FavouriteList favourite_l;
   PointerList pointer_l;
+
+  Log::info("hi. You're on Tenken version {}", TenkenVersion);
 
   SearchW search_w;
   HitW hit_w;
@@ -207,9 +211,9 @@ void resolveActions(Scanner& scanner,
               });
             },
             [&](const Action::Scan::StartUnknownValue) {
-              state.scan_type = ScanType::Unknown;
               ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Unknown, [&]() {
                 state.snapshot = scanner.getSnapshot(state.active_regions, state.scan_progress);
+                state.is_unknown_filter = true;
               });
             },
             [&](const Action::FilterByValue& a) {
@@ -219,11 +223,13 @@ void resolveActions(Scanner& scanner,
               });
             },
             [&](const Action::filterByStatus& a) {
-              if (state.scan_type == ScanType::Unknown) {
+              // how did the previous version even work??? ScanType should carry actively being done scan operations. I
+              // think I'm just gonna make a bool for this in State.
+              if (state.is_unknown_filter) {
                 ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, status = a.status]() {
                   hit_l.assignNew(scanner.filterSnapshot(state.snapshot, status, state.target_info.target_type));
-                  state.scan_type = ScanType::Nothing;
                   state.snapshot = {};
+                  state.is_unknown_filter = false;
                 });
               } else {
                 ScanOp::runOnScannerThread(scanner_thread, state, ScanType::HitFilter, [&, status = a.status]() {
@@ -249,7 +255,7 @@ void resolveActions(Scanner& scanner,
               favourite_l.add(hit_l.getIndex(a.index), state.target_info.target_type);
             },
             [&](const Action::Favourite::AddChain& a) {
-              auto chain = pointer_l.get(a.index);
+              auto chain = pointer_l.getFrom(a.index);
               auto region = scanner.getMapRegions();
 
               auto first = std::find_if(region.begin(), region.end(), [&](const auto& r) {
@@ -318,6 +324,11 @@ void resolveActions(Scanner& scanner,
             },
             [&](const Action::ResolvePointerResult& a) {
               ScanOp::runOnScannerThread(scanner_thread, state, ScanType::Pointer, [&, info = a]() {
+                if (info.save_path.empty()) {
+                  Log::error("save path is empty...well, this is an issue on my part, not yours. try again, maybe "
+                             "manually choose the file?");
+                  return;
+                }
                 pointer_l.openFile(info.save_path);
 
                 scanner.resolveChainResult(pointer_l, a.target_address);
