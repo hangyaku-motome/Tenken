@@ -3,12 +3,14 @@
 #include <fcntl.h>
 
 #include <algorithm>
+#include <mutex>
 
 #include "Log.h"
 #include "types.h"
 #include "version.h"
 
 void PointerList::openFile(const std::filesystem::path& path) {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
   if (stream_.is_open()) stream_.close();
 
   stream_.open(path, std::ifstream::in | std::ifstream::binary);
@@ -126,6 +128,7 @@ void PointerList::openFile(const std::filesystem::path& path) {
 }
 
 std::vector<Pointer::PrettyChain> PointerList::getFrom(uint64_t start_index, uint64_t read_count) {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
   if (status_ != 1) return {};  // redundant since getFromRaw calls it but let's be explicit.
   auto chains_raw = getFromRaw(start_index, read_count);
   if (chains_raw.empty()) return {};
@@ -142,7 +145,8 @@ std::vector<Pointer::PrettyChain> PointerList::getFrom(uint64_t start_index, uin
   return chains;
 }
 
-Pointer::PrettyChain PointerList::get(uint64_t index) {
+Pointer::PrettyChain PointerList::getFrom(uint64_t index) {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
   if (status_ != 1) return {};
   auto chains = getFromRaw(index, 1);
 
@@ -154,7 +158,8 @@ Pointer::PrettyChain PointerList::get(uint64_t index) {
           .offset_in_module = chains[0].offset_in_module};
 }
 
-Pointer::Chain PointerList::getRaw(uint64_t index) {
+Pointer::Chain PointerList::getFromRaw(uint64_t index) {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
   if (status_ != 1) return {};
   auto chains = getFromRaw(index, 1);
 
@@ -164,6 +169,7 @@ Pointer::Chain PointerList::getRaw(uint64_t index) {
 }
 
 std::vector<Pointer::Chain> PointerList::getFromRaw(uint64_t start_index, uint64_t read_count) {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
   if (status_ != 1) return {};
   std::vector<Pointer::Chain> chains(read_count);
   stream_.seekg(entry_start_point_ + static_cast<std::streamoff>(start_index) * sizeof(Pointer::Chain));
@@ -181,6 +187,32 @@ std::vector<Pointer::Chain> PointerList::getFromRaw(uint64_t start_index, uint64
 }
 
 void PointerList::close() {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
   status_ = 0;
   stream_.close();
 };
+
+int32_t PointerList::getStatus() {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
+  return status_;
+};
+
+uint8_t PointerList::getSaveIndex() {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
+  return filter_index_;
+};
+
+uint8_t PointerList::getDepth() {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
+  return depth_;
+};
+
+TargetType PointerList::getTargetType() {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
+  return target_type_;
+}
+
+uint8_t PointerList::getTargetSize() {
+  std::scoped_lock<std::recursive_mutex> lock(mutex_);
+  return target_size_;
+}
