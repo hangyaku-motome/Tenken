@@ -198,12 +198,12 @@ struct State {
   TargetInfo target_info;
   ProcessInfo target_proc_info;
   std::vector<MapInfo> active_regions;
-  std::vector<std::pair<Pointer::PrettyChain, uint64_t>> saved_chains;
   Snapshot snapshot;
   std::atomic<ScanType> scan_type;
   std::atomic<float> scan_progress;
   float hit_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
   float fav_refresh_seconds = -1;  // -1 disabled. 0 enabled icon. >= 0.3 active.
+  bool is_unknown_filter = false;
 };
 
 struct FavouriteInfo {
