@@ -69,9 +69,9 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 ## Contributing
 
-For feedbacks, criticism, bug reports, you can mail {}. (better, if you have my discord; just DM me about it there.)
+For feedbacks, criticism, bug reports, you can mail githubtenken1.troubling353@passmail.com. (better, if you have my discord; just DM me about it there.)
 
-Code submissions will not be accepted.
+Code submissions of any sort will not be accepted.
 
 May enable issues if my mail gets too busy and insufficient.
 
