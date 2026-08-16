@@ -90,4 +90,4 @@ Created and maintained by Hangyaku.
 
 This is a personal project, align your expectations accordingly.
 
-Also see [TODOdmd](docs/TODO.md) for goals.
+Also see [TODO](docs/TODO.md) for goals.
