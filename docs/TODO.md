@@ -10,7 +10,7 @@
 - [ ] Update changelog and keep it active.
 
 ## Medium term
-- [ ] Pointer scanner
+- [X] Pointer scanner
 - [ ] Structure dissector
 
 
