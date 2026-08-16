@@ -5,13 +5,14 @@ A memory scanner made in C++ with Dear ImGui that is cross-platform (Linux and W
 **Heavily work in progress and unstable as of now.**
 
 ## Main Features
-- Search for values in primitive types (int8-64, float, double), in strings, or in AOB with wildcards, which returns "hits".
-- Filter those hits based on relative change (higher, lower, changed, unchanged) or by certain value.
+- *Search* for values in primitive types (int8-64, float, double), in strings, or in AOB with wildcards, which returns "hits".
+- *Filter* those hits based on relative change (higher, lower, changed, unchanged) or by certain value.
 - Edit the value of said hits.
-- Unknown value scanning. Takes a snapshot and marks hits based on changed or unchanged across the entire program.
-- A favourite section to pin addresses of interest, plus give them descriptions; and "freeze" them at certain values.
-- A hex viewer, where you can view and edit the bytes around an address in a detailed fashion (you can copy the address of a hit by right clicking, or you can copy the address of a region from Utils -> View Regions).
-- A Data inspector, where you can see bytes around an address interpreted as different data types on each offset.
+- *Pointer scanning*. Put in an address and it calculates chains that lead to said address (can configure depth, and bytes to scan before and after pointers). You can then filter said chains, and save a stable chain to favourites for future usages on the same program.
+- *Unknown value scanning*. Takes a snapshot and marks hits based on changed or unchanged across the entire program.
+- A *favourite section* to pin addresses of interest, plus give them descriptions; and "freeze" them at certain values.
+- A *hex viewer*, where you can view and edit the bytes around an address in a detailed fashion (you can copy the address of a hit by right clicking, or you can copy the address of a region from Utils -> View Regions).
+- A *Data inspector*, where you can see bytes around an address interpreted as different data types on each offset.
 
 ![screenshot](docs/screenshot.png)
 
@@ -57,7 +58,7 @@ Otherwise, `sudo ./build-linux/Tenken` to run with root. Or, `echo 0 | sudo tee 
 
 **Windows:** Run as administrator.
 
-Note: Windows Defender will probably flag the executable as malware. This happens because the program uses calls that malware may use (like `ReadProcessMemory` and `WriteProcessMemory`). You'll need to add an exception for it from Windows Defender.
+Note: Windows Defender will probably flag the executable as malware. This happens because the program uses calls that malware may use (like `ReadProcessMemory` and `WriteProcessMemory`). You'll need to add an exception for it in Windows Defender.
 
 ## License
 
@@ -68,7 +69,11 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 ## Contributing
 
-I would highly appreciate any forms of feedback, criticism, and bug reports. You're encouraged to open an issue with that in mind.
+For feedbacks, criticism, bug reports, you can mail {}. (better, if you have my discord; just DM me about it there.)
+
+Code submissions will not be accepted.
+
+May enable issues if my mail gets too busy and insufficient.
 
 ## Author
 
@@ -85,4 +90,4 @@ Created and maintained by Hangyaku.
 
 This is a personal project, align your expectations accordingly.
 
-Also see [TODO.md](docs/TODO.md) for goals.
+Also see [TODOdmd](docs/TODO.dd) for goals.
