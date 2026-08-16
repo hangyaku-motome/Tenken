@@ -1,7 +1,6 @@
 #include "Scanner.h"
 
 #include <imgui.h>
-#include <X11/Xdefs.h>
 
 #include <algorithm>
 #include <array>
@@ -53,14 +52,15 @@ Snapshot Scanner::getSnapshot(const std::vector<MapInfo>& active_regions, std::a
     progress = static_cast<float>(i) / static_cast<float>(maps.size());
     char* ptr = proc_->allocMMapDisk(maps[i].end - maps[i].start);
     if (ptr == nullptr) {
-      Log::error("mmap failed for region %i will skip.", i + 1);  // still wonky but whatever.
+      // Log::error("mmap failed for region %i will skip.", i + 1);  // still wonky but whatever.
       maps.erase(maps.begin() + static_cast<int64_t>(i));
       --i;
       continue;
     }
     auto data = proc_->read(maps[i].start, maps[i].end - maps[i].start);
     if (data.size() != maps[i].end - maps[i].start) {
-      Log::error("partial read for region %i will skip.", i);
+      // Log::error("partial read for region %i will skip.", i);
+      //  could count then report the count maybe.
       proc_->unAllocMMapDisk(reinterpret_cast<uint64_t>(ptr), maps[i].end - maps[i].start);
       maps.erase(maps.begin() + static_cast<int64_t>(i));
       --i;
@@ -145,7 +145,14 @@ bool Scanner::findInitialChains(const Snapshot& snapshot, const Pointer::InitCon
   for (uint64_t i = 0; i < snapshot.regions.size(); ++i) {
     if (snapshot.regions[i].map.type != MapType::sharedLibData && snapshot.regions[i].map.type != MapType::mainExecData)
       continue;
-    if (snapshot.regions[i].map.type == MapType::mainExecData) main_module = snapshot.regions[i].map.name;
+    if (snapshot.regions[i].map.type == MapType::mainExecData) {
+      if (snapshot.regions[i].map.name.find('/') != std::string::npos)
+        main_module =
+            snapshot.regions[i].map.name.substr(snapshot.regions[i].map.name.find_last_of('/') + 1);  // ehhhhhhhhhhh
+      else
+        main_module = snapshot.regions[i].map.name;
+    }
+
     data_regions.push_back(snapshot.regions[i].map);
   }
   std::sort(data_regions.begin(), data_regions.end());
@@ -207,6 +214,7 @@ void Scanner::buildPointers(const std::vector<PointerData>& pointers,
   }
 }
 
+// TODO:maybee add filter count from pointerl
 std::filesystem::path Scanner::makePointerSavePath(const std::string& exec_name) const {
   auto date = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
   std::string date_str = std::format("{:%Y-%m-%d_%H%M%S}", date);
@@ -292,8 +300,13 @@ void Scanner::resolveChainResult(PointerList& pointer_list, uint64_t target_addr
     if (region.type != MapType::sharedLibData && region.type != MapType::mainExecData) continue;
     if (std::find(pointer_list.data_module_names_.begin(), pointer_list.data_module_names_.end(), region.name) ==
         pointer_list.data_module_names_.end())
-      if (region.type == MapType::mainExecData) main_module_name = region.name;
-    continue;
+      continue;
+    if (region.type == MapType::mainExecData) {
+      if (region.name.find('/') != std::string::npos)
+        main_module_name = region.name.substr(region.name.find_last_of('/') + 1);
+      else
+        main_module_name = region.name;
+    }
     data_regions.push_back(region);
   }
   // sooooooo data_module_names are already sorted by their start address.
