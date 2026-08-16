@@ -144,8 +144,8 @@ std::vector<MapInfo> LinuxImpl::getRegions() {
     } else
       type = MapType::unset;
 
-    MapInfo TempMapReg = {name, start, end, type};
-    map_regions.push_back(TempMapReg);
+    MapInfo temp_map_reg = {name, start, end, type};
+    map_regions.push_back(temp_map_reg);
   }
 
   return map_regions;
@@ -221,7 +221,7 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
   fileoffset_ += aligned_size;
 
   if (ftruncate(fd_, static_cast<int64_t>(fileoffset_)) == -1) {
-    Log::error("allocating disk space failed %s", strerror(errno));
+    Log::error("allocating disk space failed {}", strerror(errno));
     fileoffset_ -= aligned_size;
     return nullptr;
   }
@@ -230,7 +230,7 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
       mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, static_cast<int64_t>(curr_offset)));
 
   if (ptr == MAP_FAILED) {
-    Log::error("mmap failed. %s", strerror(errno));
+    Log::error("mmap failed. {}", strerror(errno));
     return nullptr;
   }
   return ptr;

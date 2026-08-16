@@ -18,8 +18,11 @@
 #include "ProcessOS.h"
 #include "types.h"
 
+// I hateee windows I ahtee widwos I hate widnows I hate ahteahtahahtehatewindwos I hateeeeeeeeeeeeeeeeeeeeeeeeeeeee
+// This entire thing is as reliable as undefined behaviour
+
 namespace ProcessOS {
-std::vector<ProcessInfoT> GetProcTargets();
+std::vector<ProcessInfo> getProcTargets();
 
 namespace {
 
@@ -37,14 +40,23 @@ public:
     if (handle_) CloseHandle(handle_);
   }
 
-  std::vector<MapInfoT> getRegions() override;
+  std::vector<MapInfo> getRegions() override;
   std::vector<uint8_t> read(uint64_t address, uint64_t ReadSize) override;
-  bool write(uint64_t address, const std::vector<uint8_t>& value) override;
+  bool write(const std::vector<uint8_t>& value, uint64_t address) override;
   char* allocMMapDisk(uint64_t size) override;
   void unAllocMMapDisk(uint64_t address, uint64_t size) override;
   bool isAttached() override;
 
 };  // namespace WindowsImpl IProcess
+
+std::string wideToUtf8(const wchar_t* w) {
+  if (!w) return {};
+  int size = WideCharToMultiByte(CP_UTF8, 0, w, -1, nullptr, 0, nullptr, nullptr);
+  if (size <= 1) return {};
+  std::string out(size - 1, '\0');
+  WideCharToMultiByte(CP_UTF8, 0, w, -1, out.data(), size, nullptr, nullptr);
+  return out;
+}
 
 bool WindowsImpl::isAttached() { return handle_ != nullptr; }
 
@@ -52,8 +64,8 @@ void WindowsImpl::unAllocMMapDisk(uint64_t address, uint64_t size) {
   VirtualFree(reinterpret_cast<void*>(address), 0, MEM_RELEASE);
 }
 
-std::vector<MapInfoT> WindowsImpl::getRegions() {
-  std::vector<MapInfoT> maps;
+std::vector<MapInfo> WindowsImpl::getRegions() {
+  std::vector<MapInfo> maps;
 
   wchar_t main_exe_path[MAX_PATH];
   DWORD path_len = ARRAYSIZE(main_exe_path);
@@ -112,7 +124,7 @@ std::vector<MapInfoT> WindowsImpl::getRegions() {
       continue;
     }
 
-    MapInfoT region;
+    MapInfo region;
     region.start = reinterpret_cast<uint64_t>(region_info.BaseAddress);
     region.end = region.start + region_info.RegionSize;
 
@@ -123,45 +135,45 @@ std::vector<MapInfoT> WindowsImpl::getRegions() {
 
     switch (region_info.Type) {
       case MEM_IMAGE: {
-        // HERE.
         auto it = module_map.find(reinterpret_cast<uint64_t>(region_info.AllocationBase));
         const bool is_main = (it != module_map.end()) && it->second.is_main;
         if (it != module_map.end()) {
-          int needed = WideCharToMultiByte(CP_UTF8, 0, it->second.path.c_str(), -1, nullptr, 0, nullptr, nullptr);
-          if (needed > 0) {
-            region.name.resize(needed - 1);
-            WideCharToMultiByte(CP_UTF8, 0, it->second.path.c_str(), -1, region.name.data(), needed, nullptr, nullptr);
-          }
+          region.name = wideToUtf8(it->second.path.c_str());
         }
+        if (region.name.empty()) region.name = "UNNAMED_MODULE";
 
         if (exec) {
-          region.type = is_main ? MapType::MAIN_EXEC_CODE : MapType::SHARED_LIB_CODE;
+          region.type = is_main ? MapType::mainExecCode : MapType::sharedLibCode;
         } else if (write) {
-          region.type = is_main ? MapType::MAIN_EXEC_DATA : MapType::SHARED_LIB_DATA;
+          region.type = is_main ? MapType::mainExecData : MapType::sharedLibData;
         } else {
-          region.type = is_main ? MapType::MAIN_EXEC_CONST : MapType::SHARED_LIB_CONST;
+          region.type = is_main ? MapType::mainExecConst : MapType::sharedLibConst;
         }
         break;
       }
 
       case MEM_MAPPED: {
-        region.type = MapType::ANON;
+        region.type = MapType::anon;
         wchar_t fname_wstr[MAX_PATH];
         if (K32GetMappedFileNameW(handle_, region_info.BaseAddress, fname_wstr, MAX_PATH)) {
-          int needed = WideCharToMultiByte(CP_UTF8, 0, fname_wstr, -1, nullptr, 0, nullptr, nullptr);
-          if (needed > 0) {
-            region.name.resize(needed - 1);  // -1 because we don't want the null in std::string
-            WideCharToMultiByte(CP_UTF8, 0, fname_wstr, -1, region.name.data(), needed, nullptr, nullptr);
-          }
+          region.name = wideToUtf8(fname_wstr);
         }
-        if (region.name.at(0) == '\0') region.name = "UNNAMED_REGION";
+        if (region.name.empty()) region.name = "UNNAMED_REGION";
         break;
       }
-      case MEM_PRIVATE:
+
+      case MEM_PRIVATE: {
         // TODO: no stack or heap
-        region.type = MapType::ANON;
+        region.type = MapType::anon;
         region.name = "UNNAMED_REGION";
         break;
+      }
+
+      default: {
+        region.type = MapType::anon;
+        region.name = "UNNAMED_REGION";
+        break;
+      }
     }
 
     maps.push_back(std::move(region));
@@ -171,18 +183,18 @@ std::vector<MapInfoT> WindowsImpl::getRegions() {
   return maps;
 }
 
-std::vector<uint8_t> WindowsImpl::read(uint64_t address, uint64_t ReadSize) {
-  std::vector<uint8_t> readBytes(ReadSize);
+std::vector<uint8_t> WindowsImpl::read(uint64_t address, uint64_t read_size) {
+  std::vector<uint8_t> read_bytes(read_size);
 
-  bool res = ReadProcessMemory(handle_, reinterpret_cast<void*>(address), readBytes.data(), ReadSize, NULL);
+  bool res = ReadProcessMemory(handle_, reinterpret_cast<void*>(address), read_bytes.data(), read_size, NULL);
 
   if (res == 0) {
     return {};
   }
-  return readBytes;
+  return read_bytes;
 }
 
-bool WindowsImpl::write(uint64_t address, const std::vector<uint8_t>& value) {
+bool WindowsImpl::write(const std::vector<uint8_t>& value, uint64_t address) {
   uint64_t bytes_written;
   bool res = WriteProcessMemory(handle_, reinterpret_cast<void*>(address), value.data(), value.size(), &bytes_written);
 
@@ -197,26 +209,30 @@ char* WindowsImpl::allocMMapDisk(uint64_t size) {
 
 };  // namespace
 
-std::vector<ProcessInfoT> getProcTargets() {
-  HANDLE hProcessSnap;
-  PROCESSENTRY32 pe32;
-
-  hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  pe32.dwSize = sizeof(PROCESSENTRY32);
-
-  if (!Process32First(hProcessSnap, &pe32)) {
-    Log::Error("Failed to get processes");
-    CloseHandle(hProcessSnap);  // apparently we are supposed to close SOME handles.
+std::vector<ProcessInfo> getProcTargets() {
+  HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (snapshot == INVALID_HANDLE_VALUE) {
+    Log::error("CreateToolhelp32Snapshot failed");
     return {};
   }
 
-  std::vector<ProcessInfoT> Proccesses;
-  do {
-    Proccesses.push_back({static_cast<int32_t>(pe32.th32ProcessID), pe32.szExeFile, ""});
-  } while (Process32Next(hProcessSnap, &pe32));
+  PROCESSENTRY32W pe32;
+  pe32.dwSize = sizeof(pe32);
 
-  CloseHandle(hProcessSnap);
-  return Proccesses;
+  if (!Process32FirstW(snapshot, &pe32)) {
+    Log::error("Process32FirstW failed");
+    CloseHandle(snapshot);
+    return {};
+  }
+
+  std::vector<ProcessInfo> processes;
+  do {
+    processes.push_back(
+        {.name = wideToUtf8(pe32.szExeFile), .cmdline = "", .pid = static_cast<int32_t>(pe32.th32ProcessID)});
+  } while (Process32NextW(snapshot, &pe32));
+
+  CloseHandle(snapshot);
+  return processes;
 }
 
 std::unique_ptr<IProcess> attach(int pid) { return std::make_unique<WindowsImpl>(pid); }

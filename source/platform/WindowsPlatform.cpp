@@ -1,8 +1,10 @@
-#include "Platform.h"
 #include <windows.h>
+
 #include <filesystem>
 
-//outdatedddd
+#include "Platform.h"
+
+// I hate windows I hate windoww I ahte whiwndo iahtei wodiwndIthwwindwisIw hate hTREAHTEHATEHATEWW
 
 bool Platform::checkPermission() {
   HANDLE token;
@@ -17,6 +19,18 @@ bool Platform::checkPermission() {
 
 std::filesystem::path Platform::getImguiInitPath() {
   const wchar_t* localappdata = _wgetenv(L"LOCALAPPDATA");
-  if(!localappdata) localappdata = L".";
-  return std::filesystem::path(localappdata) / L"Tenken" / L"imgui.ini";
+  if (!localappdata) localappdata = L".";
+  return getTenkenStatePath() / L"imgui.ini";
+}
+
+std::filesystem::path Platform::getTenkenStatePath() {
+  const wchar_t* local_app_data = _wgetenv(L"LOCALAPPDATA");
+  if (!local_app_data) local_app_data = L".";
+  return std::filesystem::path(local_app_data) / L"Tenken";
+}
+
+std::filesystem::path Platform::getTenkenSharePath() {
+  const wchar_t* local_app_data = _wgetenv(L"LOCALAPPDATA");
+  if (!local_app_data) local_app_data = L".";
+  return std::filesystem::path(local_app_data) / L"Tenken";
 }
