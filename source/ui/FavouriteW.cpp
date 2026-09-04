@@ -16,7 +16,7 @@ bool FavouriteW::initW() { return ImGui::Begin("Favourite"); }
 
 void FavouriteW::endW() { ImGui::End(); }
 
-PendingAction FavouriteW::cycleW(const std::vector<FavouriteInfo>& favourites, State& state) {
+PendingAction FavouriteW::cycleW(const std::vector<FavouriteInfo>& favourites, const State& state) {
   if (!initW()) {
     endW();
     return {};
@@ -28,7 +28,7 @@ PendingAction FavouriteW::cycleW(const std::vector<FavouriteInfo>& favourites, S
     context_action = context.cycleContext<FavouriteInfo>(favourites[selected_row_].bytes_around,
                                                          selected_row_,
                                                          favourites[selected_row_].value.size(),
-                                                         state.hit_refresh_seconds);
+                                                         state.fav_refresh_seconds);  // oh...
   }
 
   endW();

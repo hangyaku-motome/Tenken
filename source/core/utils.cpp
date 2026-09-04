@@ -29,9 +29,8 @@ template <typename T> RelativeStatus tagChange(T new_value, T old_value) {
     float diff = static_cast<float>(old_value - new_value);
     if (std::abs(diff) <= Epsilon) return RelativeStatus::unchanged;
 
-    if (diff > 0) return RelativeStatus::increased;
-
-    return RelativeStatus::decreased;
+    if (diff > 0) return RelativeStatus::decreased;
+    return RelativeStatus::increased;  // really...?
   } else if constexpr (std::is_arithmetic_v<T>) {
     if (old_value == new_value) return RelativeStatus::unchanged;
     if (new_value > old_value) return RelativeStatus::increased;
@@ -211,6 +210,9 @@ TargetType strToTargetType(const std::string& string) {
   if (string == "int16") return TargetType::int16;
   if (string == "int32") return TargetType::int32;
   if (string == "int64") return TargetType::int64;
+  if (string == "float") return TargetType::f32;
+  if (string == "double") return TargetType::f64;
+  if (string == "aob") return TargetType::aob;
 
   return TargetType::invalid;
 }

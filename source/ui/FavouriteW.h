@@ -21,5 +21,5 @@ class FavouriteW {
   ContextDisplay context;
 
 public:
-  PendingAction cycleW(const std::vector<FavouriteInfo>& favourites, State& state);
+  PendingAction cycleW(const std::vector<FavouriteInfo>& favourites, const State& state);
 };

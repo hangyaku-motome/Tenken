@@ -35,7 +35,9 @@ PendingAction PointerW::cycleSearchW(const State& state) {
   ImGui::SameLine();
 
   if (init_config_.target_type == TargetType::invalid) init_config_.target_type = state.target_info.target_type;
+
   auto new_type = getTargetType(init_config_.target_type);
+  if (new_type != TargetType::invalid) init_config_.target_type = new_type;
 
   if (init_config_.target_type == TargetType::string || init_config_.target_type == TargetType::aob) {
     ImGui::InputScalar("length", ImGuiDataType_U8, &init_config_.target_size);

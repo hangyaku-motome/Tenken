@@ -46,6 +46,9 @@ void resolveActions(Scanner& scanner_obj,
 bool saveTenken(const std::filesystem::path& save_path, const std::vector<FavouriteInfo>& favourites);
 bool loadTenken(const std::filesystem::path& load_path, std::vector<FavouriteInfo>& favourites);
 
+// top-bottom, bottom-top..
+
+// TODO: one problem is restarting scan while the scan is going on...will lead to not desirable results.
 // TODO: I don't really like how the whole .tptr save/load works. it's too wonky.
 // TODO: maybeee for pointer an option to compare 2 pointer results and keep same ones, not just live process based
 // validation?
