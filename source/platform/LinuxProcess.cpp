@@ -238,8 +238,8 @@ char* LinuxImpl::allocMMapDisk(uint64_t size) {
 
 };  // namespace
 
-std::vector<ProcessInfo> getProcTargets() {
-  std::vector<ProcessInfo> Processes;
+std::vector<ProcessInfo> getProcesses() {
+  std::vector<ProcessInfo> processes;
 
   for (int pid : listPid()) {
     std::string name;
@@ -247,17 +247,12 @@ std::vector<ProcessInfo> getProcTargets() {
 
     std::string path = "/proc/" + std::to_string(pid) + "/";
 
-    name = readFileString(path + "comm");
-    if (name.empty()) continue;
-    name.erase(name.find('\n'));
     cmdline = readFileString(path + "cmdline");
-    if (cmdline.empty()) {
-      continue;
-      // It seems some have the cmdline as "systemd-userwork: waiting...".
-      // Most likely also irrelevant. Will filter them later. I'll need to
-      // clarify what the state of cmdline means. Right now I will assume
-      // empty means -> Irrelevant.
-    }
+    if (cmdline.empty()) continue;
+    cmdline = cmdline.substr(0, cmdline.find(' '));
+    cmdline = cmdline.substr(0, cmdline.find('\0'));
+
+    name = cmdline.substr(cmdline.find_last_of('/') + 1);
 
     ProcessInfo PushProcess;
 
@@ -265,9 +260,9 @@ std::vector<ProcessInfo> getProcTargets() {
     PushProcess.cmdline = cmdline;
     PushProcess.name = name;
 
-    Processes.push_back(PushProcess);
+    processes.push_back(PushProcess);
   }
-  return Processes;
+  return processes;
 };
 
 std::unique_ptr<IProcess> attach(int pid) { return std::make_unique<LinuxImpl>(pid); }

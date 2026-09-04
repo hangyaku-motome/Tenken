@@ -9,17 +9,13 @@
 #include "types.h"
 
 void TargetPopUp::initPopUp() {
-  processes_ = ProcessOS::getProcTargets();
+  processes_ = ProcessOS::getProcesses();
   Log::info("Found process count: {}", processes_.size());
   ImGui::OpenPopup("Target List");
   clicked_ = false;
 }
 
-PendingAction TargetPopUp::cyclePopUp() {
-  if (clicked_) initPopUp();
-
-  if (!ImGui::BeginPopupModal("Target List", nullptr, DefaultPopupFlags)) return {};
-
+PendingAction TargetPopUp::drawTable() {
   PendingAction return_action{};
 
   ImGui::TextUnformatted("List targets here:");
@@ -28,15 +24,19 @@ PendingAction TargetPopUp::cyclePopUp() {
 
   if (!ImGui::BeginTable("Targets", 3)) return {};
 
+  ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+  ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+  ImGui::TableSetupColumn("Cmdline", ImGuiTableColumnFlags_WidthStretch);
+
   for (const auto& target : processes_) {
     if (!search_.empty() && target.name.find(search_) == std::string::npos) continue;
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::Text("%i", target.pid);
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(target.name.c_str());
+    ImGui::Text("%s", target.name.c_str());
     ImGui::TableNextColumn();
-    ImGui::TextUnformatted(target.cmdline.c_str());
+    ImGui::Text("%s", target.cmdline.c_str());
     ImGui::PushID(ImGui::TableGetRowIndex());
     ImGui::SameLine();
     if (ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns)) {
@@ -50,10 +50,20 @@ PendingAction TargetPopUp::cyclePopUp() {
   }
   ImGui::EndTable();
 
+  return return_action;
+}
+
+PendingAction TargetPopUp::cyclePopUp() {
+  if (clicked_) initPopUp();
+
+  if (!ImGui::BeginPopupModal("Target List", nullptr, DefaultPopupFlags)) return {};
+
+  auto return_action = drawTable();
+
   if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
 
   if (ImGui::Button("Refresh")) {
-    processes_ = ProcessOS::getProcTargets();
+    processes_ = ProcessOS::getProcesses();
     Log::info("Found process count: {}", processes_.size());
   }
 

@@ -10,6 +10,8 @@ private:
   void initPopUp();
   std::string search_;
 
+  PendingAction drawTable();
+
 public:
   bool clicked_ = false;
 

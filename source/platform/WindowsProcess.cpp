@@ -22,7 +22,7 @@
 // This entire thing is as reliable as undefined behaviour
 
 namespace ProcessOS {
-std::vector<ProcessInfo> getProcTargets();
+std::vector<ProcessInfo> getProcesses();
 
 namespace {
 
@@ -209,7 +209,7 @@ char* WindowsImpl::allocMMapDisk(uint64_t size) {
 
 };  // namespace
 
-std::vector<ProcessInfo> getProcTargets() {
+std::vector<ProcessInfo> getProcesses() {
   HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if (snapshot == INVALID_HANDLE_VALUE) {
     Log::error("CreateToolhelp32Snapshot failed");

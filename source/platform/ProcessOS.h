@@ -18,7 +18,7 @@ public:
   virtual bool isAttached() = 0;
 };
 
-std::vector<ProcessInfo> getProcTargets();  // unsure if I should move this to Platform or not.
+std::vector<ProcessInfo> getProcesses();  // unsure if I should move this to Platform or not.
 std::unique_ptr<IProcess> attach(int pid);
 
 };  // namespace ProcessOS
